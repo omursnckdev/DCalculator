@@ -2,11 +2,13 @@ import {
   Background,
   Controls,
   MiniMap,
+  Panel,
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
 } from '@xyflow/react'
 import { useCallback, useEffect, useRef } from 'react'
+import { tr } from '../i18n/tr'
 import { EQUIPMENT } from '../library/equipment'
 import { EQUIPMENT_TYPES } from '../model/types'
 import type { EquipmentType } from '../model/types'
@@ -28,6 +30,8 @@ function CanvasInner() {
   const isValidConnection = useStore((s) => s.isValidConnection)
   const addNode = useStore((s) => s.addNode)
   const viewTick = useStore((s) => s.viewTick)
+  const nodeView = useStore((s) => s.nodeView)
+  const setNodeView = useStore((s) => s.setNodeView)
   const { screenToFlowPosition, getViewport, fitView } = useReactFlow()
 
   // Proje yüklenince çizimi görünür alana sığdır. fitView kimliği değişebildiği
@@ -91,6 +95,21 @@ function CanvasInner() {
           proOptions={{ hideAttribution: true }}
         >
           <Background gap={GRID} />
+          <Panel position="top-left">
+            <div role="group" aria-label={tr.nodeView.title} className="flex overflow-hidden rounded border border-slate-300 bg-white text-xs shadow-sm">
+              {(['icon', 'card'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setNodeView(v)}
+                  aria-pressed={nodeView === v}
+                  className={`px-2.5 py-1 ${nodeView === v ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-50'}`}
+                >
+                  {tr.nodeView[v]}
+                </button>
+              ))}
+            </div>
+          </Panel>
           <Controls />
           <MiniMap
             pannable

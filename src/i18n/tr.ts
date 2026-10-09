@@ -63,6 +63,7 @@ export const tr = {
     payOto: 'otomatik',
   },
   view: { diagram: 'Şema', table: 'Tablo', summary: 'Isıl özet', scenario: 'Arıza' },
+  nodeView: { icon: 'İkon', card: 'Kart', title: 'Düğüm görünümü' },
   port: {
     input: 'Giriş',
     output: 'Çıkış',

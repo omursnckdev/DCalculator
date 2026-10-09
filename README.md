@@ -63,6 +63,9 @@ Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmele
   hat panelinden değiştirilebilir. Port sayısı bağlı portların altına indirilemez.
 - **ATS/STS besleme:** düğüm kartında "Besleme: <kaynak> (G1)" yazar; sağ panelde **Girişler** tablosu her girişin
   durumunu (aktif/yedek/enerjisiz/açık) gösterir, **Tercih edilen kaynak** seçimi pay yazar. Arıza senaryosunda canlı değişir.
+- **Düğüm görünümü:** tuvalin sol üstündeki **İkon / Kart** düğmesiyle değişir. Varsayılan **İkon**: yalnızca ekipman ikonu ve adı
+  (durum rengiyle çerçeve, doluluk rozeti, AÇIK/ARIZALI etiketi); ayrıntılar fare üstüne gelince ve sağ panelde. **Kart** eski ayrıntılı görünümdür.
+  Tercih tarayıcıda saklanır, projeye yazılmaz. İkon görünümünde hat etiketleri sadeleşir (yalnız ad; ayrıntı hat seçilince).
 - **Kesici / ayırıcı** düğümü: ACB/MCCB/ayırıcı, nominal akım ve Açık/Kapalı durum. Kartındaki yuvarlak düğmeyle açılıp kapanır
   (senaryo açıksa yalnız o senaryoda). Açık kesici hattı keser; ölçü/koruma elemanları (CT, sayaç, parafudr) güç akışını etkilemez.
 - Hatlara **ad ve açıklama** verilebilir (ör. `BB/MSB.PL1/01`).

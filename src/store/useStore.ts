@@ -32,7 +32,20 @@ import { saveProjectToDb } from './persistence'
  * türetilir (`getProject`). Undo/redo (Faz 5) için tek bir değişim noktası
  * olan `set` çağrıları burada toplanmıştır.
  */
+export type NodeView = 'icon' | 'card'
+const VIEW_KEY = 'dcalculator:nodeView'
+function loadView(): NodeView {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'card' ? 'card' : 'icon'
+  } catch {
+    return 'icon'
+  }
+}
+
 interface State {
+  /** Düğüm gösterimi: 'icon' = ikon + ad (varsayılan), 'card' = ayrıntılı kart. Kişisel tercih, projeye yazılmaz. */
+  nodeView: NodeView
+  setNodeView: (v: NodeView) => void
   projectId: string
   projectName: string
   createdAt: string
@@ -87,6 +100,15 @@ export const useStore = create<State>((set, get) => ({
   createdAt: baseProject.createdAt,
   nodes: [],
   edges: [],
+  nodeView: loadView(),
+  setNodeView: (v) => {
+    try {
+      localStorage.setItem(VIEW_KEY, v)
+    } catch {
+      /* tercih kaydedilemedi; sorun değil */
+    }
+    set({ nodeView: v })
+  },
   dirty: false,
   scenarios: [],
   activeScenarioId: null,

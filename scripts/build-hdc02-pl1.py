@@ -11,7 +11,7 @@ trafo kayıpları, jeneratör kVA, UPS verimi) VARSAYIMDIR; ilgili düğümlerin
 import json, math, os
 
 V = 415  # şemadaki LV gerilimi (TX.PL1: 34.5 kV / 415 V)
-SX, SY = 0.08, 0.06
+SX, SY = 0.05, 0.035  # ikon görünümüne göre sıkı yerleşim
 def X(x): return x * SX
 def Y(y): return (y + 16000) * SY
 
@@ -304,11 +304,12 @@ for n in nodes.values():
 
 # ---------------------------------------------------------------- çakışma çözümü (kartlar üst üste binmesin)
 def size(n):
+    # İkon + sağında ekipman adı (≈140 px) birlikte yer kaplar.
     t = n['type']
-    if t in ('kesici', 'yardimci'): return 140, 70
+    small = t in ('kesici', 'yardimci')
     ports = max(n['params'].get('girisSayisi', 1), n['params'].get('cikisSayisi', 1))
-    w = max(190, ports * 34)
-    return w, 120
+    icon_w = max(36 if small else 48, ports * 16 + 8)
+    return icon_w + 140, 44 if small else 54
 ids = list(nodes)
 for _ in range(60):
     moved = False
@@ -317,7 +318,7 @@ for _ in range(60):
             a, b = nodes[ids[i]], nodes[ids[j]]
             wa, ha = size(a); wb, hb = size(b)
             dx = (b['x'] + wb / 2) - (a['x'] + wa / 2); dy = (b['y'] + hb / 2) - (a['y'] + ha / 2)
-            ox = (wa + wb) / 2 + 20 - abs(dx); oy = (ha + hb) / 2 + 12 - abs(dy)
+            ox = (wa + wb) / 2 + 6 - abs(dx); oy = (ha + hb) / 2 + 14 - abs(dy)
             if ox > 0 and oy > 0:
                 if ox <= oy:
                     s = 1 if dx >= 0 else -1; a['x'] -= s * ox / 2; b['x'] += s * ox / 2
