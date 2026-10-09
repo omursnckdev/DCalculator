@@ -1,0 +1,215 @@
+{
+  "schemaVersion": 3,
+  "id": "ref3",
+  "name": "Faz3 Referans",
+  "createdAt": "2026-10-09T12:49:32.797Z",
+  "updatedAt": "2026-10-09T12:49:32.797Z",
+  "nodes": [
+    {
+      "id": "grid",
+      "type": "sebeke",
+      "ad": "Şebeke",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 300,
+      "y": 0,
+      "params": {
+        "gerilim": 34500,
+        "kisaDevreMva": 500
+      }
+    },
+    {
+      "id": "tr",
+      "type": "trafo",
+      "ad": "Trafo",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 300,
+      "y": 140,
+      "params": {
+        "nominalKva": 2000,
+        "primerGerilim": 34500,
+        "sekonderGerilim": 400,
+        "uk": 6,
+        "bostaKayip": 2,
+        "yukKayip": 16,
+        "isiKonum": "elektrik"
+      }
+    },
+    {
+      "id": "mdb",
+      "type": "mdb",
+      "ad": "MDB",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 300,
+      "y": 280,
+      "params": {
+        "gerilim": 400,
+        "nominalAkim": 4000,
+        "diversity": 1
+      }
+    },
+    {
+      "id": "ups",
+      "type": "ups",
+      "ad": "UPS",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 80,
+      "y": 420,
+      "params": {
+        "nominalKva": 800,
+        "nominalKw": 800,
+        "girisGerilim": 400,
+        "cikisGerilim": 400,
+        "verim": 96,
+        "girisPf": 1,
+        "verimModu": "egri",
+        "verim25": 94,
+        "verim50": 96,
+        "verim75": 96.5,
+        "verim100": 96,
+        "isiKonum": "elektrik"
+      }
+    },
+    {
+      "id": "it",
+      "type": "itYuku",
+      "ad": "IT",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 80,
+      "y": 580,
+      "params": {
+        "kuruluKw": 500,
+        "pf": 1,
+        "df": 1,
+        "kategori": "IT",
+        "gerilim": 400,
+        "isiKonum": "salon"
+      }
+    },
+    {
+      "id": "crah",
+      "type": "mekanikYuk",
+      "ad": "CRAH",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 340,
+      "y": 420,
+      "params": {
+        "kuruluKw": 50,
+        "pf": 1,
+        "df": 1,
+        "kategori": "Mekanik",
+        "gerilim": 400,
+        "isiKonum": "salon"
+      }
+    },
+    {
+      "id": "chiller",
+      "type": "mekanikYuk",
+      "ad": "Chiller",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 580,
+      "y": 420,
+      "params": {
+        "kuruluKw": 300,
+        "pf": 1,
+        "df": 1,
+        "kategori": "Mekanik",
+        "gerilim": 400,
+        "isiKonum": "dis"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "grid>tr",
+      "source": "grid",
+      "target": "tr",
+      "tip": "kablo",
+      "uzunluk": 10,
+      "akimKapasitesi": 5000,
+      "r": 0,
+      "x": 0,
+      "gerilim": 34500,
+      "pay": null,
+      "isiKonum": "elektrik"
+    },
+    {
+      "id": "tr>mdb",
+      "source": "tr",
+      "target": "mdb",
+      "tip": "kablo",
+      "uzunluk": 10,
+      "akimKapasitesi": 5000,
+      "r": 0,
+      "x": 0,
+      "gerilim": 400,
+      "pay": null,
+      "isiKonum": "elektrik"
+    },
+    {
+      "id": "mdb>ups",
+      "source": "mdb",
+      "target": "ups",
+      "tip": "kablo",
+      "uzunluk": 10,
+      "akimKapasitesi": 5000,
+      "r": 0,
+      "x": 0,
+      "gerilim": 400,
+      "pay": null,
+      "isiKonum": "elektrik"
+    },
+    {
+      "id": "ups>it",
+      "source": "ups",
+      "target": "it",
+      "tip": "kablo",
+      "uzunluk": 10,
+      "akimKapasitesi": 5000,
+      "r": 0,
+      "x": 0,
+      "gerilim": 400,
+      "pay": null,
+      "isiKonum": "elektrik"
+    },
+    {
+      "id": "mdb>crah",
+      "source": "mdb",
+      "target": "crah",
+      "tip": "kablo",
+      "uzunluk": 10,
+      "akimKapasitesi": 5000,
+      "r": 0,
+      "x": 0,
+      "gerilim": 400,
+      "pay": null,
+      "isiKonum": "elektrik"
+    },
+    {
+      "id": "mdb>chiller",
+      "source": "mdb",
+      "target": "chiller",
+      "tip": "kablo",
+      "uzunluk": 10,
+      "akimKapasitesi": 5000,
+      "r": 0,
+      "x": 0,
+      "gerilim": 400,
+      "pay": null,
+      "isiKonum": "elektrik"
+    }
+  ]
+}

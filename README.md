@@ -52,3 +52,8 @@ Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmele
 - Çift beslemeli (2N) yapılarda bir ekipmanı besleyen hatlar yükü eşit paylaşır; hat özelliklerinden
   "Yük payı" girilebilir (yedek besleme için 0).
 - Her sonucun altında "Nasıl hesaplandı?" ile formül ve kullanılan girdiler görülür.
+
+## Örnek proje
+
+`examples/faz3-referans.dcalc.json` dosyasını **JSON yükle** ile açın: şebeke → trafo → MDB → UPS → IT,
+yanında CRAH ve chiller. Beklenen sonuç: toplam 874,5 kW, PUE ≈ 1,749, salon ısısı 550 kW (156,4 TR).
