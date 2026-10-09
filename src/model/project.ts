@@ -1,3 +1,4 @@
+import { EQUIPMENT } from '../library/equipment'
 import { EDGE_STATES, EQUIPMENT_TYPES, HEAT_LOCATIONS, LINE_TYPES } from './types'
 import type {
   EquipmentNode,
@@ -15,7 +16,7 @@ import type {
  * Proje dosyası şema sürümü. Şema değiştiğinde artır ve `migrate` içine
  * bir dönüşüm adımı ekle (plan §12).
  */
-export const SCHEMA_VERSION = 4
+export const SCHEMA_VERSION = 5
 
 export function newId(prefix = 'id'): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`
@@ -63,11 +64,20 @@ export function toProjectNodes(nodes: EquipmentNode[]): ProjectNode[] {
   }))
 }
 
+/** React Flow handle kimlikleri: çıkış `out-0`, giriş `in-0`. */
+export const handleId = (dir: 'in' | 'out', port: number): string => `${dir}-${port}`
+export function portOf(handle: string | null | undefined): number {
+  const m = /-(\d+)$/.exec(handle ?? '')
+  return m ? Number(m[1]) : 0
+}
+
 export function toProjectEdges(edges: LineEdge[]): ProjectEdge[] {
   return edges.map((e) => ({
     id: e.id,
     source: e.source,
     target: e.target,
+    kaynakPort: portOf(e.sourceHandle),
+    hedefPort: portOf(e.targetHandle),
     ...(e.data ?? DEFAULT_LINE),
   }))
 }
@@ -89,10 +99,12 @@ export function fromProjectNodes(nodes: ProjectNode[]): EquipmentNode[] {
 }
 
 export function fromProjectEdges(edges: ProjectEdge[]): LineEdge[] {
-  return edges.map(({ id, source, target, ...data }) => ({
+  return edges.map(({ id, source, target, kaynakPort, hedefPort, ...data }) => ({
     id,
     source,
     target,
+    sourceHandle: handleId('out', kaynakPort),
+    targetHandle: handleId('in', hedefPort),
     type: 'line',
     data,
   }))
@@ -139,6 +151,8 @@ function parseNode(raw: unknown, i: number): ProjectNode {
   }
 }
 
+const port = (v: unknown): number => (typeof v === 'number' && Number.isInteger(v) && v >= 0 ? v : 0)
+
 function parseEdge(raw: unknown, i: number): ProjectEdge {
   if (!isObj(raw)) throw new ProjectFormatError(`Hat ${i + 1} geçersiz.`)
   const id = str(raw.id)
@@ -160,6 +174,8 @@ function parseEdge(raw: unknown, i: number): ProjectEdge {
     isiKonum: HEAT_LOCATIONS.includes(raw.isiKonum as never)
       ? (raw.isiKonum as ProjectEdge['isiKonum'])
       : DEFAULT_LINE.isiKonum,
+    kaynakPort: port(raw.kaynakPort),
+    hedefPort: port(raw.hedefPort),
     durum: EDGE_STATES.includes(raw.durum as never) ? (raw.durum as ProjectEdge['durum']) : DEFAULT_LINE.durum,
   }
 }
@@ -216,6 +232,38 @@ function parseScenario(raw: unknown, nodeIds: Set<string>, edgeIds: Set<string>)
 }
 
 /**
+ * v4 -> v5: hatlara port (`kaynakPort`, `hedefPort`) eklendi. Mevcut hatlar, dosyadaki sıraya göre
+ * her ekipmanın ilk boş portlarına atanır; ekipmanın giriş/çıkış sayısı kullanılan port kadar
+ * (en az kütüphane varsayılanı) yapılır, böylece eski projeler aynen açılır.
+ */
+function v4ToV5(raw: Record<string, unknown>): Record<string, unknown> {
+  const nodes = Array.isArray(raw.nodes) ? raw.nodes : []
+  const edges = Array.isArray(raw.edges) ? raw.edges : []
+  const outUse = new Map<string, number>()
+  const inUse = new Map<string, number>()
+  const newEdges = edges.map((e) => {
+    if (!isObj(e)) return e
+    const s = str(e.source)
+    const t = str(e.target)
+    const kaynakPort = outUse.get(s) ?? 0
+    const hedefPort = inUse.get(t) ?? 0
+    outUse.set(s, kaynakPort + 1)
+    inUse.set(t, hedefPort + 1)
+    return { kaynakPort, hedefPort, ...e }
+  })
+  const newNodes = nodes.map((n) => {
+    if (!isObj(n)) return n
+    const def = EQUIPMENT[n.type as EquipmentType] as (typeof EQUIPMENT)[EquipmentType] | undefined
+    const params = isObj(n.params) ? { ...n.params } : {}
+    const id = str(n.id)
+    if (def?.hasInput) params.girisSayisi = Math.max(num(params.girisSayisi, def.defaults.girisSayisi as number), inUse.get(id) ?? 0)
+    if (def?.hasOutput) params.cikisSayisi = Math.max(num(params.cikisSayisi, def.defaults.cikisSayisi as number), outUse.get(id) ?? 0)
+    return { ...n, params }
+  })
+  return { ...raw, schemaVersion: 5, nodes: newNodes, edges: newEdges }
+}
+
+/**
  * Herhangi bir sürümdeki ham JSON'u güncel `Project` biçimine çevirir.
  * Şema her arttığında buraya bir dönüşüm adımı eklenir (bkz. `v1ToV2`).
  */
@@ -232,6 +280,7 @@ export function migrate(input: unknown): Project {
   if (typeof version === 'number' && version < 2) raw = v1ToV2(raw)
   if (typeof version === 'number' && version < 3) raw = v2ToV3(raw)
   if (typeof version === 'number' && version < 4) raw = v3ToV4(raw)
+  if (typeof version === 'number' && version < 5) raw = v4ToV5(raw)
   if (!Array.isArray(raw.nodes) || !Array.isArray(raw.edges)) {
     throw new ProjectFormatError('nodes/edges listeleri eksik.')
   }

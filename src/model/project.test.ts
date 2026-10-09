@@ -20,7 +20,7 @@ function sample(): Project {
     { id: 'b', type: 'mdb', ad: 'AG', etiket: '', grup: '', notlar: 'not', x: 40, y: 240, params: { nominalAkim: 4000 } },
   ]
   p.edges = [
-    { id: 'e1', source: 'a', target: 'b', tip: 'busbar', uzunluk: 12, akimKapasitesi: 4000, r: 0.02, x: 0.05, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali' },
+    { id: 'e1', source: 'a', target: 'b', kaynakPort: 0, hedefPort: 0, tip: 'busbar', uzunluk: 12, akimKapasitesi: 4000, r: 0.02, x: 0.05, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali' },
   ]
   return p
 }
@@ -79,6 +79,62 @@ describe('şema sürümü', () => {
     const p = sample()
     p.edges[0].pay = 50
     expect(parseProject(serializeProject(p)).edges[0].pay).toBe(50)
+  })
+})
+
+describe('portlar (v5)', () => {
+  const v4 = () => ({
+    schemaVersion: 4,
+    nodes: [
+      { id: 'a', type: 'sebeke', ad: 'G', etiket: '', grup: '', notlar: '', x: 0, y: 0, params: {} },
+      { id: 'b', type: 'ats', ad: 'ATS', etiket: '', grup: '', notlar: '', x: 0, y: 100, params: {} },
+      { id: 'c', type: 'jenerator', ad: 'GEN', etiket: '', grup: '', notlar: '', x: 100, y: 0, params: {} },
+      { id: 'd', type: 'itYuku', ad: 'IT', etiket: '', grup: '', notlar: '', x: 0, y: 200, params: {} },
+    ],
+    edges: [
+      { id: 'e1', source: 'a', target: 'b', tip: 'kablo', uzunluk: 5, akimKapasitesi: 100, r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali' },
+      { id: 'e2', source: 'c', target: 'b', tip: 'kablo', uzunluk: 5, akimKapasitesi: 100, r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali' },
+      { id: 'e3', source: 'b', target: 'd', tip: 'kablo', uzunluk: 5, akimKapasitesi: 100, r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali' },
+    ],
+  })
+
+  it('v4 hatlarına dosya sırasıyla port atar', () => {
+    const p = migrate(v4())
+    expect(p.schemaVersion).toBe(SCHEMA_VERSION)
+    const by = Object.fromEntries(p.edges.map((e) => [e.id, e]))
+    expect([by.e1.kaynakPort, by.e1.hedefPort]).toEqual([0, 0])
+    expect([by.e2.kaynakPort, by.e2.hedefPort]).toEqual([0, 1]) // ATS'nin 2. girişi
+    expect([by.e3.kaynakPort, by.e3.hedefPort]).toEqual([0, 0])
+  })
+
+  it('ekipmanın port sayısını kullanılan port kadar (en az varsayılan) yapar', () => {
+    const raw = v4()
+    // IT yükü varsayılan 1 giriş; iki hat bağlı → 2 olmalı
+    raw.edges.push({ ...raw.edges[2], id: 'e4', source: 'c' })
+    raw.edges[3].target = 'd'
+    const p = migrate(raw)
+    const it = p.nodes.find((n) => n.id === 'd')!
+    expect(it.params.girisSayisi).toBe(2)
+    const ats = p.nodes.find((n) => n.id === 'b')!
+    expect(ats.params.girisSayisi).toBe(2)
+    expect(ats.params.cikisSayisi).toBe(1)
+  })
+
+  it('portlar JSON gidiş-dönüşünde korunur', () => {
+    const p = sample()
+    p.edges[0].kaynakPort = 3
+    p.edges[0].hedefPort = 1
+    const back = parseProject(serializeProject(p)).edges[0]
+    expect([back.kaynakPort, back.hedefPort]).toEqual([3, 1])
+  })
+
+  it('React Flow dönüşümü portları handle kimliğine çevirip geri okur', () => {
+    const p = sample()
+    p.edges[0].kaynakPort = 2
+    p.edges[0].hedefPort = 1
+    const rf = fromProjectEdges(p.edges)
+    expect([rf[0].sourceHandle, rf[0].targetHandle]).toEqual(['out-2', 'in-1'])
+    expect(toProjectEdges(rf)[0]).toMatchObject({ kaynakPort: 2, hedefPort: 1 })
   })
 })
 

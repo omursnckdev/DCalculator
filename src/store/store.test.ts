@@ -8,6 +8,16 @@ import { useStore } from './useStore'
 beforeEach(() => useStore.getState().newProject())
 
 describe('kütüphane', () => {
+  it('her tipte alan anahtarları benzersiz ve port alanları doğru', () => {
+    for (const t of EQUIPMENT_TYPES) {
+      const d = EQUIPMENT[t]
+      const keys = d.fields.map((f) => f.key)
+      expect(new Set(keys).size, `${t}: ${keys.join(',')}`).toBe(keys.length)
+      expect(keys.includes('girisSayisi'), t).toBe(d.hasInput)
+      expect(keys.includes('cikisSayisi'), t).toBe(d.hasOutput)
+    }
+  })
+
   it('her ekipman tipi için tanım ve varsayılan değer var', () => {
     for (const t of EQUIPMENT_TYPES) {
       const d = EQUIPMENT[t]
@@ -140,6 +150,71 @@ describe('senaryolar', () => {
     useStore.getState().deleteScenario(id)
     expect(useStore.getState().activeScenarioId).toBeNull()
     expect(useStore.getState().scenarios).toHaveLength(0)
+  })
+})
+
+describe('portlar', () => {
+  const conn = (source: string, target: string, sp: number, tp: number) => ({
+    source, target, sourceHandle: `out-${sp}`, targetHandle: `in-${tp}`,
+  })
+
+  it('her porta tek hat bağlanır; farklı port serbesttir', () => {
+    const s = useStore.getState()
+    const mdb = s.addNode('mdb', 0, 0) // 2 giriş, 6 çıkış
+    const l1 = s.addNode('dagitimPanosu', 0, 100)
+    const l2 = s.addNode('dagitimPanosu', 100, 100)
+    s.onConnect(conn(mdb, l1, 0, 0))
+    expect(useStore.getState().isValidConnection(conn(mdb, l2, 0, 0))).toBe(false) // çıkış 1 dolu
+    expect(useStore.getState().isValidConnection(conn(mdb, l2, 1, 0))).toBe(true)
+    expect(useStore.getState().isValidConnection(conn(mdb, l1, 1, 0))).toBe(false) // l1 girişi dolu
+    // aynı iki ekipman arasında paralel hat için ikinci giriş gerekir
+    expect(useStore.getState().isValidConnection(conn(mdb, l1, 1, 1))).toBe(false) // dağıtım panosunun 1 girişi var
+  })
+
+  it('var olmayan porta bağlanamaz', () => {
+    const s = useStore.getState()
+    const t = s.addNode('trafo', 0, 0) // 1 çıkış
+    const m = s.addNode('mdb', 0, 100)
+    expect(useStore.getState().isValidConnection(conn(t, m, 1, 0))).toBe(false)
+  })
+
+  it('port sayısı, bağlı en yüksek portun altına indirilemez', () => {
+    const s = useStore.getState()
+    const mdb = s.addNode('mdb', 0, 0)
+    const p = s.addNode('dagitimPanosu', 0, 100)
+    s.onConnect(conn(mdb, p, 3, 0)) // çıkış 4'ü kullanıyor
+    useStore.getState().updateNodeParam(mdb, 'cikisSayisi', 1)
+    expect(useStore.getState().nodes.find((n) => n.id === mdb)?.data.params.cikisSayisi).toBe(4)
+    useStore.getState().updateNodeParam(mdb, 'cikisSayisi', 99)
+    expect(useStore.getState().nodes.find((n) => n.id === mdb)?.data.params.cikisSayisi).toBe(12)
+  })
+
+  it('hat başka boş porta taşınır, doluya taşınamaz', () => {
+    const s = useStore.getState()
+    const mdb = s.addNode('mdb', 0, 0)
+    const a = s.addNode('dagitimPanosu', 0, 100)
+    const b = s.addNode('dagitimPanosu', 100, 100)
+    s.onConnect(conn(mdb, a, 0, 0))
+    s.onConnect(conn(mdb, b, 1, 0))
+    const [ea, eb] = useStore.getState().edges
+    expect(useStore.getState().setEdgePort(ea.id, 'source', 1)).toBe(false) // dolu
+    expect(useStore.getState().setEdgePort(ea.id, 'source', 2)).toBe(true)
+    expect(useStore.getState().edges.find((e) => e.id === ea.id)?.sourceHandle).toBe('out-2')
+    expect(useStore.getState().setEdgePort(eb.id, 'source', 99)).toBe(false)
+  })
+
+  it('tercih edilen giriş: seçilene %100, diğerlerine %0 pay', () => {
+    const s = useStore.getState()
+    const g1 = s.addNode('sebeke', 0, 0)
+    const gen = s.addNode('jenerator', 100, 0)
+    const ats = s.addNode('ats', 50, 100)
+    s.onConnect(conn(g1, ats, 0, 0))
+    s.onConnect(conn(gen, ats, 0, 1))
+    const [e1, e2] = useStore.getState().edges
+    useStore.getState().setPreferredInput(ats, e2.id)
+    const pays = Object.fromEntries(useStore.getState().edges.map((e) => [e.id, e.data?.pay]))
+    expect(pays[e2.id]).toBe(100)
+    expect(pays[e1.id]).toBe(0)
   })
 })
 

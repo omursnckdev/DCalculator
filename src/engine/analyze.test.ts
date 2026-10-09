@@ -6,9 +6,18 @@ import { analyze, currentOf } from './analyze'
 /** Faz 2 testleri yük toplamayı doğrular; trafo kaybı Faz 3 testlerinde ayrıca sınanır. */
 const NO_LOSS = { bostaKayip: 0, yukKayip: 0, uk: 0 }
 
+const portUse = new Map<string, number>()
+const nextPort = (key: string): number => {
+  const n = portUse.get(key) ?? 0
+  portUse.set(key, n + 1)
+  return n
+}
+
 let seq = 0
 function node(id: string, type: EquipmentType, params: Params = {}, ad = id): ProjectNode {
-  return { id, type, ad, etiket: '', grup: '', notlar: '', x: 0, y: seq++ * 10, params: { ...EQUIPMENT[type].defaults, ...params } }
+  portUse.delete(`${id}:in`)
+  portUse.delete(`${id}:out`)
+  return { id, type, ad, etiket: '', grup: '', notlar: '', x: 0, y: seq++ * 10, params: { ...EQUIPMENT[type].defaults, girisSayisi: 12, cikisSayisi: 12, ...params } }
 }
 function edge(source: string, target: string, over: Partial<ProjectEdge> = {}): ProjectEdge {
   return {
@@ -24,6 +33,8 @@ function edge(source: string, target: string, over: Partial<ProjectEdge> = {}): 
     pay: null,
     isiKonum: 'elektrik',
     durum: 'kapali',
+    kaynakPort: nextPort(`${source}:out`),
+    hedefPort: nextPort(`${target}:in`),
     ...over,
   }
 }

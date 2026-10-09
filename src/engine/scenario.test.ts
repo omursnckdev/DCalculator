@@ -4,14 +4,24 @@ import type { EquipmentType, Params, ProjectEdge, ProjectNode, Scenario } from '
 import { analyze } from './analyze'
 import { runN1 } from './scenario'
 
+const portUse = new Map<string, number>()
+const nextPort = (key: string): number => {
+  const n = portUse.get(key) ?? 0
+  portUse.set(key, n + 1)
+  return n
+}
+
 let seq = 0
 function node(id: string, type: EquipmentType, params: Params = {}): ProjectNode {
-  return { id, type, ad: id, etiket: '', grup: '', notlar: '', x: 0, y: seq++ * 10, params: { ...EQUIPMENT[type].defaults, ...params } }
+  portUse.delete(`${id}:in`)
+  portUse.delete(`${id}:out`)
+  return { id, type, ad: id, etiket: '', grup: '', notlar: '', x: 0, y: seq++ * 10, params: { ...EQUIPMENT[type].defaults, girisSayisi: 12, cikisSayisi: 12, ...params } }
 }
 function edge(source: string, target: string, over: Partial<ProjectEdge> = {}): ProjectEdge {
   return {
     id: `${source}>${target}`, source, target, tip: 'kablo', uzunluk: 10, akimKapasitesi: 1e6,
-    r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali', ...over,
+    r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali',
+    kaynakPort: nextPort(`${source}:out`), hedefPort: nextPort(`${target}:in`), ...over,
   }
 }
 const scn = (failed: string[] = [], edgeStates: Scenario['edgeStates'] = {}): Scenario => ({ id: 's', ad: 's', failedNodes: failed, edgeStates })
@@ -382,3 +392,36 @@ describe('jeneratör acil kaynaktır: normal kaynak varken yük almaz', () => {
     expect(r.lostItKw).toBe(0)
   })
 })
+
+describe('portlar', () => {
+  const base = () => ({
+    nodes: [grid('g1'), grid('g2'), node('ats', 'ats'), node('it', 'itYuku', { kuruluKw: 100, pf: 1, df: 1 })],
+    edges: [edge('g1', 'ats'), edge('g2', 'ats'), edge('ats', 'it')],
+  })
+
+  it('eşit paylı ATS girişlerinde en düşük numaralı giriş seçilir', () => {
+    const m = base()
+    m.edges[0].hedefPort = 1 // g1 → Giriş 2
+    m.edges[1].hedefPort = 0 // g2 → Giriş 1
+    const a = analyze(m)
+    expect(a.nodes.g2.totalKw).toBeCloseTo(100, 6)
+    expect(a.nodes.g1.totalKw).toBeCloseTo(0, 6)
+  })
+
+  it('aynı porta iki hat bağlıysa hata verir', () => {
+    const m = base()
+    m.edges[1].hedefPort = m.edges[0].hedefPort
+    expect(analyze(m).issues.some((i) => i.severity === 'error' && /portuna 2 hat/.test(i.message))).toBe(true)
+  })
+
+  it('var olmayan portu hata olarak bildirir', () => {
+    const m = base()
+    m.nodes[2].params.girisSayisi = 1
+    expect(analyze(m).issues.some((i) => i.severity === 'error' && /2\. giriş portu yok/.test(i.message))).toBe(true)
+  })
+
+  it('temiz port atamasında port hatası yok', () => {
+    expect(analyze(base()).issues.filter((i) => /port/.test(i.message))).toEqual([])
+  })
+})
+

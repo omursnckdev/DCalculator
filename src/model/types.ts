@@ -89,6 +89,10 @@ export interface ProjectEdge extends LineData {
   id: string
   source: string
   target: string
+  /** Kaynak ekipmanın çıkış portu (0 tabanlı, ekipmanın altında soldan sağa). */
+  kaynakPort: number
+  /** Hedef ekipmanın giriş portu (0 tabanlı, ekipmanın üstünde soldan sağa). */
+  hedefPort: number
 }
 
 /**

@@ -4,14 +4,24 @@ import type { EquipmentType, Params, ProjectEdge, ProjectNode } from '../model/t
 import { analyze, upsEfficiency } from './analyze'
 import { KW_PER_TR, kwToTr } from './thermal'
 
+const portUse = new Map<string, number>()
+const nextPort = (key: string): number => {
+  const n = portUse.get(key) ?? 0
+  portUse.set(key, n + 1)
+  return n
+}
+
 let seq = 0
 function node(id: string, type: EquipmentType, params: Params = {}): ProjectNode {
-  return { id, type, ad: id, etiket: '', grup: '', notlar: '', x: 0, y: seq++ * 10, params: { ...EQUIPMENT[type].defaults, ...params } }
+  portUse.delete(`${id}:in`)
+  portUse.delete(`${id}:out`)
+  return { id, type, ad: id, etiket: '', grup: '', notlar: '', x: 0, y: seq++ * 10, params: { ...EQUIPMENT[type].defaults, girisSayisi: 12, cikisSayisi: 12, ...params } }
 }
 function edge(source: string, target: string, over: Partial<ProjectEdge> = {}): ProjectEdge {
   return {
     id: `${source}>${target}`, source, target, tip: 'kablo', uzunluk: 10, akimKapasitesi: 1e6,
-    r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali', ...over,
+    r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali',
+    kaynakPort: nextPort(`${source}:out`), hedefPort: nextPort(`${target}:in`), ...over,
   }
 }
 

@@ -7,7 +7,11 @@ import { tr } from '../i18n/tr'
 import type { ExplainStep } from '../engine'
 import { useAnalysis } from '../store/useAnalysis'
 import { useStore } from '../store/useStore'
+import { portOf } from '../model/project'
+import { portCount } from '../library/equipment'
+import type { EquipmentNode } from '../model/types'
 import { STATUS_BG, STATUS_COLOR, fmtNum } from './status'
+import { STATE_COLOR, useInputs } from './useInputs'
 
 const inputCls =
   'w-full rounded border border-slate-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none'
@@ -68,6 +72,140 @@ function Explain({ steps }: { steps: ExplainStep[] }) {
         ))}
       </ol>
     </details>
+  )
+}
+
+function PortsSection({ node }: { node: EquipmentNode }) {
+  const inputs = useInputs(node.id)
+  const nodes = useStore((s) => s.nodes)
+  const edges = useStore((s) => s.edges)
+  const setPreferredInput = useStore((s) => s.setPreferredInput)
+  const isTransfer = node.data.kind === 'ats' || node.data.kind === 'sts'
+  const outputs = edges
+    .filter((e) => e.source === node.id)
+    .map((e) => ({ port: portOf(e.sourceHandle), target: nodes.find((n) => n.id === e.target)?.data.ad ?? e.target }))
+    .sort((a, b) => a.port - b.port)
+  const nIn = portCount(node.data.kind, node.data.params, 'in')
+  const nOut = portCount(node.data.kind, node.data.params, 'out')
+  if (nIn === 0 && nOut === 0) return null
+
+  // Tercih: açık pay'i en yüksek (ve > 0) tek giriş; yoksa otomatik.
+  const top = Math.max(...inputs.map((i) => i.pay ?? -1))
+  const tops = inputs.filter((i) => i.pay !== null && i.pay === top && top > 0)
+  const preferredId = tops.length === 1 ? tops[0].edgeId : ''
+
+  const byPort = new Map(inputs.map((i) => [i.port, i]))
+  return (
+    <div className="mb-3 rounded-lg border border-slate-200 p-2">
+      {nIn > 0 && (
+        <>
+          <h3 className="mb-1 text-xs font-semibold">{tr.port.inputsTitle}</h3>
+          <ul className="mb-2 space-y-0.5 text-xs">
+            {Array.from({ length: nIn }, (_, p) => {
+              const i = byPort.get(p)
+              return (
+                <li key={p} className="flex items-center gap-1.5">
+                  <span className="w-6 shrink-0 text-slate-500">
+                    {tr.port.inputShort}
+                    {p + 1}
+                  </span>
+                  {i ? (
+                    <>
+                      <span className="min-w-0 flex-1 truncate">{i.sourceName}</span>
+                      <span
+                        className="rounded px-1.5 py-0.5 text-[11px] font-semibold text-white"
+                        style={{ background: STATE_COLOR[i.state] }}
+                      >
+                        {tr.port.state[i.state]}
+                        {i.state === 'aktif' && i.share < 0.9999 ? ` %${fmtNum(i.share * 100, 0)}` : ''}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-slate-400">{tr.port.notConnected}</span>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+          {isTransfer && inputs.length >= 2 && (
+            <label className="mb-1 block">
+              <span className="mb-0.5 block text-xs text-slate-500">{tr.port.preferred}</span>
+              <select
+                className={inputCls}
+                value={preferredId}
+                onChange={(e) => e.target.value && setPreferredInput(node.id, e.target.value)}
+              >
+                <option value="" disabled={preferredId !== ''}>
+                  {tr.port.preferredAuto}
+                </option>
+                {inputs.map((i) => (
+                  <option key={i.edgeId} value={i.edgeId}>
+                    {tr.port.inputShort}
+                    {i.port + 1} — {i.sourceName}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-0.5 block text-[11px] text-slate-400">{tr.port.preferredHint}</span>
+            </label>
+          )}
+        </>
+      )}
+      {nOut > 0 && (
+        <>
+          <h3 className="mb-1 mt-2 text-xs font-semibold">{tr.port.outputsTitle}</h3>
+          <ul className="space-y-0.5 text-xs">
+            {Array.from({ length: nOut }, (_, p) => {
+              const o = outputs.find((x) => x.port === p)
+              return (
+                <li key={p} className="flex items-center gap-1.5">
+                  <span className="w-6 shrink-0 text-slate-500">Ç{p + 1}</span>
+                  {o ? <span className="min-w-0 flex-1 truncate">→ {o.target}</span> : <span className="text-slate-400">{tr.port.notConnected}</span>}
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
+    </div>
+  )
+}
+
+function EdgePorts({ edgeId }: { edgeId: string }) {
+  const edges = useStore((s) => s.edges)
+  const nodes = useStore((s) => s.nodes)
+  const setEdgePort = useStore((s) => s.setEdgePort)
+  const e = edges.find((x) => x.id === edgeId)
+  if (!e) return null
+  const src = nodes.find((n) => n.id === e.source)
+  const dst = nodes.find((n) => n.id === e.target)
+  if (!src || !dst) return null
+  const sel = (side: 'source' | 'target', label: string) => {
+    const node = side === 'source' ? src : dst
+    const count = portCount(node.data.kind, node.data.params, side === 'source' ? 'out' : 'in')
+    const current = portOf(side === 'source' ? e.sourceHandle : e.targetHandle)
+    const taken = new Set(
+      edges
+        .filter((x) => x.id !== e.id && (side === 'source' ? x.source === e.source : x.target === e.target))
+        .map((x) => portOf(side === 'source' ? x.sourceHandle : x.targetHandle)),
+    )
+    return (
+      <Row label={`${label} — ${node.data.ad}`}>
+        <select className={inputCls} value={current} onChange={(ev) => setEdgePort(edgeId, side, Number(ev.target.value))}>
+          {Array.from({ length: count }, (_, p) => (
+            <option key={p} value={p} disabled={taken.has(p)}>
+              {p + 1}
+              {taken.has(p) ? ' (dolu)' : ''}
+            </option>
+          ))}
+        </select>
+      </Row>
+    )
+  }
+  return (
+    <>
+      {sel('source', tr.port.outPort)}
+      {sel('target', tr.port.inPort)}
+    </>
   )
 }
 
@@ -202,6 +340,7 @@ export function PropertiesPanel() {
               <Explain steps={nodeResult.explain} />
             </div>
           )}
+          <PortsSection node={node} />
           <Row label={tr.props.notlar}>
             <textarea
               className={inputCls}
@@ -265,6 +404,7 @@ export function PropertiesPanel() {
               }}
             />
           </Row>
+          <EdgePorts edgeId={edge.id} />
           <Row label={tr.line.durum}>
             <select
               className={inputCls}

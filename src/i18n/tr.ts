@@ -60,6 +60,22 @@ export const tr = {
     payOto: 'otomatik',
   },
   view: { diagram: 'Şema', table: 'Tablo', summary: 'Isıl özet', scenario: 'Arıza' },
+  port: {
+    input: 'Giriş',
+    output: 'Çıkış',
+    inputShort: 'G',
+    feed: 'Besleme',
+    noFeed: 'kaynak yok',
+    inputsTitle: 'Girişler',
+    outputsTitle: 'Çıkışlar',
+    notConnected: 'bağlı değil',
+    preferred: 'Tercih edilen kaynak',
+    preferredAuto: 'otomatik (en düşük numaralı giriş)',
+    preferredHint: 'Seçilen girişe %100, diğerlerine %0 pay yazılır. Arıza olursa diğer giriş otomatik devreye girer.',
+    outPort: 'Çıkış portu',
+    inPort: 'Giriş portu',
+    state: { aktif: 'aktif', yedek: 'yedek', enerjisiz: 'enerjisiz', acik: 'açık' },
+  },
   senaryo: {
     title: 'Senaryolar',
     base: 'Temel durum (normal çalışma)',
@@ -180,7 +196,11 @@ export const tr = {
     shareSum: (ad: string, sum: string) => `${ad}: besleme paylarının toplamı %${sum}; %100 olmalı.`,
     transferOneInput: (ad: string) => `${ad}: transfer anahtarının tek girişi var; en az iki kaynak gerekir.`,
     transferNoPreferred: (ad: string) =>
-      `${ad}: tercih edilen kaynak belirtilmedi (girişlerden birine %100, diğerine %0 pay verin); ilk hat seçildi.`,
+      `${ad}: tercih edilen kaynak belirtilmedi (girişlerden birine %100, diğerine %0 pay verin); en düşük numaralı giriş seçildi.`,
+    portMissing: (ad: string, dir: string, port: number) =>
+      `${ad}: ${port}. ${dir} portu yok (ekipmanın ${dir} sayısını artırın veya hattı başka porta bağlayın).`,
+    portConflict: (ad: string, dir: string, port: number, n: number) =>
+      `${ad}: ${port}. ${dir} portuna ${n} hat bağlı; her porta tek hat bağlanabilir.`,
     generatorPay: (g: string, d: string, pay: string) =>
       `${g} → ${d} hattına %${pay} pay verilmiş; jeneratör acil kaynaktır, normal kaynak varken yük almaz (pay yok sayılır).`,
     lostLoads: (n: number, kw: string, names: string) => `${n} yük enerjisiz kaldı (${kw} kW): ${names}.`,
@@ -278,6 +298,8 @@ export const tr = {
     verim100: 'Verim (%100 yük)',
     diversity: 'Eşzamanlılık faktörü',
     isiKonum: 'Isıyı bıraktığı yer',
+    girisSayisi: 'Giriş sayısı',
+    cikisSayisi: 'Çıkış sayısı',
     konumSalon: 'Veri salonu',
     konumElektrik: 'Elektrik odası',
     konumDis: 'Dış ortam',

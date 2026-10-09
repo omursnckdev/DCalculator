@@ -93,6 +93,8 @@ export async function buildWorkbook(project: Project, a: Analysis, scenarioName?
   wl.addRow([
     tr.table.from,
     tr.table.to,
+    tr.port.outPort,
+    tr.port.inPort,
     tr.line.tip,
     head(tr.line.uzunluk, 'm'),
     head(tr.line.akimKapasitesi, 'A'),
@@ -114,6 +116,8 @@ export async function buildWorkbook(project: Project, a: Analysis, scenarioName?
     wl.addRow([
       nameOf(e.source),
       nameOf(e.target),
+      e.kaynakPort + 1,
+      e.hedefPort + 1,
       lineLabel(e.tip),
       e.uzunluk,
       e.akimKapasitesi,
@@ -130,7 +134,7 @@ export async function buildWorkbook(project: Project, a: Analysis, scenarioName?
       r?.lossKw ?? null,
     ])
   }
-  for (let c = 11; c <= 16; c++) wl.getColumn(c).numFmt = '#,##0.00'
+  for (let c = 13; c <= 18; c++) wl.getColumn(c).numFmt = '#,##0.00'
 
   // --- Özet ----------------------------------------------------------------
   const wsum = wb.addWorksheet(tr.export.sheetSummary)

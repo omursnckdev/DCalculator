@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 5,
   "id": "ref3",
   "name": "Faz3 Referans",
   "createdAt": "2026-10-09T12:49:32.797Z",
@@ -16,7 +16,8 @@
       "y": 0,
       "params": {
         "gerilim": 34500,
-        "kisaDevreMva": 500
+        "kisaDevreMva": 500,
+        "cikisSayisi": 1
       }
     },
     {
@@ -35,7 +36,9 @@
         "uk": 6,
         "bostaKayip": 2,
         "yukKayip": 16,
-        "isiKonum": "elektrik"
+        "isiKonum": "elektrik",
+        "girisSayisi": 1,
+        "cikisSayisi": 1
       }
     },
     {
@@ -50,7 +53,9 @@
       "params": {
         "gerilim": 400,
         "nominalAkim": 4000,
-        "diversity": 1
+        "diversity": 1,
+        "girisSayisi": 2,
+        "cikisSayisi": 6
       }
     },
     {
@@ -74,7 +79,9 @@
         "verim50": 96,
         "verim75": 96.5,
         "verim100": 96,
-        "isiKonum": "elektrik"
+        "isiKonum": "elektrik",
+        "girisSayisi": 1,
+        "cikisSayisi": 1
       }
     },
     {
@@ -92,7 +99,8 @@
         "df": 1,
         "kategori": "IT",
         "gerilim": 400,
-        "isiKonum": "salon"
+        "isiKonum": "salon",
+        "girisSayisi": 1
       }
     },
     {
@@ -110,7 +118,8 @@
         "df": 1,
         "kategori": "Mekanik",
         "gerilim": 400,
-        "isiKonum": "salon"
+        "isiKonum": "salon",
+        "girisSayisi": 1
       }
     },
     {
@@ -128,7 +137,8 @@
         "df": 1,
         "kategori": "Mekanik",
         "gerilim": 400,
-        "isiKonum": "dis"
+        "isiKonum": "dis",
+        "girisSayisi": 1
       }
     }
   ],
@@ -144,7 +154,10 @@
       "x": 0,
       "gerilim": 34500,
       "pay": null,
-      "isiKonum": "elektrik"
+      "isiKonum": "elektrik",
+      "kaynakPort": 0,
+      "hedefPort": 0,
+      "durum": "kapali"
     },
     {
       "id": "tr>mdb",
@@ -157,7 +170,10 @@
       "x": 0,
       "gerilim": 400,
       "pay": null,
-      "isiKonum": "elektrik"
+      "isiKonum": "elektrik",
+      "kaynakPort": 0,
+      "hedefPort": 0,
+      "durum": "kapali"
     },
     {
       "id": "mdb>ups",
@@ -170,7 +186,10 @@
       "x": 0,
       "gerilim": 400,
       "pay": null,
-      "isiKonum": "elektrik"
+      "isiKonum": "elektrik",
+      "kaynakPort": 0,
+      "hedefPort": 0,
+      "durum": "kapali"
     },
     {
       "id": "ups>it",
@@ -183,7 +202,10 @@
       "x": 0,
       "gerilim": 400,
       "pay": null,
-      "isiKonum": "elektrik"
+      "isiKonum": "elektrik",
+      "kaynakPort": 0,
+      "hedefPort": 0,
+      "durum": "kapali"
     },
     {
       "id": "mdb>crah",
@@ -196,7 +218,10 @@
       "x": 0,
       "gerilim": 400,
       "pay": null,
-      "isiKonum": "elektrik"
+      "isiKonum": "elektrik",
+      "kaynakPort": 1,
+      "hedefPort": 0,
+      "durum": "kapali"
     },
     {
       "id": "mdb>chiller",
@@ -209,7 +234,11 @@
       "x": 0,
       "gerilim": 400,
       "pay": null,
-      "isiKonum": "elektrik"
+      "isiKonum": "elektrik",
+      "kaynakPort": 2,
+      "hedefPort": 0,
+      "durum": "kapali"
     }
-  ]
+  ],
+  "scenarios": []
 }

@@ -59,6 +59,10 @@ Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmele
   açın (üstte sarı bant çıkar, "Temel duruma dön" ile kapanır). **N-1 taraması** her ekipman/hat arızasında
   kaybedilen yükü ve en yüksek doluluğu listeler; "Senaryo yap" satırı senaryoya çevirir. Alt tabloda senaryolar yan yana karşılaştırılır.
 - **Jeneratör acil kaynaktır:** normal kaynak (şebeke/trafo) varken yük almaz, pay vermeye gerek yoktur; normal kaynak kalmayınca otomatik devreye girer.
+- **Giriş/çıkış sayısı:** ekipman panelinden belirlenir (1-12). Her porta tek hat bağlanır; hattın hangi porttan bağlandığı
+  hat panelinden değiştirilebilir. Port sayısı bağlı portların altına indirilemez.
+- **ATS/STS besleme:** düğüm kartında "Besleme: <kaynak> (G1)" yazar; sağ panelde **Girişler** tablosu her girişin
+  durumunu (aktif/yedek/enerjisiz/açık) gösterir, **Tercih edilen kaynak** seçimi pay yazar. Arıza senaryosunda canlı değişir.
 - Hat etiketindeki yuvarlak düğme anahtarı açar/kapar (senaryo açıksa yalnız o senaryoda).
 
 ## Örnek proje

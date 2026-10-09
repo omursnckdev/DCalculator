@@ -320,6 +320,42 @@ const defs: EquipmentDef[] = [
   },
 ]
 
+/**
+ * Bağlantı noktası (port) sayıları: giriş üstte, çıkış altta. Her porta tek hat bağlanır.
+ * Varsayılanlar genel tipiktir; ekipman başına "Giriş sayısı / Çıkış sayısı" ile değiştirilir.
+ */
+export const MAX_PORTS = 12
+const PORT_DEFAULTS: Record<EquipmentType, { in: number; out: number }> = {
+  sebeke: { in: 0, out: 1 },
+  jenerator: { in: 0, out: 1 },
+  trafo: { in: 1, out: 1 },
+  mdb: { in: 2, out: 6 },
+  dagitimPanosu: { in: 1, out: 6 },
+  bara: { in: 2, out: 8 },
+  ups: { in: 1, out: 1 },
+  upsPanosu: { in: 2, out: 6 },
+  pdu: { in: 2, out: 6 },
+  ats: { in: 2, out: 1 },
+  sts: { in: 2, out: 1 },
+  itYuku: { in: 1, out: 0 },
+  mekanikYuk: { in: 1, out: 0 },
+  aydinlatma: { in: 1, out: 0 },
+  genelYuk: { in: 1, out: 0 },
+}
+for (const d of defs) {
+  // Alan dizileri tipler arasında paylaşılabilir (ör. yükler); kopyalayıp ekle.
+  const extra: FieldDef[] = []
+  if (d.hasInput) {
+    d.defaults.girisSayisi = PORT_DEFAULTS[d.type].in
+    extra.push(n('girisSayisi', A.girisSayisi, undefined, { min: 1, max: MAX_PORTS, step: 1 }))
+  }
+  if (d.hasOutput) {
+    d.defaults.cikisSayisi = PORT_DEFAULTS[d.type].out
+    extra.push(n('cikisSayisi', A.cikisSayisi, undefined, { min: 1, max: MAX_PORTS, step: 1 }))
+  }
+  d.fields = [...d.fields, ...extra]
+}
+
 export const EQUIPMENT: Record<EquipmentType, EquipmentDef> = Object.fromEntries(
   defs.map((d) => [d.type, d]),
 ) as Record<EquipmentType, EquipmentDef>
@@ -329,3 +365,17 @@ export const PALETTE_GROUPS: PaletteGroup[] = ['kaynak', 'dagitim', 'ups', 'yuk'
 export function defsInGroup(group: PaletteGroup): EquipmentDef[] {
   return defs.filter((d) => d.group === group)
 }
+
+export type PortDir = 'in' | 'out'
+
+/** Ekipmanın giriş (üst) veya çıkış (alt) port sayısı; eski dosyalarda parametre yoksa varsayılan. */
+export function portCount(type: EquipmentType, params: Params, dir: PortDir): number {
+  const def = EQUIPMENT[type]
+  if (dir === 'in' ? !def.hasInput : !def.hasOutput) return 0
+  const key = dir === 'in' ? 'girisSayisi' : 'cikisSayisi'
+  const v = params[key] ?? def.defaults[key]
+  const k = typeof v === 'number' && Number.isFinite(v) ? Math.floor(v) : 1
+  return Math.min(MAX_PORTS, Math.max(1, k))
+}
+
+export const portKey = (dir: PortDir): 'girisSayisi' | 'cikisSayisi' => (dir === 'in' ? 'girisSayisi' : 'cikisSayisi')

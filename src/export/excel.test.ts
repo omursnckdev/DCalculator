@@ -17,7 +17,9 @@ function project(): Project {
     n('it', 'itYuku', 'IT Yükü', { kuruluKw: 100, pf: 1, df: 1 }),
     n('mek', 'mekanikYuk', 'Chiller', { kuruluKw: 50, pf: 1, df: 1 }),
   ]
-  const e = (s: string, t: string) => ({
+  const used = new Map<string, number>()
+  const nx = (k: string) => { const n = used.get(k) ?? 0; used.set(k, n + 1); return n }
+  const e = (s: string, t: string) => ({ kaynakPort: nx(`${s}:o`), hedefPort: nx(`${t}:i`),
     id: `${s}>${t}`, source: s, target: t, tip: 'kablo' as const, uzunluk: 10, akimKapasitesi: 5000,
     r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik' as const, durum: 'kapali' as const,
   })

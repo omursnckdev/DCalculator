@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "id": "ornek_2n",
   "name": "2N örnek (ATS + jeneratör + kuplaj)",
   "createdAt": "2026-01-01T00:00:00.000Z",
@@ -16,7 +16,8 @@
       "y": 0,
       "params": {
         "gerilim": 34500,
-        "kisaDevreMva": 500
+        "kisaDevreMva": 500,
+        "cikisSayisi": 2
       }
     },
     {
@@ -31,7 +32,8 @@
       "params": {
         "nominalKva": 1500,
         "gerilim": 400,
-        "pf": 0.8
+        "pf": 0.8,
+        "cikisSayisi": 1
       }
     },
     {
@@ -50,7 +52,9 @@
         "uk": 6,
         "bostaKayip": 3,
         "yukKayip": 22,
-        "isiKonum": "elektrik"
+        "isiKonum": "elektrik",
+        "girisSayisi": 1,
+        "cikisSayisi": 1
       }
     },
     {
@@ -69,7 +73,9 @@
         "uk": 6,
         "bostaKayip": 3,
         "yukKayip": 22,
-        "isiKonum": "elektrik"
+        "isiKonum": "elektrik",
+        "girisSayisi": 1,
+        "cikisSayisi": 1
       }
     },
     {
@@ -84,7 +90,9 @@
       "params": {
         "gerilim": 400,
         "nominalAkim": 3200,
-        "diversity": 1
+        "diversity": 1,
+        "girisSayisi": 2,
+        "cikisSayisi": 1
       }
     },
     {
@@ -99,7 +107,9 @@
       "params": {
         "gerilim": 400,
         "nominalAkim": 4000,
-        "diversity": 1
+        "diversity": 1,
+        "girisSayisi": 2,
+        "cikisSayisi": 6
       }
     },
     {
@@ -114,7 +124,9 @@
       "params": {
         "gerilim": 400,
         "nominalAkim": 4000,
-        "diversity": 1
+        "diversity": 1,
+        "girisSayisi": 2,
+        "cikisSayisi": 6
       }
     },
     {
@@ -138,7 +150,9 @@
         "verim50": 96,
         "verim75": 96.5,
         "verim100": 96.3,
-        "isiKonum": "elektrik"
+        "isiKonum": "elektrik",
+        "girisSayisi": 1,
+        "cikisSayisi": 1
       }
     },
     {
@@ -162,7 +176,9 @@
         "verim50": 96,
         "verim75": 96.5,
         "verim100": 96.3,
-        "isiKonum": "elektrik"
+        "isiKonum": "elektrik",
+        "girisSayisi": 1,
+        "cikisSayisi": 1
       }
     },
     {
@@ -180,7 +196,8 @@
         "df": 0.8,
         "kategori": "Mekanik",
         "gerilim": 400,
-        "isiKonum": "dis"
+        "isiKonum": "dis",
+        "girisSayisi": 1
       }
     },
     {
@@ -198,7 +215,8 @@
         "df": 1,
         "kategori": "IT",
         "gerilim": 400,
-        "isiKonum": "salon"
+        "isiKonum": "salon",
+        "girisSayisi": 2
       }
     }
   ],
@@ -215,6 +233,8 @@
       "gerilim": 34500,
       "pay": null,
       "isiKonum": "elektrik",
+      "kaynakPort": 0,
+      "hedefPort": 0,
       "durum": "kapali"
     },
     {
@@ -229,6 +249,8 @@
       "gerilim": 34500,
       "pay": null,
       "isiKonum": "elektrik",
+      "kaynakPort": 1,
+      "hedefPort": 0,
       "durum": "kapali"
     },
     {
@@ -243,6 +265,8 @@
       "gerilim": 400,
       "pay": 100,
       "isiKonum": "elektrik",
+      "kaynakPort": 0,
+      "hedefPort": 0,
       "durum": "kapali"
     },
     {
@@ -257,6 +281,8 @@
       "gerilim": 400,
       "pay": 0,
       "isiKonum": "elektrik",
+      "kaynakPort": 0,
+      "hedefPort": 1,
       "durum": "kapali"
     },
     {
@@ -271,6 +297,8 @@
       "gerilim": 400,
       "pay": null,
       "isiKonum": "elektrik",
+      "kaynakPort": 0,
+      "hedefPort": 0,
       "durum": "kapali"
     },
     {
@@ -285,6 +313,8 @@
       "gerilim": 400,
       "pay": null,
       "isiKonum": "elektrik",
+      "kaynakPort": 0,
+      "hedefPort": 0,
       "durum": "kapali"
     },
     {
@@ -299,6 +329,8 @@
       "gerilim": 400,
       "pay": null,
       "isiKonum": "elektrik",
+      "kaynakPort": 0,
+      "hedefPort": 0,
       "durum": "kapali"
     },
     {
@@ -313,6 +345,8 @@
       "gerilim": 400,
       "pay": null,
       "isiKonum": "elektrik",
+      "kaynakPort": 0,
+      "hedefPort": 0,
       "durum": "kapali"
     },
     {
@@ -327,6 +361,8 @@
       "gerilim": 400,
       "pay": null,
       "isiKonum": "elektrik",
+      "kaynakPort": 0,
+      "hedefPort": 0,
       "durum": "kapali"
     },
     {
@@ -341,6 +377,8 @@
       "gerilim": 400,
       "pay": null,
       "isiKonum": "elektrik",
+      "kaynakPort": 0,
+      "hedefPort": 1,
       "durum": "kapali"
     },
     {
@@ -355,6 +393,8 @@
       "gerilim": 400,
       "pay": null,
       "isiKonum": "elektrik",
+      "kaynakPort": 1,
+      "hedefPort": 0,
       "durum": "kapali"
     },
     {
@@ -369,6 +409,8 @@
       "gerilim": 400,
       "pay": null,
       "isiKonum": "elektrik",
+      "kaynakPort": 1,
+      "hedefPort": 1,
       "durum": "acik"
     },
     {
@@ -383,6 +425,8 @@
       "gerilim": 400,
       "pay": null,
       "isiKonum": "elektrik",
+      "kaynakPort": 2,
+      "hedefPort": 1,
       "durum": "acik"
     }
   ],

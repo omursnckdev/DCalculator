@@ -1,5 +1,5 @@
 import { tr } from '../i18n/tr'
-import { EQUIPMENT } from '../library/equipment'
+import { EQUIPMENT, portCount } from '../library/equipment'
 import { HEAT_LOCATIONS } from '../model/types'
 import type { EquipmentType, HeatLocation, ProjectEdge, ProjectNode, Scenario } from '../model/types'
 import { DEFAULT_THRESHOLDS, statusOf } from './thresholds'
@@ -228,8 +228,10 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scena
       continue
     }
     if (isTransfer) {
-      let best = live[0]
-      for (const e of live) if ((share.get(e.id) ?? 0) > (share.get(best.id) ?? 0) + 1e-12) best = e
+      // Eşitlikte en düşük numaralı giriş portu tercih edilir.
+      const byPort = [...live].sort((a, b) => a.hedefPort - b.hedefPort)
+      let best = byPort[0]
+      for (const e of byPort) if ((share.get(e.id) ?? 0) > (share.get(best.id) ?? 0) + 1e-12) best = e
       const amount = total > 1e-12 ? total : 1
       for (const e of ins) share.set(e.id, e.id === best.id ? amount : 0)
       continue
@@ -624,6 +626,31 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scena
         message: tr.analiz.voltageDrop(src.ad, dst.ad, fmt(r.voltageDropPct), fmt(th.voltageDropPct)),
       })
     }
+  }
+
+  // 5b) Port denetimi: var olmayan port ve aynı porta birden çok hat.
+  const portUse = new Map<string, number>()
+  for (const e of allEdges) {
+    const src = nodeById.get(e.source)!
+    const dst = nodeById.get(e.target)!
+    if (e.kaynakPort >= portCount(src.type, src.params, 'out')) {
+      issues.push({ severity: 'error', edgeId: e.id, message: tr.analiz.portMissing(src.ad, 'çıkış', e.kaynakPort + 1) })
+    }
+    if (e.hedefPort >= portCount(dst.type, dst.params, 'in')) {
+      issues.push({ severity: 'error', edgeId: e.id, message: tr.analiz.portMissing(dst.ad, 'giriş', e.hedefPort + 1) })
+    }
+    for (const key of [`${e.source}:out:${e.kaynakPort}`, `${e.target}:in:${e.hedefPort}`]) {
+      portUse.set(key, (portUse.get(key) ?? 0) + 1)
+    }
+  }
+  for (const [key, count] of portUse) {
+    if (count < 2) continue
+    const [id, dir, port] = key.split(':')
+    issues.push({
+      severity: 'error',
+      nodeId: id,
+      message: tr.analiz.portConflict(nodeById.get(id)!.ad, dir === 'in' ? 'giriş' : 'çıkış', Number(port) + 1, count),
+    })
   }
 
   // 6) Toplam: kaynak düğümlerden çekilen güç

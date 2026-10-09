@@ -1,13 +1,15 @@
 import { addEdge, applyEdgeChanges, applyNodeChanges } from '@xyflow/react'
 import type { Connection, EdgeChange, NodeChange } from '@xyflow/react'
 import { create } from 'zustand'
-import { EQUIPMENT } from '../library/equipment'
+import { EQUIPMENT, MAX_PORTS, portCount } from '../library/equipment'
 import {
   DEFAULT_LINE,
   emptyProject,
   fromProjectEdges,
   fromProjectNodes,
+  handleId,
   newId,
+  portOf,
   SCHEMA_VERSION,
   toProjectEdges,
   toProjectNodes,
@@ -52,6 +54,9 @@ interface State {
   updateNodeData: (id: string, patch: Partial<Omit<EquipmentData, 'params' | 'kind'>>) => void
   updateNodeParam: (id: string, key: string, value: ParamValue) => void
   updateEdgeData: (id: string, patch: Partial<LineData>) => void
+  /** Hattı ekipmanın başka bir boş portuna taşır; başarılıysa true. */
+  setEdgePort: (edgeId: string, side: 'source' | 'target', port: number) => boolean
+  setPreferredInput: (nodeId: string, edgeId: string) => void
   deleteSelection: () => void
   selectNode: (id: string) => void
   selectEdge: (id: string) => void
@@ -110,8 +115,16 @@ export const useStore = create<State>((set, get) => ({
     const dst = nodes.find((n) => n.id === target)
     if (!src || !dst) return false
     if (!EQUIPMENT[src.data.kind].hasOutput || !EQUIPMENT[dst.data.kind].hasInput) return false
-    // Aynı iki düğüm arasında yinelenen hat olmasın.
-    return !edges.some((e) => e.source === source && e.target === target)
+    // Her porta tek hat bağlanır; port ekipmanda tanımlı olmalı.
+    const outPort = portOf(c.sourceHandle)
+    const inPort = portOf(c.targetHandle)
+    if (outPort >= portCount(src.data.kind, src.data.params, 'out')) return false
+    if (inPort >= portCount(dst.data.kind, dst.data.params, 'in')) return false
+    return !edges.some(
+      (e) =>
+        (e.source === source && portOf(e.sourceHandle) === outPort) ||
+        (e.target === target && portOf(e.targetHandle) === inPort),
+    )
   },
 
   onConnect: (c) => {
@@ -161,9 +174,51 @@ export const useStore = create<State>((set, get) => ({
     })),
 
   updateNodeParam: (id, key, value) =>
+    set((s) => {
+      let v = value
+      if ((key === 'girisSayisi' || key === 'cikisSayisi') && typeof v === 'number') {
+        // Bağlı bir port silinmesin: sayı, kullanılan en yüksek port + 1'in altına inemez.
+        const inbound = key === 'girisSayisi'
+        const used = s.edges
+          .filter((e) => (inbound ? e.target : e.source) === id)
+          .reduce((m, e) => Math.max(m, portOf(inbound ? e.targetHandle : e.sourceHandle) + 1), 1)
+        v = Math.min(MAX_PORTS, Math.max(used, Math.round(v)))
+      }
+      return {
+        nodes: s.nodes.map((n) =>
+          n.id === id ? { ...n, data: { ...n.data, params: { ...n.data.params, [key]: v } } } : n,
+        ),
+        dirty: true,
+      }
+    }),
+
+  setEdgePort: (edgeId, side, port) => {
+    const { edges, nodes } = get()
+    const e = edges.find((x) => x.id === edgeId)
+    if (!e) return false
+    const node = nodes.find((n) => n.id === (side === 'source' ? e.source : e.target))
+    if (!node) return false
+    const dir = side === 'source' ? 'out' : 'in'
+    if (port < 0 || port >= portCount(node.data.kind, node.data.params, dir)) return false
+    const handle = handleId(dir, port)
+    const taken = edges.some(
+      (x) => x.id !== edgeId && (side === 'source' ? x.source === e.source && x.sourceHandle === handle : x.target === e.target && x.targetHandle === handle),
+    )
+    if (taken) return false
     set((s) => ({
-      nodes: s.nodes.map((n) =>
-        n.id === id ? { ...n, data: { ...n.data, params: { ...n.data.params, [key]: value } } } : n,
+      edges: s.edges.map((x) =>
+        x.id === edgeId ? (side === 'source' ? { ...x, sourceHandle: handle } : { ...x, targetHandle: handle }) : x,
+      ),
+      dirty: true,
+    }))
+    return true
+  },
+
+  /** ATS/STS gibi çok girişli ekipmanda tercih edilen girişi seçer: ona %100, diğerlerine %0 pay. */
+  setPreferredInput: (nodeId, edgeId) =>
+    set((s) => ({
+      edges: s.edges.map((e) =>
+        e.target === nodeId ? { ...e, data: { ...(e.data ?? DEFAULT_LINE), pay: e.id === edgeId ? 100 : 0 } } : e,
       ),
       dirty: true,
     })),

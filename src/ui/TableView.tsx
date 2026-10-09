@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { tr } from '../i18n/tr'
 import { EQUIPMENT } from '../library/equipment'
+import { portOf } from '../model/project'
 import { EQUIPMENT_TYPES, HEAT_LOCATIONS, LINE_TYPES } from '../model/types'
 import type { EquipmentNode, EquipmentType, HeatLocation, LineEdge, LineType } from '../model/types'
 import { useAnalysis } from '../store/useAnalysis'
@@ -183,7 +184,9 @@ export function TableView() {
 
   const edgeCols: Col<LineEdge>[] = [
     { header: tr.table.from, kind: 'readonly', get: (e) => nameOf(e.source) },
+    { header: tr.port.outPort, kind: 'readonly', get: (e) => portOf(e.sourceHandle) + 1 },
     { header: tr.table.to, kind: 'readonly', get: (e) => nameOf(e.target) },
+    { header: tr.port.inPort, kind: 'readonly', get: (e) => portOf(e.targetHandle) + 1 },
     {
       header: tr.line.tip,
       kind: 'select',
