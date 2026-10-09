@@ -14,7 +14,7 @@ import type {
  * Proje dosyası şema sürümü. Şema değiştiğinde artır ve `migrate` içine
  * bir dönüşüm adımı ekle (plan §12).
  */
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 export function newId(prefix = 'id'): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`
@@ -40,6 +40,7 @@ export const DEFAULT_LINE: LineData = {
   r: 0.1,
   x: 0.08,
   gerilim: 400,
+  pay: null,
 }
 
 // --- React Flow <-> Project dönüşümü -------------------------------------
@@ -151,16 +152,27 @@ function parseEdge(raw: unknown, i: number): ProjectEdge {
     r: num(raw.r, DEFAULT_LINE.r),
     x: num(raw.x, DEFAULT_LINE.x),
     gerilim: num(raw.gerilim, DEFAULT_LINE.gerilim),
+    pay: typeof raw.pay === 'number' && Number.isFinite(raw.pay) ? raw.pay : null,
+  }
+}
+
+/** v1 -> v2: hatlara `pay` alanı eklendi (varsayılan null = otomatik paylaşım). */
+function v1ToV2(raw: Record<string, unknown>): Record<string, unknown> {
+  const edges = Array.isArray(raw.edges) ? raw.edges : []
+  return {
+    ...raw,
+    schemaVersion: 2,
+    edges: edges.map((e) => (isObj(e) ? { pay: null, ...e } : e)),
   }
 }
 
 /**
  * Herhangi bir sürümdeki ham JSON'u güncel `Project` biçimine çevirir.
- * Gelecekte `schemaVersion` artınca burada `if (v < 2) raw = v1ToV2(raw)`
- * şeklinde adımlar eklenir.
+ * Şema her arttığında buraya bir dönüşüm adımı eklenir (bkz. `v1ToV2`).
  */
-export function migrate(raw: unknown): Project {
-  if (!isObj(raw)) throw new ProjectFormatError('Dosya bir proje nesnesi değil.')
+export function migrate(input: unknown): Project {
+  if (!isObj(input)) throw new ProjectFormatError('Dosya bir proje nesnesi değil.')
+  let raw = input
   const version = raw.schemaVersion
   if (typeof version !== 'number') throw new ProjectFormatError('schemaVersion bulunamadı.')
   if (version > SCHEMA_VERSION) {
@@ -168,6 +180,7 @@ export function migrate(raw: unknown): Project {
       `Dosya daha yeni bir sürümle (v${version}) kaydedilmiş; bu uygulama v${SCHEMA_VERSION} destekliyor.`,
     )
   }
+  if (typeof version === 'number' && version < 2) raw = v1ToV2(raw)
   if (!Array.isArray(raw.nodes) || !Array.isArray(raw.edges)) {
     throw new ProjectFormatError('nodes/edges listeleri eksik.')
   }

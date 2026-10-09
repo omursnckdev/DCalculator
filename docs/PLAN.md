@@ -211,6 +211,12 @@ Her hesap sonucunun yanında "nasıl hesaplandı" bilgisi (formül ve kullanıla
    - *Faz 1 geçici kararı:* 34,5 kV / 400 V, 50 Hz tipik değerleri `src/library/equipment.ts` içinde varsayılan; kullanıcı her ekipmanda değiştirebilir. Onay/düzeltme bekliyor.
 6. **Yük kategorisi (Faz 1'de eklendi):** Plan yalnızca IT / Mekanik kategorilerini tanımlıyor. Aydınlatma / yardımcı yükler ve genel yük şu an varsayılan olarak **Mekanik** sayılıyor (kullanıcı IT'ye çevirebilir). Üçüncü bir "Diğer" kategorisi gerekir mi?
 7. **Hat yönü (Faz 1'de eklendi):** Hatlar kaynaktan yüke doğru yönlüdür (ekipmanın altı = çıkış, üstü = giriş); yükler yalnızca beslenebilir, şebeke/jeneratör yalnızca besleyebilir. Çift yönlü beslemeli yapılar (ör. jeneratörün ATS üzerinden MDB'ye girmesi) Faz 4 öncesinde nasıl çizilecek?
+8. **Gerilim düşümü sınırı (Faz 2):** Hat başına uyarı eşiği varsayılan **%3** (`src/engine/thresholds.ts`). Doluluk eşikleri plandaki gibi %80 / %100. Sınır değerler doğru mu, kullanıcı arayüzünden ayarlanabilir olsun mu?
+9. **UPS giriş güç faktörü (Faz 2):** UPS giriş tarafı reaktif gücü için varsayılan PF **0,99** (UPS alanı `girisPf`). Çıkış tarafı yüklerin PF'sinden bağımsızdır. Gerçek UPS verisi (giriş PF, THDi) var mı?
+10. **Çift besleme modeli (Soru 2'nin Faz 2 uygulaması):** Bir ekipmanı besleyen hatlar yükü varsayılan olarak **eşit paylaşır** (2N için %50/%50). Hatta açık "yük payı" (%) girilebilir; jeneratör gibi yedek beslemeler için **0** girilir. Açık payların toplamı %100 değilse uyarı çıkar. Şema `schemaVersion: 2` oldu (`pay` alanı; v1 dosyalar otomatik dönüştürülür).
+11. **Toplama yöntemi (Faz 2):** Yükler yukarı doğru **P ve Q ayrı ayrı toplanarak** birleştirilir (kVA = √(P²+Q²)); kVA'ların aritmetik toplamı kullanılmaz (o, farklı PF'lerde fazla muhafazakârdır). Muhafazakâr toplam tercih edilir mi?
+12. **Faz 2 kayıp kapsamı:** Yalnızca UPS (sabit verim) kaybı hesaba katılır. Trafo ve kablo kayıpları Faz 3'tedir; bu nedenle trafo girişindeki güç şimdilik çıkıştakine eşittir.
+13. **Çıkış kriteri için örnek:** Faz 2 çıkış kriteri "elle hesaplanmış örnek topoloji"dir. Şimdilik kendi hazırladığım örnek (`src/engine/analyze.test.ts`, üst yorumda adım adım) testte doğrulanıyor. Gerçek bir projenizden elle hesaplanmış bir örnek verirseniz teste eklenecek.
 
 ## 12. Claude Code için Çalışma İlkeleri
 

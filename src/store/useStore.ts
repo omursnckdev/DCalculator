@@ -48,6 +48,8 @@ interface State {
   updateNodeParam: (id: string, key: string, value: ParamValue) => void
   updateEdgeData: (id: string, patch: Partial<LineData>) => void
   deleteSelection: () => void
+  selectNode: (id: string) => void
+  selectEdge: (id: string) => void
   setProjectName: (name: string) => void
 
   getProject: () => Project
@@ -165,6 +167,18 @@ export const useStore = create<State>((set, get) => ({
         dirty: true,
       }
     }),
+
+  selectNode: (id) =>
+    set((s) => ({
+      nodes: s.nodes.map((n) => ({ ...n, selected: n.id === id })),
+      edges: s.edges.map((e) => ({ ...e, selected: false })),
+    })),
+
+  selectEdge: (id) =>
+    set((s) => ({
+      nodes: s.nodes.map((n) => ({ ...n, selected: false })),
+      edges: s.edges.map((e) => ({ ...e, selected: e.id === id })),
+    })),
 
   setProjectName: (name) => set({ projectName: name, dirty: true }),
 

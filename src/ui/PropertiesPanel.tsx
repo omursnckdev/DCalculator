@@ -4,7 +4,10 @@ import type { FieldDef } from '../library/equipment'
 import { LINE_TYPES } from '../model/types'
 import type { LineType } from '../model/types'
 import { tr } from '../i18n/tr'
+import type { ExplainStep } from '../engine'
+import { useAnalysis } from '../store/useAnalysis'
 import { useStore } from '../store/useStore'
+import { STATUS_BG, STATUS_COLOR, fmtNum } from './status'
 
 const inputCls =
   'w-full rounded border border-slate-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none'
@@ -50,7 +53,35 @@ function NumberInput({
   )
 }
 
+function Explain({ steps }: { steps: ExplainStep[] }) {
+  if (steps.length === 0) return null
+  return (
+    <details className="mt-2 text-xs">
+      <summary className="cursor-pointer text-slate-600">{tr.results.how}</summary>
+      <ol className="mt-1 space-y-1.5">
+        {steps.map((st, i) => (
+          <li key={i} className="rounded bg-slate-50 p-1.5">
+            <div className="font-medium text-slate-700">{st.label}</div>
+            <div className="break-words text-slate-500">{st.formula}</div>
+            <div className="font-semibold text-slate-800">= {st.result}</div>
+          </li>
+        ))}
+      </ol>
+    </details>
+  )
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <>
+      <dt className="text-slate-500">{label}</dt>
+      <dd className="text-right font-medium">{value}</dd>
+    </>
+  )
+}
+
 export function PropertiesPanel() {
+  const analysis = useAnalysis()
   const nodes = useStore((s) => s.nodes)
   const edges = useStore((s) => s.edges)
   const updateNodeData = useStore((s) => s.updateNodeData)
@@ -60,9 +91,11 @@ export function PropertiesPanel() {
 
   const node = useMemo(() => nodes.find((n) => n.selected), [nodes])
   const edge = useMemo(() => (node ? undefined : edges.find((e) => e.selected)), [node, edges])
+  const nodeResult = node ? analysis.nodes[node.id] : undefined
+  const edgeResult = edge ? analysis.edges[edge.id] : undefined
 
   return (
-    <aside className="w-72 shrink-0 overflow-y-auto border-l border-slate-200 bg-white p-3">
+    <aside className="bg-white p-3">
       <h2 className="mb-2 text-sm font-semibold">{tr.props.title}</h2>
 
       {!node && !edge && <p className="text-xs text-slate-500">{tr.props.empty}</p>}
@@ -126,6 +159,33 @@ export function PropertiesPanel() {
             )
           })}
           <p className="mb-2 text-[11px] text-slate-400">{tr.props.defaultsNote}</p>
+          {nodeResult && !nodeResult.cyclic && (
+            <div className="mb-3 rounded-lg border border-slate-200 p-2">
+              <h3 className="mb-1 flex items-center justify-between text-xs font-semibold">
+                {tr.results.title}
+                {nodeResult.loadingPct !== undefined && (
+                  <span
+                    className="rounded px-1.5 py-0.5"
+                    style={{ color: STATUS_COLOR[nodeResult.status], background: STATUS_BG[nodeResult.status] }}
+                  >
+                    {tr.results.loading} %{fmtNum(nodeResult.loadingPct)}
+                  </span>
+                )}
+              </h3>
+              <dl className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-xs">
+                <Stat label={tr.results.it} value={`${fmtNum(nodeResult.itKw)} kW`} />
+                <Stat label={tr.results.mech} value={`${fmtNum(nodeResult.mechKw)} kW`} />
+                <Stat label={tr.results.loss} value={`${fmtNum(nodeResult.lossKw)} kW`} />
+                <Stat label={tr.results.total} value={`${fmtNum(nodeResult.totalKw)} kW`} />
+                <Stat label={tr.results.kva} value={`${fmtNum(nodeResult.kva)} kVA`} />
+                <Stat label={tr.results.current} value={`${fmtNum(nodeResult.currentA)} A`} />
+                {nodeResult.ownLossKw > 0 && (
+                  <Stat label={tr.results.input} value={`${fmtNum(nodeResult.inputKw)} kW`} />
+                )}
+              </dl>
+              <Explain steps={nodeResult.explain} />
+            </div>
+          )}
           <Row label={tr.props.notlar}>
             <textarea
               className={inputCls}
@@ -175,6 +235,44 @@ export function PropertiesPanel() {
           <Row label={tr.line.gerilim} unit="V">
             <NumberInput value={edge.data.gerilim} min={0} onChange={(v) => updateEdgeData(edge.id, { gerilim: v })} />
           </Row>
+          <Row label={tr.line.pay} unit="%">
+            <input
+              type="number"
+              className={inputCls}
+              min={0}
+              max={100}
+              placeholder={tr.line.payOto}
+              value={edge.data.pay ?? ''}
+              onChange={(e) => {
+                const v = e.target.valueAsNumber
+                updateEdgeData(edge.id, { pay: Number.isFinite(v) ? v : null })
+              }}
+            />
+          </Row>
+          {edgeResult && (
+            <div className="mb-3 rounded-lg border border-slate-200 p-2">
+              <h3 className="mb-1 flex items-center justify-between text-xs font-semibold">
+                {tr.results.title}
+                {edgeResult.loadingPct !== undefined && (
+                  <span
+                    className="rounded px-1.5 py-0.5"
+                    style={{ color: STATUS_COLOR[edgeResult.status], background: STATUS_BG[edgeResult.status] }}
+                  >
+                    {tr.results.loading} %{fmtNum(edgeResult.loadingPct)}
+                  </span>
+                )}
+              </h3>
+              <dl className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-xs">
+                <Stat label={tr.results.flow} value={`${fmtNum(edgeResult.p)} kW`} />
+                <Stat label={tr.results.kva} value={`${fmtNum(edgeResult.kva)} kVA`} />
+                <Stat label={tr.results.current} value={`${fmtNum(edgeResult.currentA)} A`} />
+                {edgeResult.voltageDropPct !== undefined && (
+                  <Stat label={tr.results.drop} value={`%${fmtNum(edgeResult.voltageDropPct, 2)}`} />
+                )}
+              </dl>
+              <Explain steps={edgeResult.explain} />
+            </div>
+          )}
         </>
       )}
 

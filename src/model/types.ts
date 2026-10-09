@@ -47,6 +47,12 @@ export interface LineData extends Record<string, unknown> {
   x: number
   /** V */
   gerilim: number
+  /**
+   * Hedef düğümün yükünden bu hattın taşıyacağı pay (%). `null` = otomatik:
+   * açıkça pay verilmeyen hatlar kalan yüzdeyi eşit paylaşır (2N için %50/%50).
+   * Yedek (standby) besleme için 0 girilir.
+   */
+  pay: number | null
 }
 
 export type EquipmentNode = Node<EquipmentData, 'equipment'>

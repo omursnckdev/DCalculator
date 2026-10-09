@@ -35,7 +35,8 @@ function CanvasInner() {
   const fitRef = useRef(fitView)
   fitRef.current = fitView
   useEffect(() => {
-    if (viewTick === 0) return // ilk açılışta boş çizim; sığdıracak bir şey yok
+    // Boş çizimde sığdıracak bir şey yok (ve ilk düğüm eklenirken görünüm kaymasın).
+    if (useStore.getState().nodes.length === 0) return
     const t = setTimeout(() => void fitRef.current({ padding: 0.2, maxZoom: 1 }), 50)
     return () => clearTimeout(t)
   }, [viewTick])

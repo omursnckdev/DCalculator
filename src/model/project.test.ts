@@ -20,7 +20,7 @@ function sample(): Project {
     { id: 'b', type: 'mdb', ad: 'AG', etiket: '', grup: '', notlar: 'not', x: 40, y: 240, params: { nominalAkim: 4000 } },
   ]
   p.edges = [
-    { id: 'e1', source: 'a', target: 'b', tip: 'busbar', uzunluk: 12, akimKapasitesi: 4000, r: 0.02, x: 0.05, gerilim: 400 },
+    { id: 'e1', source: 'a', target: 'b', tip: 'busbar', uzunluk: 12, akimKapasitesi: 4000, r: 0.02, x: 0.05, gerilim: 400, pay: null },
   ]
   return p
 }
@@ -39,6 +39,30 @@ describe('proje serileştirme', () => {
 
   it('güncel sürümü yazar', () => {
     expect(emptyProject().schemaVersion).toBe(SCHEMA_VERSION)
+  })
+})
+
+describe('şema sürümü', () => {
+  it('v1 dosyasını v2\'ye çevirir (pay = null)', () => {
+    const v1 = {
+      schemaVersion: 1,
+      id: 'p',
+      name: 'Eski',
+      nodes: [
+        { id: 'a', type: 'trafo', ad: 'T', etiket: '', grup: '', notlar: '', x: 0, y: 0, params: {} },
+        { id: 'b', type: 'mdb', ad: 'M', etiket: '', grup: '', notlar: '', x: 0, y: 100, params: {} },
+      ],
+      edges: [{ id: 'e', source: 'a', target: 'b', tip: 'kablo', uzunluk: 5, akimKapasitesi: 100, r: 0.1, x: 0.1, gerilim: 400 }],
+    }
+    const p = migrate(v1)
+    expect(p.schemaVersion).toBe(2)
+    expect(p.edges[0].pay).toBeNull()
+  })
+
+  it('pay değerini korur', () => {
+    const p = sample()
+    p.edges[0].pay = 50
+    expect(parseProject(serializeProject(p)).edges[0].pay).toBe(50)
   })
 })
 
