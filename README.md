@@ -58,6 +58,7 @@ Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmele
 - **Arıza** sekmesi: senaryo oluşturun (arızalı ekipman + anahtar durumları), "Göster" ile şemada/sonuçlarda
   açın (üstte sarı bant çıkar, "Temel duruma dön" ile kapanır). **N-1 taraması** her ekipman/hat arızasında
   kaybedilen yükü ve en yüksek doluluğu listeler; "Senaryo yap" satırı senaryoya çevirir. Alt tabloda senaryolar yan yana karşılaştırılır.
+- **Jeneratör acil kaynaktır:** normal kaynak (şebeke/trafo) varken yük almaz, pay vermeye gerek yoktur; normal kaynak kalmayınca otomatik devreye girer.
 - Hat etiketindeki yuvarlak düğme anahtarı açar/kapar (senaryo açıksa yalnız o senaryoda).
 
 ## Örnek proje
@@ -67,4 +68,5 @@ yanında CRAH ve chiller. Beklenen sonuç: toplam 874,5 kW, PUE ≈ 1,749, salon
 
 `examples/faz4-2n-senaryolar.dcalc.json`: iki trafo, ATS ile yedek jeneratör, 2N UPS, açık bara kuplajı ve üç kayıtlı
 senaryo. **Arıza** sekmesini açın: Trafo B arızasında IT yükü korunur, tekil chiller kaybedilir; kuplaj
-kapatılırsa hiçbir yük kaybedilmez.
+kapatılırsa hiçbir yük kaybedilmez. Trafo A arızasında jeneratör A tarafını taşır (~%26); B→A kuplajı
+kapatılırsa jeneratör yükte değildir.

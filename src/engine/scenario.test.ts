@@ -138,10 +138,22 @@ describe('ATS / yedek jeneratör', () => {
     expect(a.unserved.itKw).toBeCloseTo(300, 6)
   })
 
-  it('ATS aynı anda yalnızca bir girişi aktif tutar (pay verilmese bile)', () => {
+  it('ATS aynı anda yalnızca bir girişi aktif tutar; pay verilmese de jeneratör acil kaynaktır', () => {
     const a = analyze(topoB(null, null))
-    expect(a.nodes.g.totalKw).toBeCloseTo(300, 6) // ilk hat seçildi
+    expect(a.nodes.g.totalKw).toBeCloseTo(300, 6)
     expect(a.nodes.gen.totalKw).toBeCloseTo(0, 6)
+    // normal kaynak + jeneratör: tercih belli, uyarı yok
+    expect(a.issues.some((i) => i.nodeId === 'ats' && /tercih/.test(i.message))).toBe(false)
+  })
+
+  it('iki normal kaynak ve tercih verilmemişse ATS uyarır, ilk hat seçilir', () => {
+    const m = {
+      nodes: [grid('g1'), grid('g2'), node('ats', 'ats'), node('it', 'itYuku', { kuruluKw: 100, pf: 1, df: 1 })],
+      edges: [edge('g1', 'ats'), edge('g2', 'ats'), edge('ats', 'it')],
+    }
+    const a = analyze(m)
+    expect(a.nodes.g1.totalKw).toBeCloseTo(100, 6)
+    expect(a.nodes.g2.totalKw).toBeCloseTo(0, 6)
     expect(a.issues.some((i) => i.nodeId === 'ats' && /tercih/.test(i.message))).toBe(true)
   })
 
@@ -270,5 +282,103 @@ describe('N-1 taraması', () => {
     expect(r.lostItKw).toBe(0)
     expect(r.ok).toBe(true)
     expect(r.peak?.pct).toBeCloseTo(93.75, 6)
+  })
+})
+
+describe('jeneratör acil kaynaktır: normal kaynak varken yük almaz', () => {
+  const direct = () => ({
+    // pay VERİLMEMİŞ: şebeke ve jeneratör aynı MDB'ye doğrudan bağlı
+    nodes: [grid('g'), node('gen', 'jenerator', { nominalKva: 1000, gerilim: 400 }), node('mdb', 'mdb'), node('it', 'itYuku', { kuruluKw: 100, pf: 1, df: 1 })],
+    edges: [edge('g', 'mdb'), edge('gen', 'mdb'), edge('mdb', 'it')],
+  })
+
+  it('şebeke aktifken jeneratör yükte değildir (pay verilmese bile)', () => {
+    const a = analyze(direct())
+    expect(a.nodes.gen.totalKw).toBe(0)
+    expect(a.nodes.g.totalKw).toBeCloseTo(100, 6)
+    expect(a.edges['gen>mdb'].share).toBe(0)
+    expect(a.heat.totalKw).toBeCloseTo(a.totals.totalKw, 9)
+  })
+
+  it('şebeke arızalanınca jeneratör tüm yükü alır', () => {
+    const a = analyze(direct(), undefined, scn(['g']))
+    expect(a.nodes.gen.totalKw).toBeCloseTo(100, 6)
+    expect(a.unserved.totalKw).toBe(0)
+  })
+
+  it('jeneratör hattına pay verilmişse uyarır ve normal kaynak varken yok sayar', () => {
+    const m = direct()
+    m.edges[1].pay = 50
+    const a = analyze(m)
+    expect(a.nodes.gen.totalKw).toBe(0)
+    expect(a.issues.some((i) => i.edgeId === 'gen>mdb' && /acil kaynak/.test(i.message))).toBe(true)
+  })
+
+  it('tek kaynak jeneratörse pay uyarısı yok, jeneratör yükü taşır', () => {
+    const m = {
+      nodes: [node('gen', 'jenerator', { nominalKva: 1000, gerilim: 400 }), node('mdb', 'mdb'), node('it', 'itYuku', { kuruluKw: 100, pf: 1, df: 1 })],
+      edges: [edge('gen', 'mdb', { pay: 100 }), edge('mdb', 'it')],
+    }
+    const a = analyze(m)
+    expect(a.nodes.gen.totalKw).toBeCloseTo(100, 6)
+    expect(a.issues.some((i) => /acil kaynak/.test(i.message))).toBe(false)
+  })
+
+  /**
+   * Trafo A arızalı, ATS-A yalnız jeneratörden besleniyor; ama B barası (şebekeli) kuplajla
+   * A barasını da besleyebiliyor. Normal kaynaklı yol varken jeneratör yükte olmamalı.
+   */
+  const withTie = (tie: 'acik' | 'kapali') => ({
+    nodes: [
+      grid('g1'), grid('g2'), node('gen', 'jenerator', { nominalKva: 1000, gerilim: 400 }),
+      node('ta', 'trafo', { nominalKva: 2000, primerGerilim: 400, sekonderGerilim: 400, bostaKayip: 0, yukKayip: 0, uk: 0 }),
+      node('tb', 'trafo', { nominalKva: 2000, primerGerilim: 400, sekonderGerilim: 400, bostaKayip: 0, yukKayip: 0, uk: 0 }),
+      node('ats', 'ats'), node('A', 'mdb'), node('B', 'mdb'),
+      node('la', 'itYuku', { kuruluKw: 200, pf: 1, df: 1 }), node('lb', 'itYuku', { kuruluKw: 300, pf: 1, df: 1 }),
+    ],
+    edges: [
+      edge('g1', 'ta'), edge('g2', 'tb'), edge('ta', 'ats'), edge('gen', 'ats'), edge('ats', 'A'),
+      edge('tb', 'B'), edge('A', 'la'), edge('B', 'lb'), edge('B', 'A', { durum: tie }),
+    ],
+  })
+
+  it('trafo A arızası, kuplaj açık: jeneratör devralır', () => {
+    const a = analyze(withTie('acik'), undefined, scn(['ta']))
+    expect(a.nodes.gen.totalKw).toBeCloseTo(200, 6)
+    expect(a.unserved.totalKw).toBe(0)
+  })
+
+  it('trafo A arızası, kuplaj kapalı: B (şebekeli) taşır, jeneratör yükte değil', () => {
+    const a = analyze(withTie('kapali'), undefined, scn(['ta']))
+    expect(a.nodes.gen.totalKw).toBe(0)
+    expect(a.nodes.ats.totalKw).toBe(0)
+    expect(a.nodes.tb.totalKw).toBeCloseTo(500, 6)
+    expect(a.unserved.totalKw).toBe(0)
+    expect(a.heat.totalKw).toBeCloseTo(a.totals.totalKw, 9)
+  })
+
+  it('her iki trafo sağlamken kuplaj kapalı olsa da jeneratör yükte değildir', () => {
+    const a = analyze(withTie('kapali'))
+    expect(a.nodes.gen.totalKw).toBe(0)
+    expect(a.totals.totalKw).toBeCloseTo(500, 6)
+  })
+
+  it('çift kablolu (2N) yük, jeneratörlü tarafla da paylaşmaya devam eder', () => {
+    // IT yükü ta→ATS(gen)→A→UPS-A ve tb→B→UPS-B yollarından çift beslemeli
+    const ups = { nominalKva: 1000, nominalKw: 1000, verim: 100, verimModu: 'sabit', girisPf: 1 }
+    const m = withTie('acik')
+    m.nodes.push(node('upsA', 'ups', ups), node('upsB', 'ups', ups), node('it', 'itYuku', { kuruluKw: 400, pf: 1, df: 1 }))
+    m.edges = m.edges.filter((e) => e.id !== 'A>la' && e.id !== 'B>lb')
+    m.edges.push(edge('A', 'upsA'), edge('B', 'upsB'), edge('upsA', 'it'), edge('upsB', 'it'))
+    const a = analyze(m, undefined, scn(['ta']))
+    expect(a.nodes.upsA.totalKw).toBeCloseTo(200, 6)
+    expect(a.nodes.upsB.totalKw).toBeCloseTo(200, 6)
+    expect(a.nodes.gen.totalKw).toBeCloseTo(200, 6) // A tarafı jeneratörde, yükünü taşır
+  })
+
+  it('N-1: jeneratör hiçbir tekil arızada gereksiz yük almaz (şebekeli hatlar sağlamsa)', () => {
+    // g2/tb/B zinciri sağlamken ta arızası: jeneratör devralmalı (kuplaj açık)
+    const r = runN1(withTie('acik')).find((x) => x.id === 'ta')!
+    expect(r.lostItKw).toBe(0)
   })
 })

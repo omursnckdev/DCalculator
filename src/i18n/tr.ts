@@ -181,6 +181,8 @@ export const tr = {
     transferOneInput: (ad: string) => `${ad}: transfer anahtarının tek girişi var; en az iki kaynak gerekir.`,
     transferNoPreferred: (ad: string) =>
       `${ad}: tercih edilen kaynak belirtilmedi (girişlerden birine %100, diğerine %0 pay verin); ilk hat seçildi.`,
+    generatorPay: (g: string, d: string, pay: string) =>
+      `${g} → ${d} hattına %${pay} pay verilmiş; jeneratör acil kaynaktır, normal kaynak varken yük almaz (pay yok sayılır).`,
     lostLoads: (n: number, kw: string, names: string) => `${n} yük enerjisiz kaldı (${kw} kW): ${names}.`,
     shareOver: (ad: string, sum: string) => `${ad}: açık verilen paylar %${sum}; %100'ü aşıyor.`,
   },

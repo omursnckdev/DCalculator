@@ -199,6 +199,15 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scena
     else if (!EQUIPMENT[n.type].hasInput) energized.set(id, true)
     else energized.set(id, incoming.get(id)!.some((e) => energized.get(e.source) === true))
   }
+  // Normal kaynaktan (şebeke/trafo zinciri) canlı bir yolla besleniyor mu? Jeneratör acil
+  // kaynaktır: normal kaynak varken yük almaz, yalnızca normal kaynak kalmayınca devreye girer.
+  const normalFed = new Map<string, boolean>()
+  for (const id of order) {
+    const n = nodeById.get(id)!
+    if (energized.get(id) !== true) normalFed.set(id, false)
+    else if (!EQUIPMENT[n.type].hasInput) normalFed.set(id, n.type !== 'jenerator')
+    else normalFed.set(id, incoming.get(id)!.some((e) => energized.get(e.source) === true && normalFed.get(e.source) === true))
+  }
   const edgeLive = (e: ProjectEdge) => energized.get(e.source) === true && energized.get(e.target) === true
 
   // 2a') Yeniden dağıtım: ölü hatların payı canlı hatlara aktarılır (normal paylarıyla
@@ -208,7 +217,11 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scena
     const ins = incoming.get(n.id)!.filter((e) => share.has(e.id))
     if (ins.length === 0) continue
     const total = ins.reduce((a, e) => a + (share.get(e.id) ?? 0), 0)
-    const live = ins.filter(edgeLive)
+    const liveAll = ins.filter(edgeLive)
+    // Kaynak seçilen düğümlerde (pano, bara, ATS...) normal kaynaklı canlı giriş varsa acil
+    // (jeneratör kaynaklı) girişler yük almaz. Çift kablolu yükler (2N) iki tarafı paylaşır.
+    const liveNormal = LOAD_TYPES.includes(n.type) ? [] : liveAll.filter((e) => normalFed.get(e.source) === true)
+    const live = liveNormal.length > 0 ? liveNormal : liveAll
     const isTransfer = TRANSFER_TYPES.includes(n.type)
     if (live.length === 0) {
       for (const e of ins) share.set(e.id, 0)
@@ -528,6 +541,16 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scena
     for (const e of outgoing.get(id)!) stack.push(e.target)
   }
 
+  // Jeneratör hariç kaynaklardan (yapısal, arızalar yok sayılarak) ulaşılabilen düğümler.
+  const normalReach = new Set<string>()
+  const nStack = model.nodes.filter((n) => !EQUIPMENT[n.type].hasInput && n.type !== 'jenerator').map((n) => n.id)
+  while (nStack.length) {
+    const id = nStack.pop()!
+    if (normalReach.has(id)) continue
+    normalReach.add(id)
+    for (const e of outgoing.get(id)!) nStack.push(e.target)
+  }
+
   for (const n of model.nodes) {
     const def = EQUIPMENT[n.type]
     const nIn = allIn.get(n.id) ?? 0
@@ -551,7 +574,10 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scena
       if (ins.length < 2) {
         issues.push({ severity: 'warning', nodeId: n.id, message: tr.analiz.transferOneInput(n.ad) })
       } else {
-        const present = incoming.get(n.id)!
+        const all = incoming.get(n.id)!
+        const normalIns = all.filter((e) => normalReach.has(e.source))
+        // Normal kaynaklı giriş varsa tercih belli sayılır (jeneratör zaten acil kaynaktır).
+        const present = normalIns.length > 0 ? normalIns : all
         const explicit = present.filter((e) => e.pay !== null).map((e) => e.pay as number)
         const top = Math.max(...explicit, -1)
         const ambiguous = explicit.length === 0 || explicit.filter((v) => v === top).length > 1
@@ -570,6 +596,12 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scena
   for (const e of allEdges) {
     const src = nodeById.get(e.source)!
     const dst = nodeById.get(e.target)!
+    if (src.type === 'jenerator' && e.pay !== null && e.pay > 0) {
+      const hasNormal = !LOAD_TYPES.includes(dst.type) && allEdges.some((x) => x.target === e.target && x.id !== e.id && normalReach.has(x.source))
+      if (hasNormal) {
+        issues.push({ severity: 'warning', edgeId: e.id, message: tr.analiz.generatorPay(src.ad, dst.ad, fmt(e.pay)) })
+      }
+    }
     const vs = outVoltage(src)
     const vd = inVoltage(dst)
     const differs = (a: number, b: number) => Math.abs(a - b) > 0.005 * Math.max(a, b)

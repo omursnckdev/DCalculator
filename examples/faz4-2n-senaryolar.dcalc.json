@@ -414,6 +414,24 @@
       "edgeStates": {
         "mdba>mdbb": "kapali"
       }
+    },
+    {
+      "id": "sen_t1",
+      "ad": "Trafo A arızası (jeneratör devralır)",
+      "failedNodes": [
+        "t1"
+      ],
+      "edgeStates": {}
+    },
+    {
+      "id": "sen_t1k",
+      "ad": "Trafo A arızası + MDB-B→MDB-A kuplajı kapalı (jeneratör yükte değil)",
+      "failedNodes": [
+        "t1"
+      ],
+      "edgeStates": {
+        "mdbb>mdba": "kapali"
+      }
     }
   ]
 }

@@ -51,6 +51,16 @@ describe('örnek projeler', () => {
       expect(a.nodes.gen.status).not.toBe('none')
     })
 
+    it('Trafo A arızasında jeneratör devralır; kuplaj kapalıysa yükte değildir', () => {
+      const a = analyze(p, undefined, byId('sen_t1'))
+      expect(a.nodes.gen.totalKw).toBeGreaterThan(300)
+      expect(a.unserved.totalKw).toBe(0)
+      const b = analyze(p, undefined, byId('sen_t1k'))
+      expect(b.nodes.gen.totalKw).toBe(0)
+      expect(b.nodes.t2.totalKw).toBeGreaterThan(900)
+      expect(b.unserved.totalKw).toBe(0)
+    })
+
     it('N-1: trafo A ve şebeke yedekli, trafo B tekil mekanik yük nedeniyle sağlanmıyor', () => {
       const rows = runN1(p)
       const row = (id: string) => rows.find((r) => r.id === id)!
