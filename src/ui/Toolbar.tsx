@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react'
 import { tr } from '../i18n/tr'
 import { useStore } from '../store/useStore'
-import { downloadProject, readProjectFile } from './fileio'
+import { buildWorkbook, workbookToBlob } from '../export/excel'
+import { renderDiagramPng } from '../export/png'
+import { useAnalysis } from '../store/useAnalysis'
+import { downloadProject, readProjectFile, safeName, saveBlob } from './fileio'
 import { OpenDialog } from './OpenDialog'
 
 const btn = 'rounded border border-slate-300 bg-white px-3 py-1 text-sm hover:bg-slate-50'
@@ -16,6 +19,30 @@ export function Toolbar() {
   const loadProject = useStore((s) => s.loadProject)
   const [showOpen, setShowOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const analysis = useAnalysis()
+
+  const exportExcel = async () => {
+    try {
+      const project = getProject()
+      const blob = await workbookToBlob(await buildWorkbook(project, analysis))
+      saveBlob(blob, `${safeName(project.name)}.xlsx`)
+    } catch (err) {
+      alert(`${tr.export.failed}: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  const exportPng = async () => {
+    try {
+      const url = await renderDiagramPng(useStore.getState().nodes)
+      if (!url) {
+        alert(tr.export.needDiagram)
+        return
+      }
+      saveBlob(await (await fetch(url)).blob(), `${safeName(name)}.png`)
+    } catch (err) {
+      alert(`${tr.export.failed}: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
 
   return (
     <header className="flex items-center gap-3 border-b border-slate-200 bg-white px-3 py-2">
@@ -47,6 +74,12 @@ export function Toolbar() {
         </button>
         <button type="button" className={btn} onClick={() => setShowOpen(true)}>
           {tr.toolbar.open}
+        </button>
+        <button type="button" className={btn} onClick={() => void exportExcel()}>
+          {tr.export.excel}
+        </button>
+        <button type="button" className={btn} onClick={() => void exportPng()}>
+          {tr.export.png}
         </button>
         <button type="button" className={btn} onClick={() => downloadProject(getProject())}>
           {tr.toolbar.exportJson}

@@ -31,6 +31,10 @@ export interface EquipmentData extends Record<string, unknown> {
   params: Params
 }
 
+/** Isının bırakıldığı mekân (plan §6.4). */
+export const HEAT_LOCATIONS = ['salon', 'elektrik', 'dis'] as const
+export type HeatLocation = (typeof HEAT_LOCATIONS)[number]
+
 export const LINE_TYPES = ['kablo', 'busbar'] as const
 export type LineType = (typeof LINE_TYPES)[number]
 
@@ -53,6 +57,8 @@ export interface LineData extends Record<string, unknown> {
    * Yedek (standby) besleme için 0 girilir.
    */
   pay: number | null
+  /** Hat I²R kaybının ısıyı bıraktığı mekân. */
+  isiKonum: HeatLocation
 }
 
 export type EquipmentNode = Node<EquipmentData, 'equipment'>

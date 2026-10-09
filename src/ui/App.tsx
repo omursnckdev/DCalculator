@@ -7,10 +7,11 @@ import { Canvas } from './Canvas'
 import { IssuesPanel } from './IssuesPanel'
 import { PropertiesPanel } from './PropertiesPanel'
 import { SummaryBar } from './SummaryBar'
+import { SummaryView } from './SummaryView'
 import { TableView } from './TableView'
 import { Toolbar } from './Toolbar'
 
-type View = 'diagram' | 'table'
+type View = 'diagram' | 'table' | 'summary'
 
 export function App() {
   const [view, setView] = useState<View>('diagram')
@@ -42,7 +43,7 @@ export function App() {
       <div className="flex h-full flex-col">
         <Toolbar />
         <div className="flex items-center border-b border-slate-200 bg-white">
-          {(['diagram', 'table'] as const).map((v) => (
+          {(['diagram', 'table', 'summary'] as const).map((v) => (
             <button
               key={v}
               type="button"
@@ -57,7 +58,7 @@ export function App() {
         </div>
         <SummaryBar />
         <div className="flex min-h-0 flex-1">
-          {view === 'diagram' ? <Canvas /> : <TableView />}
+          {view === 'diagram' ? <Canvas /> : view === 'table' ? <TableView /> : <SummaryView />}
           <div className="flex w-72 shrink-0 flex-col border-l border-slate-200">
             <div className="min-h-0 flex-1 overflow-y-auto">
               <PropertiesPanel />

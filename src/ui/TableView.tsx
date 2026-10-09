@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { tr } from '../i18n/tr'
 import { EQUIPMENT } from '../library/equipment'
-import { EQUIPMENT_TYPES, LINE_TYPES } from '../model/types'
-import type { EquipmentNode, EquipmentType, LineEdge, LineType } from '../model/types'
+import { EQUIPMENT_TYPES, HEAT_LOCATIONS, LINE_TYPES } from '../model/types'
+import type { EquipmentNode, EquipmentType, HeatLocation, LineEdge, LineType } from '../model/types'
 import { useAnalysis } from '../store/useAnalysis'
 import { useStore } from '../store/useStore'
 import { STATUS_BG, STATUS_COLOR, fmtNum } from './status'
@@ -220,7 +220,18 @@ export function TableView() {
       get: (e) => e.data?.pay ?? null,
       set: (e, v) => updateEdgeData(e.id, { pay: typeof v === 'number' ? v : null }),
     },
+    {
+      header: tr.line.isiKonum,
+      kind: 'select',
+      options: HEAT_LOCATIONS.map((h) => ({
+        value: h,
+        label: h === 'salon' ? tr.alan.konumSalon : h === 'dis' ? tr.alan.konumDis : tr.alan.konumElektrik,
+      })),
+      get: (e) => e.data?.isiKonum ?? 'elektrik',
+      set: (e, v) => updateEdgeData(e.id, { isiKonum: String(v) as HeatLocation }),
+    },
     { header: tr.results.current, unit: 'A', kind: 'readonly', get: (e) => fmtNum(analysis.edges[e.id]?.currentA ?? 0, 0) },
+    { header: tr.hesap.lineLoss, unit: 'kW', kind: 'readonly', get: (e) => fmtNum(analysis.edges[e.id]?.lossKw ?? 0, 3) },
     {
       header: tr.results.loading,
       unit: '%',

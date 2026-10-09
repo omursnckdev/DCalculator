@@ -12,7 +12,10 @@ bir web uygulamasıdır. Kapsam, mimari ve yol haritası için bkz. [docs/PLAN.m
 - **Faz 2 (yük analizi) tamamlandı:** yükten kaynağa IT / mekanik / kayıp toplama, kVA ve akım,
   kapasite doluluğu (yeşil/sarı/kırmızı), hat akımı ve gerilim düşümü, sabit verimli UPS,
   canlı doğrulama, tablo görünümü, "nasıl hesaplandı" adımları.
-- Isıl yük, trafo/kablo kayıpları, PUE, Excel/PNG çıktısı Faz 3'te.
+- **Faz 3 (ısıl analiz) tamamlandı:** trafo ve kablo/busbar kayıpları, UPS verim eğrisi, "ısıyı nereye
+  bırakır" (salon / elektrik odası / dış ortam) ile mekân bazında ısıl yük (kW ve TR), yaklaşık PUE,
+  pano seviyesinde eşzamanlılık (diversity), Excel ve PNG çıktısı. Toplam ısı = çekilen güç (testle doğrulanır).
+- Arıza senaryoları (N-1, ATS/STS) Faz 4'te.
 
 ## Çalıştırma
 
@@ -23,6 +26,8 @@ npm test           # birim testleri (vitest)
 npm run typecheck
 npm run build
 ```
+
+Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmeleriyle alınır (PNG için Şema sekmesi açık olmalı).
 
 ## Yapı
 

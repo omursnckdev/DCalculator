@@ -1,13 +1,16 @@
 import { tr } from '../i18n/tr'
 import { EQUIPMENT } from '../library/equipment'
-import type { EquipmentType, ProjectEdge, ProjectNode } from '../model/types'
+import { HEAT_LOCATIONS } from '../model/types'
+import type { EquipmentType, HeatLocation, ProjectEdge, ProjectNode } from '../model/types'
 import { DEFAULT_THRESHOLDS, statusOf } from './thresholds'
 import type {
   Analysis,
   Demand,
   EdgeResult,
   ExplainStep,
+  HeatSummary,
   Issue,
+  LossBreakdown,
   Model,
   NodeResult,
   PQ,
@@ -78,6 +81,44 @@ export function inVoltage(n: ProjectNode): number {
   }
 }
 
+/** Düğümün diversity faktörü (yalnız pano tiplerinde anlamlı; yoksa 1). */
+function diversityOf(n: ProjectNode): number {
+  if (!PANEL_TYPES.includes(n.type)) return 1
+  const d = param(n, 'diversity')
+  return Number.isFinite(d) ? Math.min(1, Math.max(0, d)) : 1
+}
+
+function heatLocation(n: ProjectNode): HeatLocation {
+  const v = n.params.isiKonum ?? EQUIPMENT[n.type].defaults.isiKonum
+  return HEAT_LOCATIONS.includes(v as HeatLocation) ? (v as HeatLocation) : 'elektrik'
+}
+
+/**
+ * UPS verimi (0..1). 'sabit' modda tek değer; 'egri' modda yük oranına (çıkış kW /
+ * nominal kW) göre %25/50/75/100 noktaları arasında doğrusal enterpolasyon.
+ * %25'in altında ilk, %100'ün üstünde son nokta sabit tutulur (Açık Soru 14).
+ */
+export function upsEfficiency(n: ProjectNode, loadFraction: number): number {
+  const mode = n.params.verimModu ?? EQUIPMENT.ups.defaults.verimModu
+  const clamp = (v: number) => Math.min(1, Math.max(0.01, v / 100))
+  if (mode !== 'egri') return clamp(param(n, 'verim'))
+  const pts: [number, number][] = [
+    [0.25, param(n, 'verim25')],
+    [0.5, param(n, 'verim50')],
+    [0.75, param(n, 'verim75')],
+    [1, param(n, 'verim100')],
+  ]
+  const x = loadFraction
+  if (x <= pts[0][0]) return clamp(pts[0][1])
+  if (x >= pts[3][0]) return clamp(pts[3][1])
+  for (let i = 0; i < 3; i++) {
+    const [x0, y0] = pts[i]
+    const [x1, y1] = pts[i + 1]
+    if (x <= x1) return clamp(y0 + ((y1 - y0) * (x - x0)) / (x1 - x0))
+  }
+  return clamp(pts[3][1])
+}
+
 // --- ana hesap -------------------------------------------------------------
 
 export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Analysis {
@@ -132,7 +173,28 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
     }
   }
 
+  // 2b) Ağırlık: düğüm talebinin kaynaklardan gerçekten çekilen oranı
+  // (pay × kaynak düğümün diversity faktörü, yol boyunca çarpılır). Isıl yük ve
+  // kayıp dağılımı toplam çekilen güçle tutarlı kalsın diye kullanılır.
+  const weight = new Map<string, number>()
+  for (const id of order) {
+    const n = nodeById.get(id)!
+    if (!EQUIPMENT[n.type].hasInput) {
+      weight.set(id, 1)
+      continue
+    }
+    let w = 0
+    for (const e of incoming.get(id)!) {
+      const k = share.get(e.id)
+      if (k === undefined) continue
+      const src = nodeById.get(e.source)!
+      w += (weight.get(e.source) ?? 0) * diversityOf(src) * k
+    }
+    weight.set(id, w)
+  }
+
   // 3) Yükten kaynağa doğru: ters topolojik sırada çıkış (O) ve giriş (D) talebi.
+  const edgeLoss = new Map<string, PQ>()
   const outDemand = new Map<string, Demand>()
   const inDemand = new Map<string, Demand>()
   const nodeResults: Record<string, NodeResult> = {}
@@ -157,13 +219,31 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
         result: `${fmt(q)} kvar`,
       })
     } else {
+      const acc = zeroDemand()
       for (const e of outgoing.get(id)!) {
         const k = share.get(e.id)
         const child = inDemand.get(e.target)
         if (k === undefined || !child) continue
-        addScaled(out, child, k)
+        addScaled(acc, child, k)
+        // Hat kaybı: 3·I²·R·L (P) ve 3·I²·X·L (Q); I, hedef tarafın akımıdır.
+        const flow = sumPQ(child)
+        const cur = currentOf(Math.hypot(flow.p * k, flow.q * k), e.gerilim)
+        const lenKm = e.uzunluk / 1000
+        const loss: PQ = { p: (3 * cur * cur * e.r * lenKm) / 1000, q: (3 * cur * cur * e.x * lenKm) / 1000 }
+        edgeLoss.set(e.id, loss)
+        acc.loss.p += loss.p
+        acc.loss.q += loss.q
       }
+      const div = diversityOf(n)
+      addScaled(out, acc, div)
       const t = sumPQ(out)
+      if (div !== 1) {
+        explain.push({
+          label: tr.hesap.diversity,
+          formula: `${fmt(sumPQ(acc).p)} kW × ${fmt(div, 3)}`,
+          result: `${fmt(t.p)} kW`,
+        })
+      }
       explain.push({
         label: tr.hesap.sumLoads,
         formula: `IT ${fmt(out.it.p)} + ${tr.alan.kategoriMekanik} ${fmt(out.mech.p)} + kayıp ${fmt(out.loss.p)}`,
@@ -173,13 +253,20 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
     }
     outDemand.set(id, out)
 
-    // Giriş talebi: UPS'te kayıp eklenir, diğerlerinde aynıdır (Faz 2).
+    // Giriş talebi: UPS ve trafoda kendi kaybı eklenir, diğerlerinde aynıdır.
     let input: Demand
     let ownLoss = 0
     if (n.type === 'ups') {
-      const eta = Math.min(1, Math.max(0.01, param(n, 'verim') / 100))
       const girisPf = param(n, 'girisPf')
       const o = sumPQ(out)
+      const nomKw = param(n, 'nominalKw')
+      const frac = nomKw > 0 ? o.p / nomKw : 0
+      const eta = upsEfficiency(n, frac)
+      explain.push({
+        label: tr.hesap.upsEfficiency,
+        formula: n.params.verimModu === 'egri' ? `η(%${fmt(frac * 100, 1)} yük)` : tr.alan.verimSabit,
+        result: `%${fmt(eta * 100, 2)}`,
+      })
       const pIn = o.p / eta
       const qIn = pIn * tanPhi(girisPf)
       ownLoss = pIn - o.p
@@ -191,6 +278,26 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
         label: tr.hesap.upsInputQ,
         formula: `${fmt(pIn)} × tan(arccos ${fmt(girisPf)})`,
         result: `${fmt(qIn)} kvar`,
+      })
+    } else if (n.type === 'trafo') {
+      const sn = param(n, 'nominalKva')
+      const ratio = sn > 0 ? kvaOf(sumPQ(out)) / sn : 0
+      const p0 = param(n, 'bostaKayip')
+      const pk = param(n, 'yukKayip')
+      const lossP = p0 + pk * ratio * ratio
+      // Reaktif kayıp: kısa devre reaktansı üzerinden, uk · Sn · (S/Sn)² (mıknatıslanma ihmal).
+      const lossQ = (param(n, 'uk') / 100) * sn * ratio * ratio
+      ownLoss = lossP
+      input = { it: { ...out.it }, mech: { ...out.mech }, loss: { p: out.loss.p + lossP, q: out.loss.q + lossQ } }
+      explain.push({
+        label: tr.hesap.trafoLoss,
+        formula: `${fmt(p0)} + ${fmt(pk)} × (${fmt(ratio, 4)})²`,
+        result: `${fmt(lossP)} kW`,
+      })
+      explain.push({
+        label: tr.hesap.trafoLossQ,
+        formula: `${fmt(param(n, 'uk'))}% × ${fmt(sn)} kVA × (${fmt(ratio, 4)})²`,
+        result: `${fmt(lossQ)} kvar`,
       })
     } else {
       input = out
@@ -251,6 +358,7 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
       inputKw: i.p,
       inputKva: kvaOf(i),
       ownLossKw: ownLoss,
+      weight: weight.get(id) ?? 0,
       capacity: Object.keys(capacity).length ? capacity : undefined,
       loadingPct,
       status: statusOf(loadingPct, th),
@@ -273,6 +381,7 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
       inputKw: 0,
       inputKva: 0,
       ownLossKw: 0,
+      weight: 0,
       status: 'none',
       explain: [],
     }
@@ -296,6 +405,7 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
     const sinPhi = Math.sqrt(Math.max(0, 1 - pf * pf))
     const dropV = SQRT3 * currentA * lengthKm * (e.r * pf + e.x * sinPhi)
     const voltageDropPct = e.gerilim > 0 ? (dropV / e.gerilim) * 100 : undefined
+    const loss = edgeLoss.get(e.id) ?? { p: 0, q: 0 }
     const explain: ExplainStep[] = [
       { label: tr.hesap.share, formula: e.pay === null ? tr.line.payOto : `%${fmt(e.pay)}`, result: `%${fmt(k * 100)}` },
       { label: tr.hesap.flow, formula: `${fmt(flow.p)} kW × ${fmt(k)}`, result: `${fmt(p)} kW / ${fmt(kva)} kVA` },
@@ -312,6 +422,11 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
         result: `%${fmt(loadingPct ?? 0)}`,
       })
     }
+    explain.push({
+      label: tr.hesap.lineLoss,
+      formula: `3 × (${fmt(currentA)} A)² × ${fmt(e.r)} Ω/km × ${fmt(lengthKm, 3)} km`,
+      result: `${fmt(loss.p, 3)} kW`,
+    })
     if (voltageDropPct !== undefined) {
       explain.push({
         label: tr.hesap.voltageDrop,
@@ -329,6 +444,8 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
       pf,
       loadingPct,
       voltageDropPct,
+      lossKw: loss.p,
+      lossKvar: loss.q,
       status: statusOf(loadingPct, th),
       explain,
     }
@@ -411,5 +528,40 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
   totals.totalKw = st.p
   totals.kva = kvaOf(st)
 
-  return { nodes: nodeResults, edges: edgeResults, issues, totals }
+  // 7) Isıl yük: her ekipmanın yük/kayıp kalemi, ağırlığıyla ölçeklenip bırakıldığı
+  // mekâna yazılır. Tüm elektrik gücü sonunda ısıya dönüştüğünden Σ ısı = Σ çekilen güç.
+  const heat: HeatSummary = { salonKw: 0, elektrikKw: 0, disKw: 0, totalKw: 0 }
+  const losses: LossBreakdown = { upsKw: 0, trafoKw: 0, lineKw: 0 }
+  const addHeat = (loc: HeatLocation, kw: number) => {
+    if (loc === 'salon') heat.salonKw += kw
+    else if (loc === 'dis') heat.disKw += kw
+    else heat.elektrikKw += kw
+    heat.totalKw += kw
+  }
+  for (const id of order) {
+    const n = nodeById.get(id)!
+    const r = nodeResults[id]
+    const w = weight.get(id) ?? 0
+    if (w <= 0) continue
+    if (LOAD_TYPES.includes(n.type)) {
+      addHeat(heatLocation(n), r.totalKw * w)
+    } else if (n.type === 'ups' || n.type === 'trafo') {
+      addHeat(heatLocation(n), r.ownLossKw * w)
+      if (n.type === 'ups') losses.upsKw += r.ownLossKw * w
+      else losses.trafoKw += r.ownLossKw * w
+    }
+  }
+  for (const e of edges) {
+    const r = edgeResults[e.id]
+    const src = nodeById.get(e.source)!
+    if (!r) continue
+    const w = (weight.get(e.source) ?? 0) * diversityOf(src)
+    if (w <= 0) continue
+    addHeat(e.isiKonum, r.lossKw * w)
+    losses.lineKw += r.lossKw * w
+  }
+
+  const pue = totals.itKw > 0 ? totals.totalKw / totals.itKw : undefined
+
+  return { nodes: nodeResults, edges: edgeResults, issues, totals, heat, losses, pue }
 }

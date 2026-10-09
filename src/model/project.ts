@@ -1,4 +1,4 @@
-import { EQUIPMENT_TYPES, LINE_TYPES } from './types'
+import { EQUIPMENT_TYPES, HEAT_LOCATIONS, LINE_TYPES } from './types'
 import type {
   EquipmentNode,
   EquipmentType,
@@ -14,7 +14,7 @@ import type {
  * Proje dosyası şema sürümü. Şema değiştiğinde artır ve `migrate` içine
  * bir dönüşüm adımı ekle (plan §12).
  */
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3
 
 export function newId(prefix = 'id'): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`
@@ -41,6 +41,7 @@ export const DEFAULT_LINE: LineData = {
   x: 0.08,
   gerilim: 400,
   pay: null,
+  isiKonum: 'elektrik',
 }
 
 // --- React Flow <-> Project dönüşümü -------------------------------------
@@ -153,6 +154,9 @@ function parseEdge(raw: unknown, i: number): ProjectEdge {
     x: num(raw.x, DEFAULT_LINE.x),
     gerilim: num(raw.gerilim, DEFAULT_LINE.gerilim),
     pay: typeof raw.pay === 'number' && Number.isFinite(raw.pay) ? raw.pay : null,
+    isiKonum: HEAT_LOCATIONS.includes(raw.isiKonum as never)
+      ? (raw.isiKonum as ProjectEdge['isiKonum'])
+      : DEFAULT_LINE.isiKonum,
   }
 }
 
@@ -163,6 +167,16 @@ function v1ToV2(raw: Record<string, unknown>): Record<string, unknown> {
     ...raw,
     schemaVersion: 2,
     edges: edges.map((e) => (isObj(e) ? { pay: null, ...e } : e)),
+  }
+}
+
+/** v2 -> v3: hatlara `isiKonum` eklendi (varsayılan 'elektrik'). */
+function v2ToV3(raw: Record<string, unknown>): Record<string, unknown> {
+  const edges = Array.isArray(raw.edges) ? raw.edges : []
+  return {
+    ...raw,
+    schemaVersion: 3,
+    edges: edges.map((e) => (isObj(e) ? { isiKonum: 'elektrik', ...e } : e)),
   }
 }
 
@@ -181,6 +195,7 @@ export function migrate(input: unknown): Project {
     )
   }
   if (typeof version === 'number' && version < 2) raw = v1ToV2(raw)
+  if (typeof version === 'number' && version < 3) raw = v2ToV3(raw)
   if (!Array.isArray(raw.nodes) || !Array.isArray(raw.edges)) {
     throw new ProjectFormatError('nodes/edges listeleri eksik.')
   }

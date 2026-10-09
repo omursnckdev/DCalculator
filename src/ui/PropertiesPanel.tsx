@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
 import { EQUIPMENT } from '../library/equipment'
 import type { FieldDef } from '../library/equipment'
-import { LINE_TYPES } from '../model/types'
-import type { LineType } from '../model/types'
+import { HEAT_LOCATIONS, LINE_TYPES } from '../model/types'
+import type { HeatLocation, LineType } from '../model/types'
 import { tr } from '../i18n/tr'
 import type { ExplainStep } from '../engine'
 import { useAnalysis } from '../store/useAnalysis'
@@ -180,7 +180,10 @@ export function PropertiesPanel() {
                 <Stat label={tr.results.kva} value={`${fmtNum(nodeResult.kva)} kVA`} />
                 <Stat label={tr.results.current} value={`${fmtNum(nodeResult.currentA)} A`} />
                 {nodeResult.ownLossKw > 0 && (
-                  <Stat label={tr.results.input} value={`${fmtNum(nodeResult.inputKw)} kW`} />
+                  <>
+                    <Stat label={tr.results.ownLoss} value={`${fmtNum(nodeResult.ownLossKw, 2)} kW`} />
+                    <Stat label={tr.results.input} value={`${fmtNum(nodeResult.inputKw)} kW`} />
+                  </>
                 )}
               </dl>
               <Explain steps={nodeResult.explain} />
@@ -249,6 +252,19 @@ export function PropertiesPanel() {
               }}
             />
           </Row>
+          <Row label={tr.line.isiKonum}>
+            <select
+              className={inputCls}
+              value={edge.data.isiKonum}
+              onChange={(e) => updateEdgeData(edge.id, { isiKonum: e.target.value as HeatLocation })}
+            >
+              {HEAT_LOCATIONS.map((h) => (
+                <option key={h} value={h}>
+                  {h === 'salon' ? tr.alan.konumSalon : h === 'dis' ? tr.alan.konumDis : tr.alan.konumElektrik}
+                </option>
+              ))}
+            </select>
+          </Row>
           {edgeResult && (
             <div className="mb-3 rounded-lg border border-slate-200 p-2">
               <h3 className="mb-1 flex items-center justify-between text-xs font-semibold">
@@ -266,6 +282,7 @@ export function PropertiesPanel() {
                 <Stat label={tr.results.flow} value={`${fmtNum(edgeResult.p)} kW`} />
                 <Stat label={tr.results.kva} value={`${fmtNum(edgeResult.kva)} kVA`} />
                 <Stat label={tr.results.current} value={`${fmtNum(edgeResult.currentA)} A`} />
+                <Stat label={tr.results.ownLoss} value={`${fmtNum(edgeResult.lossKw, 3)} kW`} />
                 {edgeResult.voltageDropPct !== undefined && (
                   <Stat label={tr.results.drop} value={`%${fmtNum(edgeResult.voltageDropPct, 2)}`} />
                 )}

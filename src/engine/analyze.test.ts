@@ -3,6 +3,9 @@ import { EQUIPMENT } from '../library/equipment'
 import type { EquipmentType, Params, ProjectEdge, ProjectNode } from '../model/types'
 import { analyze, currentOf } from './analyze'
 
+/** Faz 2 testleri yük toplamayı doğrular; trafo kaybı Faz 3 testlerinde ayrıca sınanır. */
+const NO_LOSS = { bostaKayip: 0, yukKayip: 0, uk: 0 }
+
 let seq = 0
 function node(id: string, type: EquipmentType, params: Params = {}, ad = id): ProjectNode {
   return { id, type, ad, etiket: '', grup: '', notlar: '', x: 0, y: seq++ * 10, params: { ...EQUIPMENT[type].defaults, ...params } }
@@ -19,6 +22,7 @@ function edge(source: string, target: string, over: Partial<ProjectEdge> = {}): 
     x: 0,
     gerilim: 400,
     pay: null,
+    isiKonum: 'elektrik',
     ...over,
   }
 }
@@ -42,7 +46,7 @@ function edge(source: string, target: string, over: Partial<ProjectEdge> = {}): 
 function reference() {
   const nodes = [
     node('grid', 'sebeke'),
-    node('tr', 'trafo'),
+    node('tr', 'trafo', NO_LOSS),
     node('mdb', 'mdb'),
     node('ups', 'ups', { girisPf: 1 }),
     node('upsdp', 'upsPanosu'),
@@ -151,8 +155,8 @@ describe('doluluk eşikleri', () => {
 describe('2N paylaşımı ve yedek besleme', () => {
   const base = () => [
     node('g', 'sebeke'),
-    node('t1', 'trafo', { nominalKva: 2000 }),
-    node('t2', 'trafo', { nominalKva: 2000 }),
+    node('t1', 'trafo', { nominalKva: 2000, ...NO_LOSS }),
+    node('t2', 'trafo', { nominalKva: 2000, ...NO_LOSS }),
     node('gen', 'jenerator'),
     node('mdb', 'mdb', { nominalAkim: 6000 }),
     node('l', 'itYuku', { kuruluKw: 1000, pf: 1, df: 1 }),

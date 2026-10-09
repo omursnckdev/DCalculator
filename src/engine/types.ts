@@ -1,5 +1,5 @@
 /** Hesap motoru girdi/çıktı tipleri. React'a bağımlılığı yoktur. */
-import type { ProjectEdge, ProjectNode } from '../model/types'
+import type { HeatLocation, ProjectEdge, ProjectNode } from '../model/types'
 
 export interface Model {
   nodes: ProjectNode[]
@@ -16,7 +16,7 @@ export interface PQ {
 export interface Demand {
   it: PQ
   mech: PQ
-  /** Aşağı yöndeki kayıplar (Faz 2'de yalnız UPS). */
+  /** Aşağı yöndeki kayıplar (UPS, trafo, kablo/busbar). */
   loss: PQ
 }
 
@@ -55,8 +55,13 @@ export interface NodeResult {
   /** Düğümün üstten çektiği güç (UPS'te kayıp dahil). */
   inputKw: number
   inputKva: number
-  /** Düğümün kendi kaybı (UPS), kW. */
+  /** Düğümün kendi kaybı (UPS, trafo), kW. */
   ownLossKw: number
+  /**
+   * Düğümün talebinin kaynaklardan gerçekten çekilen oranı: besleme payları ve
+   * eşzamanlılık faktörlerinin yol boyunca çarpımı (normal ağaçta 1).
+   */
+  weight: number
   capacity?: { kva?: number; kw?: number; a?: number }
   /** En kısıtlayıcı kapasiteye göre doluluk, %. */
   loadingPct?: number
@@ -75,8 +80,25 @@ export interface EdgeResult {
   pf: number
   loadingPct?: number
   voltageDropPct?: number
+  /** I²R kaybı, kW / kvar (hedef tarafın akımıyla). */
+  lossKw: number
+  lossKvar: number
   status: LoadStatus
   explain: ExplainStep[]
+}
+
+export interface HeatSummary {
+  salonKw: number
+  elektrikKw: number
+  disKw: number
+  /** Üç mekânın toplamı = kaynaklardan çekilen toplam güç. */
+  totalKw: number
+}
+
+export interface LossBreakdown {
+  upsKw: number
+  trafoKw: number
+  lineKw: number
 }
 
 export interface Totals {
@@ -93,7 +115,14 @@ export interface Analysis {
   issues: Issue[]
   /** Kaynak düğümlerden (şebeke/jeneratör) çekilen toplam. */
   totals: Totals
+  /** Mekân bazında ısıl yük (kW). */
+  heat: HeatSummary
+  losses: LossBreakdown
+  /** Yaklaşık PUE = toplam tesis gücü / IT gücü; IT yoksa tanımsız. */
+  pue?: number
 }
+
+export type { HeatLocation }
 
 export interface Thresholds {
   /** Bu doluluktan (%) itibaren sarı. */

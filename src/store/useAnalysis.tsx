@@ -10,6 +10,8 @@ const EMPTY: Analysis = {
   edges: {},
   issues: [],
   totals: { itKw: 0, mechKw: 0, lossKw: 0, totalKw: 0, kva: 0 },
+  heat: { salonKw: 0, elektrikKw: 0, disKw: 0, totalKw: 0 },
+  losses: { upsKw: 0, trafoKw: 0, lineKw: 0 },
 }
 const Ctx = createContext<Analysis>(EMPTY)
 
