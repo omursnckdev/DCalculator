@@ -10,6 +10,7 @@ const EMPTY: Analysis = {
   edges: {},
   issues: [],
   totals: { itKw: 0, mechKw: 0, lossKw: 0, totalKw: 0, kva: 0 },
+  unserved: { itKw: 0, mechKw: 0, totalKw: 0 },
   heat: { salonKw: 0, elektrikKw: 0, disKw: 0, totalKw: 0 },
   losses: { upsKw: 0, trafoKw: 0, lineKw: 0 },
 }
@@ -22,7 +23,17 @@ const Ctx = createContext<Analysis>(EMPTY)
 export function AnalysisProvider({ children }: { children: ReactNode }) {
   const nodes = useStore((s) => s.nodes)
   const edges = useStore((s) => s.edges)
-  const value = useMemo(() => analyze({ nodes: toProjectNodes(nodes), edges: toProjectEdges(edges) }), [nodes, edges])
+  const scenarios = useStore((s) => s.scenarios)
+  const activeId = useStore((s) => s.activeScenarioId)
+  const value = useMemo(
+    () =>
+      analyze(
+        { nodes: toProjectNodes(nodes), edges: toProjectEdges(edges) },
+        undefined,
+        scenarios.find((x) => x.id === activeId),
+      ),
+    [nodes, edges, scenarios, activeId],
+  )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 

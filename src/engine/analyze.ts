@@ -1,7 +1,7 @@
 import { tr } from '../i18n/tr'
 import { EQUIPMENT } from '../library/equipment'
 import { HEAT_LOCATIONS } from '../model/types'
-import type { EquipmentType, HeatLocation, ProjectEdge, ProjectNode } from '../model/types'
+import type { EquipmentType, HeatLocation, ProjectEdge, ProjectNode, Scenario } from '../model/types'
 import { DEFAULT_THRESHOLDS, statusOf } from './thresholds'
 import type {
   Analysis,
@@ -16,11 +16,13 @@ import type {
   PQ,
   Thresholds,
   Totals,
+  Unserved,
 } from './types'
 
 const SQRT3 = Math.sqrt(3)
 const LOAD_TYPES: EquipmentType[] = ['itYuku', 'mekanikYuk', 'aydinlatma', 'genelYuk']
-const PANEL_TYPES: EquipmentType[] = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu']
+const PANEL_TYPES: EquipmentType[] = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu', 'ats', 'sts']
+const TRANSFER_TYPES: EquipmentType[] = ['ats', 'sts']
 
 // --- küçük yardımcılar -----------------------------------------------------
 
@@ -121,9 +123,24 @@ export function upsEfficiency(n: ProjectNode, loadFraction: number): number {
 
 // --- ana hesap -------------------------------------------------------------
 
-export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Analysis {
+/**
+ * Şemayı çözümler. `scenario` verilirse arızalı ekipman enerjisiz sayılır ve
+ * hat anahtar durumları senaryoya göre geçersiz kılınır; yük, sağlam hatlara yeniden
+ * dağıtılır (2N, yedek jeneratör, ATS/STS, bara kuplajı).
+ */
+export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scenario?: Scenario): Analysis {
   const nodeById = new Map(model.nodes.map((n) => [n.id, n]))
-  const edges = model.edges.filter((e) => nodeById.has(e.source) && nodeById.has(e.target))
+  const failed = new Set((scenario?.failedNodes ?? []).filter((id) => nodeById.has(id)))
+  const allEdges = model.edges.filter((e) => nodeById.has(e.source) && nodeById.has(e.target))
+  // Açık anahtarlı hatlar şemada yok sayılır (hem akış hem döngü denetimi için).
+  const edges = allEdges.filter((e) => (scenario?.edgeStates[e.id] ?? e.durum) === 'kapali')
+  // Bağlantı sayıları açık anahtarlı hatları da sayar (açık hat 'bağlantısız' demek değildir).
+  const allIn = new Map<string, number>()
+  const allOut = new Map<string, number>()
+  for (const e of allEdges) {
+    allOut.set(e.source, (allOut.get(e.source) ?? 0) + 1)
+    allIn.set(e.target, (allIn.get(e.target) ?? 0) + 1)
+  }
   const incoming = new Map<string, ProjectEdge[]>()
   const outgoing = new Map<string, ProjectEdge[]>()
   for (const n of model.nodes) {
@@ -173,6 +190,46 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
     }
   }
 
+  // 2a) Enerji durumu: kaynaklardan canlı bir yolla beslenen düğümler. Arızalı düğüm
+  // enerjisizdir; kaynağı enerjisiz olan hat canlı değildir.
+  const energized = new Map<string, boolean>()
+  for (const id of order) {
+    const n = nodeById.get(id)!
+    if (failed.has(id)) energized.set(id, false)
+    else if (!EQUIPMENT[n.type].hasInput) energized.set(id, true)
+    else energized.set(id, incoming.get(id)!.some((e) => energized.get(e.source) === true))
+  }
+  const edgeLive = (e: ProjectEdge) => energized.get(e.source) === true && energized.get(e.target) === true
+
+  // 2a') Yeniden dağıtım: ölü hatların payı canlı hatlara aktarılır (normal paylarıyla
+  // orantılı; hepsi 0 ise eşit). ATS/STS yalnızca tek girişi aktif tutar: canlı girişler
+  // arasında en yüksek paylı olanı (eşitlikte ilk hat). Arıza yoksa ve ATS yoksa değişmez.
+  for (const n of model.nodes) {
+    const ins = incoming.get(n.id)!.filter((e) => share.has(e.id))
+    if (ins.length === 0) continue
+    const total = ins.reduce((a, e) => a + (share.get(e.id) ?? 0), 0)
+    const live = ins.filter(edgeLive)
+    const isTransfer = TRANSFER_TYPES.includes(n.type)
+    if (live.length === 0) {
+      for (const e of ins) share.set(e.id, 0)
+      continue
+    }
+    if (isTransfer) {
+      let best = live[0]
+      for (const e of live) if ((share.get(e.id) ?? 0) > (share.get(best.id) ?? 0) + 1e-12) best = e
+      const amount = total > 1e-12 ? total : 1
+      for (const e of ins) share.set(e.id, e.id === best.id ? amount : 0)
+      continue
+    }
+    if (live.length === ins.length) continue
+    const liveSum = live.reduce((a, e) => a + (share.get(e.id) ?? 0), 0)
+    const amount = total > 1e-12 ? total : 1
+    for (const e of ins) {
+      if (!live.includes(e)) share.set(e.id, 0)
+      else share.set(e.id, liveSum > 1e-12 ? ((share.get(e.id) ?? 0) * amount) / liveSum : amount / live.length)
+    }
+  }
+
   // 2b) Ağırlık: düğüm talebinin kaynaklardan gerçekten çekilen oranı
   // (pay × kaynak düğümün diversity faktörü, yol boyunca çarpılır). Isıl yük ve
   // kayıp dağılımı toplam çekilen güçle tutarlı kalsın diye kullanılır.
@@ -203,6 +260,8 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
     const n = nodeById.get(id)!
     const explain: ExplainStep[] = []
     const out = zeroDemand()
+    const en = energized.get(id) ?? false
+    let unservedKw = 0
 
     if (LOAD_TYPES.includes(n.type)) {
       const kw = param(n, 'kuruluKw')
@@ -211,7 +270,8 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
       const p = kw * df
       const q = p * tanPhi(pf)
       const bucket = n.params.kategori === 'IT' || (n.params.kategori === undefined && n.type === 'itYuku') ? 'it' : 'mech'
-      out[bucket] = { p, q }
+      if (en) out[bucket] = { p, q }
+      else unservedKw = p
       explain.push({ label: tr.hesap.peakKw, formula: `${fmt(kw)} kW × ${fmt(df)}`, result: `${fmt(p)} kW` })
       explain.push({
         label: tr.hesap.reactive,
@@ -279,7 +339,7 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
         formula: `${fmt(pIn)} × tan(arccos ${fmt(girisPf)})`,
         result: `${fmt(qIn)} kvar`,
       })
-    } else if (n.type === 'trafo') {
+    } else if (n.type === 'trafo' && en) {
       const sn = param(n, 'nominalKva')
       const ratio = sn > 0 ? kvaOf(sumPQ(out)) / sn : 0
       const p0 = param(n, 'bostaKayip')
@@ -348,6 +408,9 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
     nodeResults[id] = {
       id,
       cyclic: false,
+      failed: failed.has(id),
+      energized: en,
+      unservedKw,
       itKw: out.it.p,
       mechKw: out.mech.p,
       lossKw: out.loss.p,
@@ -371,6 +434,9 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
     nodeResults[n.id] = {
       id: n.id,
       cyclic: true,
+      failed: failed.has(n.id),
+      energized: false,
+      unservedKw: 0,
       itKw: 0,
       mechKw: 0,
       lossKw: 0,
@@ -437,6 +503,7 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
     edgeResults[e.id] = {
       id: e.id,
       share: k,
+      live: edgeLive(e),
       p,
       q,
       kva,
@@ -463,12 +530,12 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
 
   for (const n of model.nodes) {
     const def = EQUIPMENT[n.type]
-    const nIn = incoming.get(n.id)!.length
-    const nOut = outgoing.get(n.id)!.length
+    const nIn = allIn.get(n.id) ?? 0
+    const nOut = allOut.get(n.id) ?? 0
     const res = nodeResults[n.id]
     if (nIn + nOut === 0) {
       if (model.nodes.length > 1) issues.push({ severity: 'warning', nodeId: n.id, message: tr.analiz.disconnected(n.ad) })
-    } else if (def.hasInput && !reach.has(n.id) && !res.cyclic) {
+    } else if (def.hasInput && !reach.has(n.id) && !res.cyclic && !failed.has(n.id)) {
       issues.push({ severity: 'error', nodeId: n.id, message: tr.analiz.unreachable(n.ad) })
     } else if (!def.hasInput && nOut === 0) {
       issues.push({ severity: 'warning', nodeId: n.id, message: tr.analiz.sourceNoOutput(n.ad) })
@@ -479,6 +546,20 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
     if (nIn + nOut > 0 && !(outVoltage(n) > 0 && inVoltage(n) > 0)) {
       issues.push({ severity: 'error', nodeId: n.id, message: tr.analiz.badVoltage(n.ad) })
     }
+    if (TRANSFER_TYPES.includes(n.type)) {
+      const ins = allEdges.filter((e) => e.target === n.id)
+      if (ins.length < 2) {
+        issues.push({ severity: 'warning', nodeId: n.id, message: tr.analiz.transferOneInput(n.ad) })
+      } else {
+        const present = incoming.get(n.id)!
+        const explicit = present.filter((e) => e.pay !== null).map((e) => e.pay as number)
+        const top = Math.max(...explicit, -1)
+        const ambiguous = explicit.length === 0 || explicit.filter((v) => v === top).length > 1
+        if (present.length > 1 && ambiguous) {
+          issues.push({ severity: 'warning', nodeId: n.id, message: tr.analiz.transferNoPreferred(n.ad) })
+        }
+      }
+    }
     if (res.status === 'over') {
       issues.push({ severity: 'error', nodeId: n.id, message: tr.analiz.overload(n.ad, fmt(res.loadingPct!, 1)) })
     } else if (res.status === 'warning') {
@@ -486,7 +567,7 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
     }
   }
 
-  for (const e of edges) {
+  for (const e of allEdges) {
     const src = nodeById.get(e.source)!
     const dst = nodeById.get(e.target)!
     const vs = outVoltage(src)
@@ -561,7 +642,25 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): Anal
     losses.lineKw += r.lossKw * w
   }
 
+  // 8) Kaybedilen yük: kaynaklara normalde ulaşan ama senaryoda enerjisiz kalan yükler.
+  const unserved: Unserved = { itKw: 0, mechKw: 0, totalKw: 0 }
+  const lost: { ad: string; kw: number }[] = []
+  for (const n of model.nodes) {
+    const r = nodeResults[n.id]
+    if (!LOAD_TYPES.includes(n.type) || r.cyclic || r.energized) continue
+    const isIt = (n.params.kategori ?? EQUIPMENT[n.type].defaults.kategori) === 'IT'
+    if (isIt) unserved.itKw += r.unservedKw
+    else unserved.mechKw += r.unservedKw
+    unserved.totalKw += r.unservedKw
+    if (scenario && reach.has(n.id)) lost.push({ ad: n.ad, kw: r.unservedKw })
+  }
+  if (lost.length > 0) {
+    const kw = lost.reduce((a, l) => a + l.kw, 0)
+    const names = lost.slice(0, 3).map((l) => l.ad).join(', ') + (lost.length > 3 ? '…' : '')
+    issues.push({ severity: 'error', message: tr.analiz.lostLoads(lost.length, fmt(kw), names) })
+  }
+
   const pue = totals.itKw > 0 ? totals.totalKw / totals.itKw : undefined
 
-  return { nodes: nodeResults, edges: edgeResults, issues, totals, heat, losses, pue }
+  return { nodes: nodeResults, edges: edgeResults, issues, totals, unserved, heat, losses, pue }
 }

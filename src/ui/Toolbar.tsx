@@ -24,7 +24,7 @@ export function Toolbar() {
   const exportExcel = async () => {
     try {
       const project = getProject()
-      const blob = await workbookToBlob(await buildWorkbook(project, analysis))
+      const blob = await workbookToBlob(await buildWorkbook(project, analysis, useStore.getState().scenarios.find((x) => x.id === useStore.getState().activeScenarioId)?.ad))
       saveBlob(blob, `${safeName(project.name)}.xlsx`)
     } catch (err) {
       alert(`${tr.export.failed}: ${err instanceof Error ? err.message : String(err)}`)

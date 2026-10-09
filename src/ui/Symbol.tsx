@@ -38,6 +38,15 @@ export function Symbol({ type, color, size = 28 }: { type: EquipmentType; color:
         </>
       )
       break
+    case 'ats':
+    case 'sts':
+      body = (
+        <>
+          <rect {...common} x="3" y="5" width="18" height="14" rx="1" />
+          <path {...common} d="M7 17V12M17 17V12M7 12L12 8M17 12L12 8M12 8V6" />
+        </>
+      )
+      break
     case 'bara':
       body = <path {...common} strokeWidth={3.2} d="M3 12h18" />
       break

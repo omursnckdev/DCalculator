@@ -86,3 +86,60 @@ describe('store', () => {
     expect(await loadProjectFromDb(id)).toBeUndefined()
   })
 })
+
+describe('senaryolar', () => {
+  const setup = () => {
+    const s = useStore.getState()
+    const a = s.addNode('trafo', 0, 0)
+    const b = s.addNode('mdb', 0, 100)
+    s.onConnect({ source: a, target: b, sourceHandle: null, targetHandle: null })
+    return { a, b, edgeId: useStore.getState().edges[0].id }
+  }
+
+  it('senaryo ekler ve aktif yapar; arıza ekler / kaldırır', () => {
+    const { a } = setup()
+    const id = useStore.getState().addScenario({ ad: 'T arıza' })
+    expect(useStore.getState().activeScenarioId).toBe(id)
+    useStore.getState().setNodeFailed(a, true)
+    expect(useStore.getState().scenarios[0].failedNodes).toEqual([a])
+    useStore.getState().setNodeFailed(a, false)
+    expect(useStore.getState().scenarios[0].failedNodes).toEqual([])
+  })
+
+  it('anahtar durumu: senaryo yokken temeli, varken yalnızca senaryoyu değiştirir', () => {
+    const { edgeId } = setup()
+    useStore.getState().setEdgeState(edgeId, 'acik')
+    expect(useStore.getState().edges[0].data?.durum).toBe('acik')
+    useStore.getState().setEdgeState(edgeId, 'kapali')
+
+    useStore.getState().addScenario()
+    useStore.getState().setEdgeState(edgeId, 'acik')
+    expect(useStore.getState().edges[0].data?.durum).toBe('kapali') // temel dokunulmadı
+    expect(useStore.getState().scenarios[0].edgeStates).toEqual({ [edgeId]: 'acik' })
+    useStore.getState().setEdgeState(edgeId, 'kapali') // temele dönünce fark silinir
+    expect(useStore.getState().scenarios[0].edgeStates).toEqual({})
+  })
+
+  it('senaryolar kaydedilir ve geri yüklenir; aktif senaryo kaydedilmez', async () => {
+    const { a } = setup()
+    useStore.getState().addScenario({ ad: 'Kayıtlı', failedNodes: [a] })
+    await useStore.getState().saveToDb()
+    const id = useStore.getState().projectId
+    const loaded = await loadProjectFromDb(id)
+    expect(loaded?.scenarios).toHaveLength(1)
+    expect(loaded?.scenarios[0].failedNodes).toEqual([a])
+    useStore.getState().loadProject(loaded!)
+    expect(useStore.getState().activeScenarioId).toBeNull()
+    expect(useStore.getState().scenarios[0].ad).toBe('Kayıtlı')
+    await deleteProjectFromDb(id)
+  })
+
+  it('senaryo silinince aktifse temel duruma döner', () => {
+    setup()
+    const id = useStore.getState().addScenario()
+    useStore.getState().deleteScenario(id)
+    expect(useStore.getState().activeScenarioId).toBeNull()
+    expect(useStore.getState().scenarios).toHaveLength(0)
+  })
+})
+

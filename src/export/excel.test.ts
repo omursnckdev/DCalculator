@@ -19,7 +19,7 @@ function project(): Project {
   ]
   const e = (s: string, t: string) => ({
     id: `${s}>${t}`, source: s, target: t, tip: 'kablo' as const, uzunluk: 10, akimKapasitesi: 5000,
-    r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik' as const,
+    r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik' as const, durum: 'kapali' as const,
   })
   p.edges = [e('g', 'm'), e('m', 'it'), e('m', 'mek')]
   return p

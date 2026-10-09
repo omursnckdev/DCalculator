@@ -11,6 +11,8 @@ export const EQUIPMENT_TYPES = [
   'ups',
   'upsPanosu',
   'pdu',
+  'ats',
+  'sts',
   'itYuku',
   'mekanikYuk',
   'aydinlatma',
@@ -34,6 +36,10 @@ export interface EquipmentData extends Record<string, unknown> {
 /** Isının bırakıldığı mekân (plan §6.4). */
 export const HEAT_LOCATIONS = ['salon', 'elektrik', 'dis'] as const
 export type HeatLocation = (typeof HEAT_LOCATIONS)[number]
+
+/** Hat üzerindeki anahtar/kesici durumu. */
+export const EDGE_STATES = ['kapali', 'acik'] as const
+export type EdgeState = (typeof EDGE_STATES)[number]
 
 export const LINE_TYPES = ['kablo', 'busbar'] as const
 export type LineType = (typeof LINE_TYPES)[number]
@@ -59,6 +65,8 @@ export interface LineData extends Record<string, unknown> {
   pay: number | null
   /** Hat I²R kaybının ısıyı bıraktığı mekân. */
   isiKonum: HeatLocation
+  /** Hattın ucundaki anahtar/kesicinin normal durumu; 'acik' hat yok sayılır. */
+  durum: EdgeState
 }
 
 export type EquipmentNode = Node<EquipmentData, 'equipment'>
@@ -83,6 +91,17 @@ export interface ProjectEdge extends LineData {
   target: string
 }
 
+/**
+ * Arıza / anahtarlama senaryosu: temel duruma göre farklar. Arızalı ekipman
+ * enerjisiz sayılır; `edgeStates` hattın anahtar durumunu geçersiz kılar.
+ */
+export interface Scenario {
+  id: string
+  ad: string
+  failedNodes: string[]
+  edgeStates: Record<string, EdgeState>
+}
+
 export interface Project {
   schemaVersion: number
   id: string
@@ -91,4 +110,5 @@ export interface Project {
   updatedAt: string
   nodes: ProjectNode[]
   edges: ProjectEdge[]
+  scenarios: Scenario[]
 }

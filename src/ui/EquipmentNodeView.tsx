@@ -1,5 +1,6 @@
 import { Handle, Position } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
+import { tr } from '../i18n/tr'
 import { EQUIPMENT } from '../library/equipment'
 import type { EquipmentNode } from '../model/types'
 import { useAnalysis } from '../store/useAnalysis'
@@ -13,11 +14,21 @@ export function EquipmentNodeView({ id, data, selected }: NodeProps<EquipmentNod
   const isLoad = !def.hasOutput
   return (
     <div
-      className={`min-w-44 rounded-lg border border-l-4 bg-white px-3 py-2 shadow-sm ${
-        selected ? 'border-blue-600 ring-2 ring-blue-200' : 'border-slate-300'
+      className={`min-w-44 rounded-lg border border-l-4 px-3 py-2 shadow-sm ${
+        r?.failed ? 'bg-red-50' : r && !r.energized && !r.cyclic ? 'bg-slate-100' : 'bg-white'
+      } ${selected ? 'border-blue-600 ring-2 ring-blue-200' : r?.failed ? 'border-red-400' : 'border-slate-300'} ${
+        r && !r.energized && !r.failed && !r.cyclic ? 'opacity-60' : ''
       }`}
       style={{ borderLeftColor: def.color }}
     >
+      {r?.failed && (
+        <div className="-mx-3 -mt-2 mb-1 rounded-t bg-red-600 px-3 py-0.5 text-[10px] font-bold tracking-wide text-white">
+          {tr.senaryo.failedBadge}
+        </div>
+      )}
+      {r && !r.energized && !r.failed && !r.cyclic && (
+        <div className="mb-0.5 text-[10px] font-semibold tracking-wide text-slate-500">{tr.senaryo.deenergized}</div>
+      )}
       {def.hasInput && <Handle type="target" position={Position.Top} />}
       <div className="flex items-center gap-2">
         <Symbol type={data.kind} color={def.color} />

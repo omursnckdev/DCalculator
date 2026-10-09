@@ -24,7 +24,7 @@ const roomLabel = (v: string): string =>
  * Ekipman (girdiler + sonuçlar), Hatlar, Özet (toplamlar, kayıplar, ısıl yük, PUE, uyarılar).
  * Sayılar sayı olarak yazılır (Excel'de işlenebilsin diye).
  */
-export async function buildWorkbook(project: Project, a: Analysis): Promise<Workbook> {
+export async function buildWorkbook(project: Project, a: Analysis, scenarioName?: string): Promise<Workbook> {
   const { default: ExcelJS } = await import('exceljs')
   const wb = new ExcelJS.Workbook()
   wb.creator = 'DCalculator'
@@ -147,6 +147,7 @@ export async function buildWorkbook(project: Project, a: Analysis): Promise<Work
 
   wsum.addRow([`${tr.app.title} — ${project.name}`]).font = { bold: true, size: 14 }
   wsum.addRow([new Date().toLocaleString('tr-TR')])
+  if (scenarioName) wsum.addRow([tr.senaryo.banner(scenarioName)]).font = { bold: true, color: { argb: 'FFB45309' } }
   const disc = wsum.addRow([tr.disclaimer])
   disc.font = { italic: true, color: { argb: 'FFB45309' } }
 

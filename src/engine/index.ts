@@ -1,4 +1,6 @@
 export { analyze, currentOf, inVoltage, outVoltage, upsEfficiency } from './analyze'
 export { DEFAULT_THRESHOLDS, statusOf } from './thresholds'
 export { KW_PER_TR, kwToTr } from './thermal'
+export { loadingSummary, runN1 } from './scenario'
+export type { N1Row, PeakLoading } from './scenario'
 export type * from './types'

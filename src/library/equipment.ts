@@ -180,6 +180,30 @@ const defs: EquipmentDef[] = [
     fields: [voltage, rating, diversity],
     summary: panelSummary,
   },
+  // ATS/STS: birden çok girişten yalnızca biri aktif olur (tercih edilen = en yüksek pay).
+  // Kararlı durum hesabında ikisi aynı davranır; fark geçiş süresindedir (ATS ~saniye, STS ~ms).
+  {
+    type: 'ats',
+    label: tr.ekipman.ats,
+    group: 'dagitim',
+    hasInput: true,
+    hasOutput: true,
+    color: '#b45309',
+    defaults: { gerilim: 400, nominalAkim: 1600, diversity: 1 },
+    fields: [voltage, rating, diversity],
+    summary: panelSummary,
+  },
+  {
+    type: 'sts',
+    label: tr.ekipman.sts,
+    group: 'dagitim',
+    hasInput: true,
+    hasOutput: true,
+    color: '#be185d',
+    defaults: { gerilim: 400, nominalAkim: 800, diversity: 1 },
+    fields: [voltage, rating, diversity],
+    summary: panelSummary,
+  },
   {
     type: 'ups',
     label: tr.ekipman.ups,

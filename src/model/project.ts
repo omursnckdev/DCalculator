@@ -1,4 +1,4 @@
-import { EQUIPMENT_TYPES, HEAT_LOCATIONS, LINE_TYPES } from './types'
+import { EDGE_STATES, EQUIPMENT_TYPES, HEAT_LOCATIONS, LINE_TYPES } from './types'
 import type {
   EquipmentNode,
   EquipmentType,
@@ -8,13 +8,14 @@ import type {
   Project,
   ProjectEdge,
   ProjectNode,
+  Scenario,
 } from './types'
 
 /**
  * Proje dosyası şema sürümü. Şema değiştiğinde artır ve `migrate` içine
  * bir dönüşüm adımı ekle (plan §12).
  */
-export const SCHEMA_VERSION = 3
+export const SCHEMA_VERSION = 4
 
 export function newId(prefix = 'id'): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`
@@ -30,6 +31,7 @@ export function emptyProject(name = 'Yeni proje'): Project {
     updatedAt: now,
     nodes: [],
     edges: [],
+    scenarios: [],
   }
 }
 
@@ -42,6 +44,7 @@ export const DEFAULT_LINE: LineData = {
   gerilim: 400,
   pay: null,
   isiKonum: 'elektrik',
+  durum: 'kapali',
 }
 
 // --- React Flow <-> Project dönüşümü -------------------------------------
@@ -157,6 +160,7 @@ function parseEdge(raw: unknown, i: number): ProjectEdge {
     isiKonum: HEAT_LOCATIONS.includes(raw.isiKonum as never)
       ? (raw.isiKonum as ProjectEdge['isiKonum'])
       : DEFAULT_LINE.isiKonum,
+    durum: EDGE_STATES.includes(raw.durum as never) ? (raw.durum as ProjectEdge['durum']) : DEFAULT_LINE.durum,
   }
 }
 
@@ -180,6 +184,37 @@ function v2ToV3(raw: Record<string, unknown>): Record<string, unknown> {
   }
 }
 
+/** v3 -> v4: hatlara `durum` (anahtar durumu) ve projeye `scenarios` eklendi. */
+function v3ToV4(raw: Record<string, unknown>): Record<string, unknown> {
+  const edges = Array.isArray(raw.edges) ? raw.edges : []
+  return {
+    ...raw,
+    schemaVersion: 4,
+    edges: edges.map((e) => (isObj(e) ? { durum: 'kapali', ...e } : e)),
+    scenarios: Array.isArray(raw.scenarios) ? raw.scenarios : [],
+  }
+}
+
+function parseScenario(raw: unknown, nodeIds: Set<string>, edgeIds: Set<string>): Scenario | null {
+  if (!isObj(raw)) return null
+  const id = str(raw.id)
+  if (!id) return null
+  const failed = Array.isArray(raw.failedNodes) ? raw.failedNodes : []
+  const states: Scenario['edgeStates'] = {}
+  if (isObj(raw.edgeStates)) {
+    for (const [k, v] of Object.entries(raw.edgeStates)) {
+      if (edgeIds.has(k) && EDGE_STATES.includes(v as never)) states[k] = v as Scenario['edgeStates'][string]
+    }
+  }
+  return {
+    id,
+    ad: str(raw.ad, 'Senaryo'),
+    // Silinmiş ekipmana başvuruları sessizce at.
+    failedNodes: failed.filter((x): x is string => typeof x === 'string' && nodeIds.has(x)),
+    edgeStates: states,
+  }
+}
+
 /**
  * Herhangi bir sürümdeki ham JSON'u güncel `Project` biçimine çevirir.
  * Şema her arttığında buraya bir dönüşüm adımı eklenir (bkz. `v1ToV2`).
@@ -196,6 +231,7 @@ export function migrate(input: unknown): Project {
   }
   if (typeof version === 'number' && version < 2) raw = v1ToV2(raw)
   if (typeof version === 'number' && version < 3) raw = v2ToV3(raw)
+  if (typeof version === 'number' && version < 4) raw = v3ToV4(raw)
   if (!Array.isArray(raw.nodes) || !Array.isArray(raw.edges)) {
     throw new ProjectFormatError('nodes/edges listeleri eksik.')
   }
@@ -210,6 +246,11 @@ export function migrate(input: unknown): Project {
     }
   }
 
+  const edgeIds = new Set(edges.map((e) => e.id))
+  const scenarios = (Array.isArray(raw.scenarios) ? raw.scenarios : [])
+    .map((sc) => parseScenario(sc, ids, edgeIds))
+    .filter((sc): sc is Scenario => sc !== null)
+
   const now = new Date().toISOString()
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -219,6 +260,7 @@ export function migrate(input: unknown): Project {
     updatedAt: str(raw.updatedAt, now),
     nodes,
     edges,
+    scenarios,
   }
 }
 

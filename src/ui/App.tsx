@@ -6,15 +6,18 @@ import { useStore } from '../store/useStore'
 import { Canvas } from './Canvas'
 import { IssuesPanel } from './IssuesPanel'
 import { PropertiesPanel } from './PropertiesPanel'
+import { ScenarioView } from './ScenarioView'
 import { SummaryBar } from './SummaryBar'
 import { SummaryView } from './SummaryView'
 import { TableView } from './TableView'
 import { Toolbar } from './Toolbar'
 
-type View = 'diagram' | 'table' | 'summary'
+type View = 'diagram' | 'table' | 'summary' | 'scenario'
 
 export function App() {
   const [view, setView] = useState<View>('diagram')
+  const activeScenario = useStore((s) => s.scenarios.find((x) => x.id === s.activeScenarioId))
+  const setActiveScenario = useStore((s) => s.setActiveScenario)
 
   // Açılışta son kullanılan projeyi geri yükle.
   useEffect(() => {
@@ -43,7 +46,7 @@ export function App() {
       <div className="flex h-full flex-col">
         <Toolbar />
         <div className="flex items-center border-b border-slate-200 bg-white">
-          {(['diagram', 'table', 'summary'] as const).map((v) => (
+          {(['diagram', 'table', 'summary', 'scenario'] as const).map((v) => (
             <button
               key={v}
               type="button"
@@ -56,9 +59,17 @@ export function App() {
             </button>
           ))}
         </div>
+        {activeScenario && (
+          <div className="flex items-center gap-3 border-b border-amber-300 bg-amber-100 px-3 py-1 text-sm text-amber-900">
+            <b>{tr.senaryo.banner(activeScenario.ad)}</b>
+            <button type="button" className="underline" onClick={() => setActiveScenario(null)}>
+              {tr.senaryo.backToBase}
+            </button>
+          </div>
+        )}
         <SummaryBar />
         <div className="flex min-h-0 flex-1">
-          {view === 'diagram' ? <Canvas /> : view === 'table' ? <TableView /> : <SummaryView />}
+          {view === 'diagram' ? <Canvas /> : view === 'table' ? <TableView /> : view === 'summary' ? <SummaryView /> : <ScenarioView />}
           <div className="flex w-72 shrink-0 flex-col border-l border-slate-200">
             <div className="min-h-0 flex-1 overflow-y-auto">
               <PropertiesPanel />

@@ -15,7 +15,10 @@ bir web uygulamasıdır. Kapsam, mimari ve yol haritası için bkz. [docs/PLAN.m
 - **Faz 3 (ısıl analiz) tamamlandı:** trafo ve kablo/busbar kayıpları, UPS verim eğrisi, "ısıyı nereye
   bırakır" (salon / elektrik odası / dış ortam) ile mekân bazında ısıl yük (kW ve TR), yaklaşık PUE,
   pano seviyesinde eşzamanlılık (diversity), Excel ve PNG çıktısı. Toplam ısı = çekilen güç (testle doğrulanır).
-- Arıza senaryoları (N-1, ATS/STS) Faz 4'te.
+- **Faz 4 (arıza senaryoları) tamamlandı:** hat anahtar durumu (açık/kapalı), ATS/STS, bara kuplajı,
+  arızada yükün sağlam hatlara aktarılması (2N, yedek jeneratör), otomatik N-1 taraması, kaydedilebilir
+  senaryolar ve senaryo karşılaştırma.
+- Faz 5: PDF rapor, şablon topolojiler, gruplama, undo/redo.
 
 ## Çalıştırma
 
@@ -52,8 +55,16 @@ Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmele
 - Çift beslemeli (2N) yapılarda bir ekipmanı besleyen hatlar yükü eşit paylaşır; hat özelliklerinden
   "Yük payı" girilebilir (yedek besleme için 0).
 - Her sonucun altında "Nasıl hesaplandı?" ile formül ve kullanılan girdiler görülür.
+- **Arıza** sekmesi: senaryo oluşturun (arızalı ekipman + anahtar durumları), "Göster" ile şemada/sonuçlarda
+  açın (üstte sarı bant çıkar, "Temel duruma dön" ile kapanır). **N-1 taraması** her ekipman/hat arızasında
+  kaybedilen yükü ve en yüksek doluluğu listeler; "Senaryo yap" satırı senaryoya çevirir. Alt tabloda senaryolar yan yana karşılaştırılır.
+- Hat etiketindeki yuvarlak düğme anahtarı açar/kapar (senaryo açıksa yalnız o senaryoda).
 
 ## Örnek proje
 
 `examples/faz3-referans.dcalc.json` dosyasını **JSON yükle** ile açın: şebeke → trafo → MDB → UPS → IT,
 yanında CRAH ve chiller. Beklenen sonuç: toplam 874,5 kW, PUE ≈ 1,749, salon ısısı 550 kW (156,4 TR).
+
+`examples/faz4-2n-senaryolar.dcalc.json`: iki trafo, ATS ile yedek jeneratör, 2N UPS, açık bara kuplajı ve üç kayıtlı
+senaryo. **Arıza** sekmesini açın: Trafo B arızasında IT yükü korunur, tekil chiller kaybedilir; kuplaj
+kapatılırsa hiçbir yük kaybedilmez.

@@ -1,0 +1,419 @@
+{
+  "schemaVersion": 4,
+  "id": "ornek_2n",
+  "name": "2N örnek (ATS + jeneratör + kuplaj)",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z",
+  "nodes": [
+    {
+      "id": "grid",
+      "type": "sebeke",
+      "ad": "Şebeke",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 420,
+      "y": 0,
+      "params": {
+        "gerilim": 34500,
+        "kisaDevreMva": 500
+      }
+    },
+    {
+      "id": "gen",
+      "type": "jenerator",
+      "ad": "Jeneratör",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 40,
+      "y": 140,
+      "params": {
+        "nominalKva": 1500,
+        "gerilim": 400,
+        "pf": 0.8
+      }
+    },
+    {
+      "id": "t1",
+      "type": "trafo",
+      "ad": "Trafo A",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 200,
+      "y": 140,
+      "params": {
+        "nominalKva": 2500,
+        "primerGerilim": 34500,
+        "sekonderGerilim": 400,
+        "uk": 6,
+        "bostaKayip": 3,
+        "yukKayip": 22,
+        "isiKonum": "elektrik"
+      }
+    },
+    {
+      "id": "t2",
+      "type": "trafo",
+      "ad": "Trafo B",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 760,
+      "y": 140,
+      "params": {
+        "nominalKva": 2500,
+        "primerGerilim": 34500,
+        "sekonderGerilim": 400,
+        "uk": 6,
+        "bostaKayip": 3,
+        "yukKayip": 22,
+        "isiKonum": "elektrik"
+      }
+    },
+    {
+      "id": "atsa",
+      "type": "ats",
+      "ad": "ATS-A",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 200,
+      "y": 300,
+      "params": {
+        "gerilim": 400,
+        "nominalAkim": 3200,
+        "diversity": 1
+      }
+    },
+    {
+      "id": "mdba",
+      "type": "mdb",
+      "ad": "MDB-A",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 200,
+      "y": 440,
+      "params": {
+        "gerilim": 400,
+        "nominalAkim": 4000,
+        "diversity": 1
+      }
+    },
+    {
+      "id": "mdbb",
+      "type": "mdb",
+      "ad": "MDB-B",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 760,
+      "y": 440,
+      "params": {
+        "gerilim": 400,
+        "nominalAkim": 4000,
+        "diversity": 1
+      }
+    },
+    {
+      "id": "upsa",
+      "type": "ups",
+      "ad": "UPS-A",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 200,
+      "y": 600,
+      "params": {
+        "nominalKva": 1000,
+        "nominalKw": 900,
+        "girisGerilim": 400,
+        "cikisGerilim": 400,
+        "verim": 96,
+        "girisPf": 0.99,
+        "verimModu": "egri",
+        "verim25": 94.5,
+        "verim50": 96,
+        "verim75": 96.5,
+        "verim100": 96.3,
+        "isiKonum": "elektrik"
+      }
+    },
+    {
+      "id": "upsb",
+      "type": "ups",
+      "ad": "UPS-B",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 560,
+      "y": 600,
+      "params": {
+        "nominalKva": 1000,
+        "nominalKw": 900,
+        "girisGerilim": 400,
+        "cikisGerilim": 400,
+        "verim": 96,
+        "girisPf": 0.99,
+        "verimModu": "egri",
+        "verim25": 94.5,
+        "verim50": 96,
+        "verim75": 96.5,
+        "verim100": 96.3,
+        "isiKonum": "elektrik"
+      }
+    },
+    {
+      "id": "chiller",
+      "type": "mekanikYuk",
+      "ad": "Chiller",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 960,
+      "y": 600,
+      "params": {
+        "kuruluKw": 400,
+        "pf": 0.85,
+        "df": 0.8,
+        "kategori": "Mekanik",
+        "gerilim": 400,
+        "isiKonum": "dis"
+      }
+    },
+    {
+      "id": "it",
+      "type": "itYuku",
+      "ad": "IT Salonu (2N)",
+      "etiket": "",
+      "grup": "",
+      "notlar": "",
+      "x": 380,
+      "y": 780,
+      "params": {
+        "kuruluKw": 600,
+        "pf": 0.95,
+        "df": 1,
+        "kategori": "IT",
+        "gerilim": 400,
+        "isiKonum": "salon"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "grid>t1",
+      "source": "grid",
+      "target": "t1",
+      "tip": "kablo",
+      "uzunluk": 20,
+      "akimKapasitesi": 200,
+      "r": 0.02,
+      "x": 0.02,
+      "gerilim": 34500,
+      "pay": null,
+      "isiKonum": "elektrik",
+      "durum": "kapali"
+    },
+    {
+      "id": "grid>t2",
+      "source": "grid",
+      "target": "t2",
+      "tip": "kablo",
+      "uzunluk": 20,
+      "akimKapasitesi": 200,
+      "r": 0.02,
+      "x": 0.02,
+      "gerilim": 34500,
+      "pay": null,
+      "isiKonum": "elektrik",
+      "durum": "kapali"
+    },
+    {
+      "id": "t1>atsa",
+      "source": "t1",
+      "target": "atsa",
+      "tip": "kablo",
+      "uzunluk": 20,
+      "akimKapasitesi": 4000,
+      "r": 0.02,
+      "x": 0.02,
+      "gerilim": 400,
+      "pay": 100,
+      "isiKonum": "elektrik",
+      "durum": "kapali"
+    },
+    {
+      "id": "gen>atsa",
+      "source": "gen",
+      "target": "atsa",
+      "tip": "kablo",
+      "uzunluk": 20,
+      "akimKapasitesi": 4000,
+      "r": 0.02,
+      "x": 0.02,
+      "gerilim": 400,
+      "pay": 0,
+      "isiKonum": "elektrik",
+      "durum": "kapali"
+    },
+    {
+      "id": "atsa>mdba",
+      "source": "atsa",
+      "target": "mdba",
+      "tip": "kablo",
+      "uzunluk": 20,
+      "akimKapasitesi": 4000,
+      "r": 0.02,
+      "x": 0.02,
+      "gerilim": 400,
+      "pay": null,
+      "isiKonum": "elektrik",
+      "durum": "kapali"
+    },
+    {
+      "id": "t2>mdbb",
+      "source": "t2",
+      "target": "mdbb",
+      "tip": "kablo",
+      "uzunluk": 20,
+      "akimKapasitesi": 4000,
+      "r": 0.02,
+      "x": 0.02,
+      "gerilim": 400,
+      "pay": null,
+      "isiKonum": "elektrik",
+      "durum": "kapali"
+    },
+    {
+      "id": "mdba>upsa",
+      "source": "mdba",
+      "target": "upsa",
+      "tip": "kablo",
+      "uzunluk": 20,
+      "akimKapasitesi": 4000,
+      "r": 0.02,
+      "x": 0.02,
+      "gerilim": 400,
+      "pay": null,
+      "isiKonum": "elektrik",
+      "durum": "kapali"
+    },
+    {
+      "id": "mdbb>upsb",
+      "source": "mdbb",
+      "target": "upsb",
+      "tip": "kablo",
+      "uzunluk": 20,
+      "akimKapasitesi": 4000,
+      "r": 0.02,
+      "x": 0.02,
+      "gerilim": 400,
+      "pay": null,
+      "isiKonum": "elektrik",
+      "durum": "kapali"
+    },
+    {
+      "id": "upsa>it",
+      "source": "upsa",
+      "target": "it",
+      "tip": "kablo",
+      "uzunluk": 20,
+      "akimKapasitesi": 4000,
+      "r": 0.02,
+      "x": 0.02,
+      "gerilim": 400,
+      "pay": null,
+      "isiKonum": "elektrik",
+      "durum": "kapali"
+    },
+    {
+      "id": "upsb>it",
+      "source": "upsb",
+      "target": "it",
+      "tip": "kablo",
+      "uzunluk": 20,
+      "akimKapasitesi": 4000,
+      "r": 0.02,
+      "x": 0.02,
+      "gerilim": 400,
+      "pay": null,
+      "isiKonum": "elektrik",
+      "durum": "kapali"
+    },
+    {
+      "id": "mdbb>chiller",
+      "source": "mdbb",
+      "target": "chiller",
+      "tip": "kablo",
+      "uzunluk": 20,
+      "akimKapasitesi": 4000,
+      "r": 0.02,
+      "x": 0.02,
+      "gerilim": 400,
+      "pay": null,
+      "isiKonum": "elektrik",
+      "durum": "kapali"
+    },
+    {
+      "id": "mdba>mdbb",
+      "source": "mdba",
+      "target": "mdbb",
+      "tip": "kablo",
+      "uzunluk": 20,
+      "akimKapasitesi": 4000,
+      "r": 0.02,
+      "x": 0.02,
+      "gerilim": 400,
+      "pay": null,
+      "isiKonum": "elektrik",
+      "durum": "acik"
+    },
+    {
+      "id": "mdbb>mdba",
+      "source": "mdbb",
+      "target": "mdba",
+      "tip": "kablo",
+      "uzunluk": 20,
+      "akimKapasitesi": 4000,
+      "r": 0.02,
+      "x": 0.02,
+      "gerilim": 400,
+      "pay": null,
+      "isiKonum": "elektrik",
+      "durum": "acik"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "sen_t2",
+      "ad": "Trafo B arızası (kuplaj açık)",
+      "failedNodes": [
+        "t2"
+      ],
+      "edgeStates": {}
+    },
+    {
+      "id": "sen_t2k",
+      "ad": "Trafo B arızası + MDB-A→MDB-B kuplajı kapalı",
+      "failedNodes": [
+        "t2"
+      ],
+      "edgeStates": {
+        "mdba>mdbb": "kapali"
+      }
+    },
+    {
+      "id": "sen_grid",
+      "ad": "Şebeke kesintisi (jeneratör + kuplaj)",
+      "failedNodes": [
+        "grid"
+      ],
+      "edgeStates": {
+        "mdba>mdbb": "kapali"
+      }
+    }
+  ]
+}

@@ -221,6 +221,16 @@ export function TableView() {
       set: (e, v) => updateEdgeData(e.id, { pay: typeof v === 'number' ? v : null }),
     },
     {
+      header: tr.line.durum,
+      kind: 'select',
+      options: [
+        { value: 'kapali', label: tr.senaryo.kapali },
+        { value: 'acik', label: tr.senaryo.acik },
+      ],
+      get: (e) => e.data?.durum ?? 'kapali',
+      set: (e, v) => updateEdgeData(e.id, { durum: v === 'acik' ? 'acik' : 'kapali' }),
+    },
+    {
       header: tr.line.isiKonum,
       kind: 'select',
       options: HEAT_LOCATIONS.map((h) => ({

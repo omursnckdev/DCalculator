@@ -11,7 +11,7 @@ function node(id: string, type: EquipmentType, params: Params = {}): ProjectNode
 function edge(source: string, target: string, over: Partial<ProjectEdge> = {}): ProjectEdge {
   return {
     id: `${source}>${target}`, source, target, tip: 'kablo', uzunluk: 10, akimKapasitesi: 1e6,
-    r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik', ...over,
+    r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali', ...over,
   }
 }
 

@@ -23,6 +23,7 @@ function edge(source: string, target: string, over: Partial<ProjectEdge> = {}): 
     gerilim: 400,
     pay: null,
     isiKonum: 'elektrik',
+    durum: 'kapali',
     ...over,
   }
 }

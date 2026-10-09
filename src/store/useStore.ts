@@ -20,6 +20,8 @@ import type {
   LineEdge,
   ParamValue,
   Project,
+  Scenario,
+  EdgeState,
 } from '../model/types'
 import { saveProjectToDb } from './persistence'
 
@@ -35,6 +37,9 @@ interface State {
   nodes: EquipmentNode[]
   edges: LineEdge[]
   dirty: boolean
+  scenarios: Scenario[]
+  /** Canvas ve tüm sonuçların gösterdiği senaryo; null = temel durum (kaydedilmez). */
+  activeScenarioId: string | null
   /** loadProject her çağrıldığında artar; canvas görünümü sığdırmak için dinler. */
   viewTick: number
 
@@ -52,6 +57,15 @@ interface State {
   selectEdge: (id: string) => void
   setProjectName: (name: string) => void
 
+  addScenario: (init?: Partial<Omit<Scenario, 'id'>>) => string
+  updateScenario: (id: string, patch: Partial<Omit<Scenario, 'id'>>) => void
+  deleteScenario: (id: string) => void
+  setActiveScenario: (id: string | null) => void
+  /** Aktif senaryoda ekipmanı arızalı işaretler / kaldırır. */
+  setNodeFailed: (nodeId: string, failed: boolean) => void
+  /** Aktif senaryo varsa onun anahtar durumunu, yoksa temel durumu değiştirir. */
+  setEdgeState: (edgeId: string, state: EdgeState) => void
+
   getProject: () => Project
   loadProject: (p: Project) => void
   newProject: () => void
@@ -67,6 +81,8 @@ export const useStore = create<State>((set, get) => ({
   nodes: [],
   edges: [],
   dirty: false,
+  scenarios: [],
+  activeScenarioId: null,
   viewTick: 0,
 
   onNodesChange: (changes) => {
@@ -180,6 +196,50 @@ export const useStore = create<State>((set, get) => ({
       edges: s.edges.map((e) => ({ ...e, selected: e.id === id })),
     })),
 
+  addScenario: (init) => {
+    const id = newId('sen')
+    const n = get().scenarios.length + 1
+    const sc: Scenario = { id, ad: init?.ad ?? `Senaryo ${n}`, failedNodes: init?.failedNodes ?? [], edgeStates: init?.edgeStates ?? {} }
+    set((s) => ({ scenarios: [...s.scenarios, sc], activeScenarioId: id, dirty: true }))
+    return id
+  },
+
+  updateScenario: (id, patch) =>
+    set((s) => ({ scenarios: s.scenarios.map((x) => (x.id === id ? { ...x, ...patch } : x)), dirty: true })),
+
+  deleteScenario: (id) =>
+    set((s) => ({
+      scenarios: s.scenarios.filter((x) => x.id !== id),
+      activeScenarioId: s.activeScenarioId === id ? null : s.activeScenarioId,
+      dirty: true,
+    })),
+
+  setActiveScenario: (id) => set({ activeScenarioId: id }),
+
+  setNodeFailed: (nodeId, failed) => {
+    const { activeScenarioId, scenarios } = get()
+    const sc = scenarios.find((x) => x.id === activeScenarioId)
+    if (!sc) return
+    const set_ = new Set(sc.failedNodes)
+    if (failed) set_.add(nodeId)
+    else set_.delete(nodeId)
+    get().updateScenario(sc.id, { failedNodes: [...set_] })
+  },
+
+  setEdgeState: (edgeId, state) => {
+    const { activeScenarioId, scenarios, edges } = get()
+    const sc = scenarios.find((x) => x.id === activeScenarioId)
+    if (!sc) {
+      get().updateEdgeData(edgeId, { durum: state })
+      return
+    }
+    const base = edges.find((e) => e.id === edgeId)?.data?.durum ?? 'kapali'
+    const next = { ...sc.edgeStates }
+    if (state === base) delete next[edgeId]
+    else next[edgeId] = state
+    get().updateScenario(sc.id, { edgeStates: next })
+  },
+
   setProjectName: (name) => set({ projectName: name, dirty: true }),
 
   getProject: () => {
@@ -192,6 +252,7 @@ export const useStore = create<State>((set, get) => ({
       updatedAt: new Date().toISOString(),
       nodes: toProjectNodes(s.nodes),
       edges: toProjectEdges(s.edges),
+      scenarios: s.scenarios,
     }
   },
 
@@ -203,6 +264,8 @@ export const useStore = create<State>((set, get) => ({
       createdAt: p.createdAt,
       nodes: fromProjectNodes(p.nodes),
       edges: fromProjectEdges(p.edges),
+      scenarios: p.scenarios,
+      activeScenarioId: null,
       dirty: false,
     })),
 

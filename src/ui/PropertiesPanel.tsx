@@ -88,6 +88,9 @@ export function PropertiesPanel() {
   const updateNodeParam = useStore((s) => s.updateNodeParam)
   const updateEdgeData = useStore((s) => s.updateEdgeData)
   const deleteSelection = useStore((s) => s.deleteSelection)
+  const activeScenario = useStore((s) => s.scenarios.find((x) => x.id === s.activeScenarioId))
+  const setNodeFailed = useStore((s) => s.setNodeFailed)
+  const setEdgeState = useStore((s) => s.setEdgeState)
 
   const node = useMemo(() => nodes.find((n) => n.selected), [nodes])
   const edge = useMemo(() => (node ? undefined : edges.find((e) => e.selected)), [node, edges])
@@ -105,6 +108,16 @@ export function PropertiesPanel() {
           <p className="mb-3 text-xs text-slate-500">
             {tr.props.type}: {EQUIPMENT[node.data.kind].label}
           </p>
+          {activeScenario && (
+            <label className="mb-3 flex items-center gap-2 rounded border border-red-200 bg-red-50 px-2 py-1.5 text-sm text-red-800">
+              <input
+                type="checkbox"
+                checked={activeScenario.failedNodes.includes(node.id)}
+                onChange={(e) => setNodeFailed(node.id, e.target.checked)}
+              />
+              {tr.senaryo.failedCheck}
+            </label>
+          )}
           <Row label={tr.props.ad}>
             <input
               className={inputCls}
@@ -251,6 +264,16 @@ export function PropertiesPanel() {
                 updateEdgeData(edge.id, { pay: Number.isFinite(v) ? v : null })
               }}
             />
+          </Row>
+          <Row label={tr.line.durum}>
+            <select
+              className={inputCls}
+              value={activeScenario?.edgeStates[edge.id] ?? edge.data.durum}
+              onChange={(e) => setEdgeState(edge.id, e.target.value as 'kapali' | 'acik')}
+            >
+              <option value="kapali">{tr.senaryo.kapali}</option>
+              <option value="acik">{tr.senaryo.acik}</option>
+            </select>
           </Row>
           <Row label={tr.line.isiKonum}>
             <select

@@ -1,5 +1,5 @@
 /** Hesap motoru girdi/çıktı tipleri. React'a bağımlılığı yoktur. */
-import type { HeatLocation, ProjectEdge, ProjectNode } from '../model/types'
+import type { HeatLocation, ProjectEdge, ProjectNode, Scenario } from '../model/types'
 
 export interface Model {
   nodes: ProjectNode[]
@@ -42,6 +42,12 @@ export interface NodeResult {
   id: string
   /** Döngü içinde (veya döngüden beslenen) düğüm: hesaplanamadı. */
   cyclic: boolean
+  /** Senaryoda arızalı kabul edilen ekipman. */
+  failed: boolean
+  /** Bir kaynaktan canlı bir yolla besleniyor mu (arıza ve açık anahtarlar dahil). */
+  energized: boolean
+  /** Yük düğümü enerjisizse kaybedilen peak yük, kW (yoksa 0). */
+  unservedKw: number
   /** Düğüm çıkışındaki (alt tarafındaki) yük, kW. */
   itKw: number
   mechKw: number
@@ -73,6 +79,8 @@ export interface EdgeResult {
   id: string
   /** Hedef düğümün talebinden bu hatta düşen pay, 0..1. */
   share: number
+  /** Hat üzerinden güç akabiliyor mu (kaynak enerjili ve hedef sağlam). */
+  live: boolean
   p: number
   q: number
   kva: number
@@ -109,12 +117,20 @@ export interface Totals {
   kva: number
 }
 
+export interface Unserved {
+  itKw: number
+  mechKw: number
+  totalKw: number
+}
+
 export interface Analysis {
   nodes: Record<string, NodeResult>
   edges: Record<string, EdgeResult>
   issues: Issue[]
   /** Kaynak düğümlerden (şebeke/jeneratör) çekilen toplam. */
   totals: Totals
+  /** Enerjisiz kalan (kaybedilen) yükler. */
+  unserved: Unserved
   /** Mekân bazında ısıl yük (kW). */
   heat: HeatSummary
   losses: LossBreakdown
@@ -122,7 +138,7 @@ export interface Analysis {
   pue?: number
 }
 
-export type { HeatLocation }
+export type { HeatLocation, Scenario }
 
 export interface Thresholds {
   /** Bu doluluktan (%) itibaren sarı. */

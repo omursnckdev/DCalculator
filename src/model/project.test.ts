@@ -20,7 +20,7 @@ function sample(): Project {
     { id: 'b', type: 'mdb', ad: 'AG', etiket: '', grup: '', notlar: 'not', x: 40, y: 240, params: { nominalAkim: 4000 } },
   ]
   p.edges = [
-    { id: 'e1', source: 'a', target: 'b', tip: 'busbar', uzunluk: 12, akimKapasitesi: 4000, r: 0.02, x: 0.05, gerilim: 400, pay: null, isiKonum: 'elektrik' },
+    { id: 'e1', source: 'a', target: 'b', tip: 'busbar', uzunluk: 12, akimKapasitesi: 4000, r: 0.02, x: 0.05, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali' },
   ]
   return p
 }
@@ -79,6 +79,36 @@ describe('şema sürümü', () => {
     const p = sample()
     p.edges[0].pay = 50
     expect(parseProject(serializeProject(p)).edges[0].pay).toBe(50)
+  })
+})
+
+describe('senaryolar (v4)', () => {
+  it('v3 dosyasına durum ve boş senaryo listesi ekler', () => {
+    const v3 = {
+      schemaVersion: 3,
+      nodes: [
+        { id: 'a', type: 'trafo', ad: 'T', etiket: '', grup: '', notlar: '', x: 0, y: 0, params: {} },
+        { id: 'b', type: 'mdb', ad: 'M', etiket: '', grup: '', notlar: '', x: 0, y: 100, params: {} },
+      ],
+      edges: [{ id: 'e', source: 'a', target: 'b', tip: 'kablo', uzunluk: 5, akimKapasitesi: 100, r: 0.1, x: 0.1, gerilim: 400, pay: null, isiKonum: 'elektrik' }],
+    }
+    const p = migrate(v3)
+    expect(p.schemaVersion).toBe(SCHEMA_VERSION)
+    expect(p.edges[0].durum).toBe('kapali')
+    expect(p.scenarios).toEqual([])
+  })
+
+  it('senaryoları kaydeder; var olmayan ekipman/hat başvurularını atar', () => {
+    const p = sample()
+    p.scenarios = [{ id: 's1', ad: 'T1 arıza', failedNodes: ['a'], edgeStates: { e1: 'acik' } }]
+    expect(parseProject(serializeProject(p)).scenarios).toEqual(p.scenarios)
+
+    const bad = JSON.parse(serializeProject(p))
+    bad.scenarios[0].failedNodes = ['a', 'yok']
+    bad.scenarios[0].edgeStates = { e1: 'acik', hayalet: 'acik', e2: 'yarim' }
+    const out = migrate(bad)
+    expect(out.scenarios[0].failedNodes).toEqual(['a'])
+    expect(out.scenarios[0].edgeStates).toEqual({ e1: 'acik' })
   })
 })
 
