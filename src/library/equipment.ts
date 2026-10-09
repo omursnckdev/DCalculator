@@ -9,7 +9,7 @@ import type { EquipmentType, Params } from '../model/types'
  * "Açık Sorular" 3, 5 ve 6.
  */
 
-export type PaletteGroup = 'kaynak' | 'dagitim' | 'ups' | 'yuk'
+export type PaletteGroup = 'kaynak' | 'dagitim' | 'koruma' | 'ups' | 'yuk'
 
 export interface NumberField {
   kind: 'number'
@@ -205,6 +205,54 @@ const defs: EquipmentDef[] = [
     summary: panelSummary,
   },
   {
+    type: 'kesici',
+    label: tr.ekipman.kesici,
+    group: 'koruma',
+    hasInput: true,
+    hasOutput: true,
+    color: '#b91c1c',
+    // Açık kesici hattı keser (normalde açık bypass/kuplaj/load bank gibi). Kapalıysa geçirgendir.
+    defaults: { tip: 'ACB', nominalAkim: 1600, kutup: '4P', durum: 'kapali', gerilim: 400 },
+    fields: [
+      { kind: 'select', key: 'tip', label: A.kesiciTip, options: [
+        { value: 'ACB', label: 'ACB' },
+        { value: 'MCCB', label: 'MCCB' },
+        { value: 'Ayırıcı', label: A.ayirici },
+      ] },
+      n('nominalAkim', A.nominalAkim, 'A', { min: 0, step: 10 }),
+      { kind: 'select', key: 'kutup', label: A.kutup, options: [
+        { value: '3P', label: '3P' },
+        { value: '4P', label: '4P' },
+      ] },
+      { kind: 'select', key: 'durum', label: A.kesiciDurum, options: [
+        { value: 'kapali', label: tr.senaryo.kapali },
+        { value: 'acik', label: tr.senaryo.acik },
+      ] },
+      voltage,
+    ],
+    summary: (p) => `${p.tip ?? 'ACB'} ${fmt(num(p, 'nominalAkim'))} A ${p.kutup ?? ''} · ${p.durum === 'acik' ? tr.senaryo.acik : tr.senaryo.kapali}`,
+  },
+  {
+    type: 'yardimci',
+    label: tr.ekipman.yardimci,
+    group: 'koruma',
+    hasInput: true,
+    hasOutput: false,
+    color: '#64748b',
+    // Güç akışını etkilemeyen ölçü/koruma elemanı (akım trafosu, sayaç, parafudr...).
+    defaults: { altTip: 'akimTrafosu', gerilim: 400 },
+    fields: [
+      { kind: 'select', key: 'altTip', label: A.yardimciTip, options: [
+        { value: 'akimTrafosu', label: A.akimTrafosu },
+        { value: 'sayac', label: A.sayac },
+        { value: 'pqm', label: A.pqm },
+        { value: 'parafudr', label: A.parafudr },
+      ] },
+      voltage,
+    ],
+    summary: (p) => ({ akimTrafosu: A.akimTrafosu, sayac: A.sayac, pqm: A.pqm, parafudr: A.parafudr }[String(p.altTip)] ?? ''),
+  },
+  {
     type: 'ups',
     label: tr.ekipman.ups,
     group: 'ups',
@@ -324,7 +372,7 @@ const defs: EquipmentDef[] = [
  * Bağlantı noktası (port) sayıları: giriş üstte, çıkış altta. Her porta tek hat bağlanır.
  * Varsayılanlar genel tipiktir; ekipman başına "Giriş sayısı / Çıkış sayısı" ile değiştirilir.
  */
-export const MAX_PORTS = 12
+export const MAX_PORTS = 24
 const PORT_DEFAULTS: Record<EquipmentType, { in: number; out: number }> = {
   sebeke: { in: 0, out: 1 },
   jenerator: { in: 0, out: 1 },
@@ -337,6 +385,8 @@ const PORT_DEFAULTS: Record<EquipmentType, { in: number; out: number }> = {
   pdu: { in: 2, out: 6 },
   ats: { in: 2, out: 1 },
   sts: { in: 2, out: 1 },
+  kesici: { in: 1, out: 1 },
+  yardimci: { in: 1, out: 0 },
   itYuku: { in: 1, out: 0 },
   mekanikYuk: { in: 1, out: 0 },
   aydinlatma: { in: 1, out: 0 },
@@ -360,7 +410,7 @@ export const EQUIPMENT: Record<EquipmentType, EquipmentDef> = Object.fromEntries
   defs.map((d) => [d.type, d]),
 ) as Record<EquipmentType, EquipmentDef>
 
-export const PALETTE_GROUPS: PaletteGroup[] = ['kaynak', 'dagitim', 'ups', 'yuk']
+export const PALETTE_GROUPS: PaletteGroup[] = ['kaynak', 'dagitim', 'koruma', 'ups', 'yuk']
 
 export function defsInGroup(group: PaletteGroup): EquipmentDef[] {
   return defs.filter((d) => d.group === group)

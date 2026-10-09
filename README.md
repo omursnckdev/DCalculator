@@ -63,7 +63,18 @@ Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmele
   hat panelinden değiştirilebilir. Port sayısı bağlı portların altına indirilemez.
 - **ATS/STS besleme:** düğüm kartında "Besleme: <kaynak> (G1)" yazar; sağ panelde **Girişler** tablosu her girişin
   durumunu (aktif/yedek/enerjisiz/açık) gösterir, **Tercih edilen kaynak** seçimi pay yazar. Arıza senaryosunda canlı değişir.
+- **Kesici / ayırıcı** düğümü: ACB/MCCB/ayırıcı, nominal akım ve Açık/Kapalı durum. Kartındaki yuvarlak düğmeyle açılıp kapanır
+  (senaryo açıksa yalnız o senaryoda). Açık kesici hattı keser; ölçü/koruma elemanları (CT, sayaç, parafudr) güç akışını etkilemez.
+- Hatlara **ad ve açıklama** verilebilir (ör. `BB/MSB.PL1/01`).
 - Hat etiketindeki yuvarlak düğme anahtarı açar/kapar (senaryo açıksa yalnız o senaryoda).
+
+## HDC02 PL1 şeması
+
+`examples/hdc02-pl1.dcalc.json`: HDC02-ARP-SC-E-DD-ZZ-ZZ-POWR-6002 "LV Distribution Schematic Power Line-up 1" DXF'inden üretildi
+(TX.PL1 3,15 MVA, GEN.PL1.1/.2, MSB.PL1 5000 A, UPS.PL1.1/.2/.3, UDP.PL1.1/.2/.3, 4 STS panosu, catcher, CRP.PL1.1, 33 ACB,
+8 ayırıcı, MCCB'ler, CT/sayaç/parafudr; bara ve kablo adları hat üzerinde). Ekipman ve değerler şemadan, **yükler ve bazı
+cihaz değerleri varsayımdır** (düğüm notlarında "Varsayım:"). Beş kayıtlı senaryo içerir (TX arızası, UPS arızası, bakım bypass...).
+Yeniden üretmek için: `python3 scripts/build-hdc02-pl1.py`.
 
 ## Örnek proje
 

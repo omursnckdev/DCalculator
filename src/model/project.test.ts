@@ -20,7 +20,7 @@ function sample(): Project {
     { id: 'b', type: 'mdb', ad: 'AG', etiket: '', grup: '', notlar: 'not', x: 40, y: 240, params: { nominalAkim: 4000 } },
   ]
   p.edges = [
-    { id: 'e1', source: 'a', target: 'b', kaynakPort: 0, hedefPort: 0, tip: 'busbar', uzunluk: 12, akimKapasitesi: 4000, r: 0.02, x: 0.05, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali' },
+    { id: 'e1', source: 'a', target: 'b', kaynakPort: 0, hedefPort: 0, tip: 'busbar', uzunluk: 12, akimKapasitesi: 4000, r: 0.02, x: 0.05, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali', ad: '', aciklama: '' },
   ]
   return p
 }
@@ -82,6 +82,37 @@ describe('şema sürümü', () => {
   })
 })
 
+describe('hat adı ve kesici durumu (v6)', () => {
+  it('v5 dosyasına ad/aciklama ve senaryolara nodeStates ekler', () => {
+    const v5 = {
+      schemaVersion: 5,
+      nodes: [
+        { id: 'a', type: 'trafo', ad: 'T', etiket: '', grup: '', notlar: '', x: 0, y: 0, params: {} },
+        { id: 'b', type: 'mdb', ad: 'M', etiket: '', grup: '', notlar: '', x: 0, y: 100, params: {} },
+      ],
+      edges: [{ id: 'e', source: 'a', target: 'b', kaynakPort: 0, hedefPort: 0, tip: 'kablo', uzunluk: 5, akimKapasitesi: 100, r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali' }],
+      scenarios: [{ id: 's', ad: 'S', failedNodes: [], edgeStates: {} }],
+    }
+    const p = migrate(v5)
+    expect(p.schemaVersion).toBe(SCHEMA_VERSION)
+    expect(p.edges[0]).toMatchObject({ ad: '', aciklama: '' })
+    expect(p.scenarios[0].nodeStates).toEqual({})
+  })
+
+  it('hat adı ve açıklaması JSON gidiş-dönüşünde korunur; nodeStates yalnız var olan düğümlere', () => {
+    const p = sample()
+    p.edges[0].ad = 'BB/MSB.PL1/01'
+    p.edges[0].aciklama = '1600 A BUSBAR (5P)'
+    p.scenarios = [{ id: 's', ad: 'S', failedNodes: [], edgeStates: {}, nodeStates: { a: 'acik' } }]
+    const back = parseProject(serializeProject(p))
+    expect(back.edges[0]).toMatchObject({ ad: 'BB/MSB.PL1/01', aciklama: '1600 A BUSBAR (5P)' })
+    expect(back.scenarios[0].nodeStates).toEqual({ a: 'acik' })
+    const bad = JSON.parse(serializeProject(p))
+    bad.scenarios[0].nodeStates = { a: 'acik', yok: 'acik', b: 'yarim' }
+    expect(migrate(bad).scenarios[0].nodeStates).toEqual({ a: 'acik' })
+  })
+})
+
 describe('portlar (v5)', () => {
   const v4 = () => ({
     schemaVersion: 4,
@@ -92,9 +123,9 @@ describe('portlar (v5)', () => {
       { id: 'd', type: 'itYuku', ad: 'IT', etiket: '', grup: '', notlar: '', x: 0, y: 200, params: {} },
     ],
     edges: [
-      { id: 'e1', source: 'a', target: 'b', tip: 'kablo', uzunluk: 5, akimKapasitesi: 100, r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali' },
-      { id: 'e2', source: 'c', target: 'b', tip: 'kablo', uzunluk: 5, akimKapasitesi: 100, r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali' },
-      { id: 'e3', source: 'b', target: 'd', tip: 'kablo', uzunluk: 5, akimKapasitesi: 100, r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali' },
+      { id: 'e1', source: 'a', target: 'b', tip: 'kablo', uzunluk: 5, akimKapasitesi: 100, r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali', ad: '', aciklama: '' },
+      { id: 'e2', source: 'c', target: 'b', tip: 'kablo', uzunluk: 5, akimKapasitesi: 100, r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali', ad: '', aciklama: '' },
+      { id: 'e3', source: 'b', target: 'd', tip: 'kablo', uzunluk: 5, akimKapasitesi: 100, r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali', ad: '', aciklama: '' },
     ],
   })
 
@@ -156,7 +187,7 @@ describe('senaryolar (v4)', () => {
 
   it('senaryoları kaydeder; var olmayan ekipman/hat başvurularını atar', () => {
     const p = sample()
-    p.scenarios = [{ id: 's1', ad: 'T1 arıza', failedNodes: ['a'], edgeStates: { e1: 'acik' } }]
+    p.scenarios = [{ id: 's1', ad: 'T1 arıza', failedNodes: ['a'], edgeStates: { e1: 'acik' }, nodeStates: {} }]
     expect(parseProject(serializeProject(p)).scenarios).toEqual(p.scenarios)
 
     const bad = JSON.parse(serializeProject(p))

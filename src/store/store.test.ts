@@ -186,7 +186,7 @@ describe('portlar', () => {
     useStore.getState().updateNodeParam(mdb, 'cikisSayisi', 1)
     expect(useStore.getState().nodes.find((n) => n.id === mdb)?.data.params.cikisSayisi).toBe(4)
     useStore.getState().updateNodeParam(mdb, 'cikisSayisi', 99)
-    expect(useStore.getState().nodes.find((n) => n.id === mdb)?.data.params.cikisSayisi).toBe(12)
+    expect(useStore.getState().nodes.find((n) => n.id === mdb)?.data.params.cikisSayisi).toBe(24)
   })
 
   it('hat başka boş porta taşınır, doluya taşınamaz', () => {
@@ -215,6 +215,23 @@ describe('portlar', () => {
     const pays = Object.fromEntries(useStore.getState().edges.map((e) => [e.id, e.data?.pay]))
     expect(pays[e2.id]).toBe(100)
     expect(pays[e1.id]).toBe(0)
+  })
+})
+
+describe('kesici durumu', () => {
+  it('senaryo yokken temel durumu, varken yalnızca senaryoyu değiştirir', () => {
+    const s = useStore.getState()
+    const cb = s.addNode('kesici', 0, 0)
+    useStore.getState().setNodeSwitch(cb, 'acik')
+    expect(useStore.getState().nodes.find((n) => n.id === cb)?.data.params.durum).toBe('acik')
+    useStore.getState().setNodeSwitch(cb, 'kapali')
+
+    useStore.getState().addScenario()
+    useStore.getState().setNodeSwitch(cb, 'acik')
+    expect(useStore.getState().nodes.find((n) => n.id === cb)?.data.params.durum).toBe('kapali') // temel dokunulmadı
+    expect(useStore.getState().scenarios[0].nodeStates).toEqual({ [cb]: 'acik' })
+    useStore.getState().setNodeSwitch(cb, 'kapali') // temele dönünce fark silinir
+    expect(useStore.getState().scenarios[0].nodeStates).toEqual({})
   })
 })
 

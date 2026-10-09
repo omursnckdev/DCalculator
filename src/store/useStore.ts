@@ -70,6 +70,8 @@ interface State {
   setNodeFailed: (nodeId: string, failed: boolean) => void
   /** Aktif senaryo varsa onun anahtar durumunu, yoksa temel durumu değiştirir. */
   setEdgeState: (edgeId: string, state: EdgeState) => void
+  /** Kesici/ayırıcı düğümün durumu: aktif senaryo varsa onu, yoksa temel durumu değiştirir. */
+  setNodeSwitch: (nodeId: string, state: EdgeState) => void
 
   getProject: () => Project
   loadProject: (p: Project) => void
@@ -254,7 +256,7 @@ export const useStore = create<State>((set, get) => ({
   addScenario: (init) => {
     const id = newId('sen')
     const n = get().scenarios.length + 1
-    const sc: Scenario = { id, ad: init?.ad ?? `Senaryo ${n}`, failedNodes: init?.failedNodes ?? [], edgeStates: init?.edgeStates ?? {} }
+    const sc: Scenario = { id, ad: init?.ad ?? `Senaryo ${n}`, failedNodes: init?.failedNodes ?? [], edgeStates: init?.edgeStates ?? {}, nodeStates: init?.nodeStates ?? {} }
     set((s) => ({ scenarios: [...s.scenarios, sc], activeScenarioId: id, dirty: true }))
     return id
   },
@@ -293,6 +295,21 @@ export const useStore = create<State>((set, get) => ({
     if (state === base) delete next[edgeId]
     else next[edgeId] = state
     get().updateScenario(sc.id, { edgeStates: next })
+  },
+
+  setNodeSwitch: (nodeId, state) => {
+    const { activeScenarioId, scenarios, nodes } = get()
+    const sc = scenarios.find((x) => x.id === activeScenarioId)
+    if (!sc) {
+      get().updateNodeParam(nodeId, 'durum', state)
+      return
+    }
+    const baseRaw = nodes.find((n) => n.id === nodeId)?.data.params.durum
+    const base = baseRaw === 'acik' ? 'acik' : 'kapali'
+    const next = { ...sc.nodeStates }
+    if (state === base) delete next[nodeId]
+    else next[nodeId] = state
+    get().updateScenario(sc.id, { nodeStates: next })
   },
 
   setProjectName: (name) => set({ projectName: name, dirty: true }),

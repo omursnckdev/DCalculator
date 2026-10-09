@@ -183,6 +183,7 @@ export function TableView() {
   )
 
   const edgeCols: Col<LineEdge>[] = [
+    { header: tr.line.ad, kind: 'text', get: (e) => e.data?.ad ?? '', set: (e, v) => updateEdgeData(e.id, { ad: String(v ?? '') }) },
     { header: tr.table.from, kind: 'readonly', get: (e) => nameOf(e.source) },
     { header: tr.port.outPort, kind: 'readonly', get: (e) => portOf(e.sourceHandle) + 1 },
     { header: tr.table.to, kind: 'readonly', get: (e) => nameOf(e.target) },

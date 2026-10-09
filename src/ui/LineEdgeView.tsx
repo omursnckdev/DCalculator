@@ -58,7 +58,7 @@ export function LineEdgeView(props: EdgeProps<LineEdge>) {
               background: open ? '#fff' : '#16a34a',
             }}
           />
-          {busbar ? tr.line.busbar : tr.line.kablo}
+          {data?.ad || (busbar ? tr.line.busbar : tr.line.kablo)}
           {data ? ` · ${data.uzunluk} m` : ''}
           {r && r.live && r.share === 0 && (
             <span className="ml-1 rounded bg-amber-100 px-1 text-amber-800">{tr.port.state.yedek}</span>

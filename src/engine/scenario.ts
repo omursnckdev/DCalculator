@@ -55,7 +55,7 @@ export function runN1(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): N1Row[
   const nameOf = new Map(model.nodes.map((n) => [n.id, n.ad]))
 
   const build = (kind: 'node' | 'edge', id: string, label: string, scenario: Scenario): N1Row => {
-    const a = analyze(model, th, scenario)
+    const a = analyze(model, th, scenario, base)
     const { peak, overloads } = loadingSummary(a, model, th)
     const lostIt = Math.max(0, a.unserved.itKw - base.unserved.itKw)
     const lostMech = Math.max(0, a.unserved.mechKw - base.unserved.mechKw)
@@ -73,13 +73,13 @@ export function runN1(model: Model, th: Thresholds = DEFAULT_THRESHOLDS): N1Row[
 
   for (const n of model.nodes) {
     if (!EQUIPMENT[n.type].hasOutput) continue // yükler "arıza"ya aday değil
-    rows.push(build('node', n.id, n.ad, { id: `n1-${n.id}`, ad: n.ad, failedNodes: [n.id], edgeStates: {} }))
+    rows.push(build('node', n.id, n.ad, { id: `n1-${n.id}`, ad: n.ad, failedNodes: [n.id], edgeStates: {}, nodeStates: {} }))
   }
   for (const e of model.edges) {
     if (e.durum !== 'kapali') continue
     const state: Record<string, EdgeState> = { [e.id]: 'acik' }
     const label = `${nameOf.get(e.source) ?? e.source} → ${nameOf.get(e.target) ?? e.target}`
-    rows.push(build('edge', e.id, label, { id: `n1-${e.id}`, ad: label, failedNodes: [], edgeStates: state }))
+    rows.push(build('edge', e.id, label, { id: `n1-${e.id}`, ad: label, failedNodes: [], edgeStates: state, nodeStates: {} }))
   }
   return rows
 }

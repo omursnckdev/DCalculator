@@ -33,6 +33,8 @@ function edge(source: string, target: string, over: Partial<ProjectEdge> = {}): 
     pay: null,
     isiKonum: 'elektrik',
     durum: 'kapali',
+    ad: '',
+    aciklama: '',
     kaynakPort: nextPort(`${source}:out`),
     hedefPort: nextPort(`${target}:in`),
     ...over,

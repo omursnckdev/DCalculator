@@ -13,6 +13,8 @@ export const EQUIPMENT_TYPES = [
   'pdu',
   'ats',
   'sts',
+  'kesici',
+  'yardimci',
   'itYuku',
   'mekanikYuk',
   'aydinlatma',
@@ -67,6 +69,10 @@ export interface LineData extends Record<string, unknown> {
   isiKonum: HeatLocation
   /** Hattın ucundaki anahtar/kesicinin normal durumu; 'acik' hat yok sayılır. */
   durum: EdgeState
+  /** Hat adı (ör. BB/MSB.PL1/01, CBL/UDP.PL1.3/01). */
+  ad: string
+  /** Serbest açıklama (ör. 1600 A BUSBAR (5P), 2x(4x95)+95 mm² N2XH). */
+  aciklama: string
 }
 
 export type EquipmentNode = Node<EquipmentData, 'equipment'>
@@ -104,6 +110,8 @@ export interface Scenario {
   ad: string
   failedNodes: string[]
   edgeStates: Record<string, EdgeState>
+  /** Kesici/ayırıcı düğümlerinin durumunu bu senaryoda geçersiz kılar. */
+  nodeStates: Record<string, EdgeState>
 }
 
 export interface Project {

@@ -91,6 +91,8 @@ export async function buildWorkbook(project: Project, a: Analysis, scenarioName?
   // --- Hatlar --------------------------------------------------------------
   const wl = wb.addWorksheet(tr.export.sheetLines, { views: [{ state: 'frozen', ySplit: 1 }] })
   wl.addRow([
+    tr.line.ad,
+    tr.line.aciklama,
     tr.table.from,
     tr.table.to,
     tr.port.outPort,
@@ -114,6 +116,8 @@ export async function buildWorkbook(project: Project, a: Analysis, scenarioName?
   for (const e of project.edges) {
     const r = a.edges[e.id]
     wl.addRow([
+      e.ad,
+      e.aciklama,
       nameOf(e.source),
       nameOf(e.target),
       e.kaynakPort + 1,
@@ -134,7 +138,7 @@ export async function buildWorkbook(project: Project, a: Analysis, scenarioName?
       r?.lossKw ?? null,
     ])
   }
-  for (let c = 13; c <= 18; c++) wl.getColumn(c).numFmt = '#,##0.00'
+  for (let c = 15; c <= 20; c++) wl.getColumn(c).numFmt = '#,##0.00'
 
   // --- Özet ----------------------------------------------------------------
   const wsum = wb.addWorksheet(tr.export.sheetSummary)

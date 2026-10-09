@@ -21,10 +21,12 @@ function edge(source: string, target: string, over: Partial<ProjectEdge> = {}): 
   return {
     id: `${source}>${target}`, source, target, tip: 'kablo', uzunluk: 10, akimKapasitesi: 1e6,
     r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik', durum: 'kapali',
+    ad: '',
+    aciklama: '',
     kaynakPort: nextPort(`${source}:out`), hedefPort: nextPort(`${target}:in`), ...over,
   }
 }
-const scn = (failed: string[] = [], edgeStates: Scenario['edgeStates'] = {}): Scenario => ({ id: 's', ad: 's', failedNodes: failed, edgeStates })
+const scn = (failed: string[] = [], edgeStates: Scenario['edgeStates'] = {}): Scenario => ({ id: 's', ad: 's', failedNodes: failed, edgeStates, nodeStates: {} })
 const grid = (id: string) => node(id, 'sebeke', { gerilim: 400 })
 
 /**
@@ -425,3 +427,91 @@ describe('portlar', () => {
   })
 })
 
+
+describe('ATS/STS: açık tercih, jeneratör acil kuralını geçersiz kılar', () => {
+  /**
+   * UPS-A (jeneratörlü tarafta) ve catcher (normal kaynak) bir STS'ye giriyor; A tercihli (pay 100/0).
+   * Trafo arızalı, A tarafı jeneratörde: tercih edilen A (UPS) yük taşımaya devam eder, catcher boşta kalır.
+   */
+  const build = (prefA: boolean) => {
+    const pays = prefA ? { a: 100, b: 0 } : { a: null, b: null }
+    return {
+      nodes: [
+        grid('g'), node('gen', 'jenerator', { nominalKva: 1000, gerilim: 400 }), grid('catcher'),
+        node('tx', 'trafo', { nominalKva: 2000, primerGerilim: 400, sekonderGerilim: 400, bostaKayip: 0, yukKayip: 0, uk: 0 }),
+        node('ats', 'ats'), node('sts', 'sts'), node('it', 'itYuku', { kuruluKw: 200, pf: 1, df: 1 }),
+      ],
+      edges: [
+        edge('g', 'tx'), edge('tx', 'ats'), edge('gen', 'ats'), edge('ats', 'sts', { pay: pays.a }), edge('catcher', 'sts', { pay: pays.b }), edge('sts', 'it'),
+      ],
+    }
+  }
+
+  it('açık tercih (A %100): trafo arızasında jeneratör A tarafını taşır, catcher boşta', () => {
+    const a = analyze(build(true), undefined, scn(['tx']))
+    expect(a.nodes.gen.totalKw).toBeCloseTo(200, 6)
+    expect(a.nodes.catcher.totalKw).toBeCloseTo(0, 6)
+  })
+
+  it('tercih verilmemişse (otomatik) jeneratör acil kaynak kuralı işler: catcher devralır', () => {
+    const a = analyze(build(false), undefined, scn(['tx']))
+    expect(a.nodes.gen.totalKw).toBeCloseTo(0, 6)
+    expect(a.nodes.catcher.totalKw).toBeCloseTo(200, 6)
+  })
+})
+
+describe('kesici / ayırıcı düğümü', () => {
+  const chain = (durum: 'kapali' | 'acik') => ({
+    nodes: [
+      grid('g'), node('mdb', 'mdb'), node('cb', 'kesici', { tip: 'ACB', nominalAkim: 1000, kutup: '4P', durum, gerilim: 400 }),
+      node('it', 'itYuku', { kuruluKw: 100, pf: 1, df: 1 }), node('ct', 'yardimci', { altTip: 'akimTrafosu', gerilim: 400 }),
+    ],
+    edges: [edge('g', 'mdb'), edge('mdb', 'cb'), edge('cb', 'it'), edge('mdb', 'ct')],
+  })
+
+  it('kapalı kesici geçirgendir, akım doluluğunu hesaplar; ölçü elemanı güç çekmez', () => {
+    const a = analyze(chain('kapali'))
+    expect(a.nodes.cb.totalKw).toBeCloseTo(100, 6)
+    expect(a.nodes.cb.loadingPct).toBeCloseTo(((100000 / (Math.sqrt(3) * 400)) / 1000) * 100, 4) // ≈ %14,4
+    expect(a.nodes.ct.totalKw).toBe(0)
+    expect(a.issues.filter((i) => i.severity === 'error')).toEqual([])
+  })
+
+  it('açık kesici arızı değil, hattı keser: AÇIK, yük enerjisiz', () => {
+    const a = analyze(chain('acik'))
+    expect(a.nodes.cb.open).toBe(true)
+    expect(a.nodes.cb.failed).toBe(false)
+    expect(a.nodes.it.energized).toBe(false)
+    expect(a.totals.totalKw).toBe(0)
+    // açık anahtar 'kaynağa bağlı değil' hatası üretmez (yapısal bağlantı var)
+    expect(a.issues.some((i) => /hiçbir kaynağa/.test(i.message))).toBe(false)
+  })
+
+  it('temel durumda açık kesici yüzünden enerjisiz kalan yük uyarı olarak bildirilir (0 kW yükler hariç)', () => {
+    const a = analyze(chain('acik'))
+    expect(a.issues.some((i) => i.severity === 'warning' && /enerjisiz kaldı/.test(i.message))).toBe(true)
+    const zero = chain('acik')
+    zero.nodes[3].params.kuruluKw = 0
+    expect(analyze(zero).issues.some((i) => /enerjisiz kaldı/.test(i.message))).toBe(false)
+  })
+
+  it('senaryo kesici durumunu geçersiz kılar (kapalı -> açık, açık -> kapalı)', () => {
+    const open = analyze(chain('kapali'), undefined, { ...scn(), nodeStates: { cb: 'acik' } })
+    expect(open.nodes.it.energized).toBe(false)
+    expect(open.unserved.totalKw).toBeCloseTo(100, 6)
+    const close = analyze(chain('acik'), undefined, { ...scn(), nodeStates: { cb: 'kapali' } })
+    expect(close.nodes.it.energized).toBe(true)
+    expect(close.totals.totalKw).toBeCloseTo(100, 6)
+  })
+
+  it('kesici arızası N-1\'de yükü kaybettirir', () => {
+    const r = runN1(chain('kapali')).find((x) => x.id === 'cb')!
+    expect(r.lostItKw).toBeCloseTo(100, 6)
+  })
+
+  it('kesici nominal akımını aşan yük aşırı yük olarak işaretlenir', () => {
+    const m = chain('kapali')
+    m.nodes[3].params.kuruluKw = 800 // 1155 A > 1000 A
+    expect(analyze(m).nodes.cb.status).toBe('over')
+  })
+})

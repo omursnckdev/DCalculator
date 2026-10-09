@@ -229,6 +229,7 @@ export function PropertiesPanel() {
   const activeScenario = useStore((s) => s.scenarios.find((x) => x.id === s.activeScenarioId))
   const setNodeFailed = useStore((s) => s.setNodeFailed)
   const setEdgeState = useStore((s) => s.setEdgeState)
+  const setNodeSwitch = useStore((s) => s.setNodeSwitch)
 
   const node = useMemo(() => nodes.find((n) => n.selected), [nodes])
   const edge = useMemo(() => (node ? undefined : edges.find((e) => e.selected)), [node, edges])
@@ -281,12 +282,18 @@ export function PropertiesPanel() {
           {EQUIPMENT[node.data.kind].fields.map((f: FieldDef) => {
             const raw = node.data.params[f.key]
             if (f.kind === 'select') {
+              const isSwitch = node.data.kind === 'kesici' && f.key === 'durum'
+              const shown = isSwitch ? (activeScenario?.nodeStates[node.id] ?? raw) : raw
               return (
                 <Row key={f.key} label={f.label}>
                   <select
                     className={inputCls}
-                    value={String(raw ?? f.options[0].value)}
-                    onChange={(e) => updateNodeParam(node.id, f.key, e.target.value)}
+                    value={String(shown ?? f.options[0].value)}
+                    onChange={(e) =>
+                      isSwitch
+                        ? setNodeSwitch(node.id, e.target.value === 'acik' ? 'acik' : 'kapali')
+                        : updateNodeParam(node.id, f.key, e.target.value)
+                    }
                   >
                     {f.options.map((o) => (
                       <option key={o.value} value={o.value}>
@@ -402,6 +409,16 @@ export function PropertiesPanel() {
                 const v = e.target.valueAsNumber
                 updateEdgeData(edge.id, { pay: Number.isFinite(v) ? v : null })
               }}
+            />
+          </Row>
+          <Row label={tr.line.ad}>
+            <input className={inputCls} value={edge.data.ad} onChange={(e) => updateEdgeData(edge.id, { ad: e.target.value })} />
+          </Row>
+          <Row label={tr.line.aciklama}>
+            <input
+              className={inputCls}
+              value={edge.data.aciklama}
+              onChange={(e) => updateEdgeData(edge.id, { aciklama: e.target.value })}
             />
           </Row>
           <EdgePorts edgeId={edge.id} />

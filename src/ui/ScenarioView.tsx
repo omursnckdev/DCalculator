@@ -33,6 +33,7 @@ function ScenarioEditor({ sc }: { sc: Scenario }) {
   }
   const candidates = nodes.filter((n) => EQUIPMENT[n.data.kind].hasOutput && !sc.failedNodes.includes(n.id))
   const edgeCandidates = edges.filter((e) => !(e.id in sc.edgeStates))
+  const switchCandidates = nodes.filter((n) => n.data.kind === 'kesici' && !(n.id in sc.nodeStates))
 
   return (
     <div className="mt-3 grid gap-4 border-t border-slate-100 pt-3 md:grid-cols-2">
@@ -70,6 +71,31 @@ function ScenarioEditor({ sc }: { sc: Scenario }) {
       <div>
         <h4 className="mb-1 text-xs font-semibold text-slate-600">{tr.senaryo.switchTitle}</h4>
         <ul className="mb-2 space-y-1">
+          {Object.entries(sc.nodeStates).map(([id, state]) => (
+            <li key={`n-${id}`} className="flex items-center gap-2 text-sm">
+              <span className="min-w-0 flex-1 truncate">{nodeName(id)}</span>
+              <select
+                className={selectCls}
+                value={state}
+                onChange={(e) => updateScenario(sc.id, { nodeStates: { ...sc.nodeStates, [id]: e.target.value as EdgeState } })}
+              >
+                <option value="kapali">{tr.senaryo.kapali}</option>
+                <option value="acik">{tr.senaryo.acik}</option>
+              </select>
+              <button
+                type="button"
+                aria-label={`${nodeName(id)} ${tr.senaryo.remove}`}
+                className="text-slate-400 hover:text-red-600"
+                onClick={() => {
+                  const next = { ...sc.nodeStates }
+                  delete next[id]
+                  updateScenario(sc.id, { nodeStates: next })
+                }}
+              >
+                ×
+              </button>
+            </li>
+          ))}
           {Object.entries(sc.edgeStates).map(([id, state]) => (
             <li key={id} className="flex items-center gap-2 text-sm">
               <span className="min-w-0 flex-1 truncate">{edgeName(id)}</span>
@@ -96,6 +122,24 @@ function ScenarioEditor({ sc }: { sc: Scenario }) {
             </li>
           ))}
         </ul>
+        <select
+          className={`${selectCls} mr-2`}
+          value=""
+          aria-label={tr.senaryo.addBreaker}
+          onChange={(e) => {
+            const id = e.target.value
+            if (!id) return
+            const base = nodes.find((x) => x.id === id)?.data.params.durum === 'acik' ? 'acik' : 'kapali'
+            updateScenario(sc.id, { nodeStates: { ...sc.nodeStates, [id]: base === 'kapali' ? 'acik' : 'kapali' } })
+          }}
+        >
+          <option value="">{tr.senaryo.addBreaker}</option>
+          {switchCandidates.map((n) => (
+            <option key={n.id} value={n.id}>
+              {n.data.ad}
+            </option>
+          ))}
+        </select>
         <select
           className={selectCls}
           value=""
@@ -193,7 +237,7 @@ export function ScenarioView() {
                 onChange={(e) => updateScenario(sc.id, { ad: e.target.value })}
               />
               <span className="text-xs text-slate-500">
-                {tr.senaryo.nodes(sc.failedNodes.length)} · {tr.senaryo.switches(Object.keys(sc.edgeStates).length)}
+                {tr.senaryo.nodes(sc.failedNodes.length)} · {tr.senaryo.switches(Object.keys(sc.edgeStates).length + Object.keys(sc.nodeStates).length)}
               </span>
               <button
                 type="button"

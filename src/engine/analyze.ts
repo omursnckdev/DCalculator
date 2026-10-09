@@ -21,7 +21,7 @@ import type {
 
 const SQRT3 = Math.sqrt(3)
 const LOAD_TYPES: EquipmentType[] = ['itYuku', 'mekanikYuk', 'aydinlatma', 'genelYuk']
-const PANEL_TYPES: EquipmentType[] = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu', 'ats', 'sts']
+const PANEL_TYPES: EquipmentType[] = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu', 'ats', 'sts', 'kesici']
 const TRANSFER_TYPES: EquipmentType[] = ['ats', 'sts']
 
 // --- küçük yardımcılar -----------------------------------------------------
@@ -49,7 +49,16 @@ const tanPhi = (pf: number): number => {
 export const currentOf = (kva: number, volts: number): number =>
   volts > 0 ? (kva * 1000) / (SQRT3 * volts) : 0
 
-const fmt = (v: number, d = 2): string => v.toLocaleString('tr-TR', { maximumFractionDigits: d })
+// Intl.NumberFormat örneği pahalıdır; basamak sayısına göre önbelleğe alınır.
+const formatters = new Map<number, Intl.NumberFormat>()
+const fmt = (v: number, d = 2): string => {
+  let f = formatters.get(d)
+  if (!f) {
+    f = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: d })
+    formatters.set(d, f)
+  }
+  return f.format(v)
+}
 
 /** Düğüm parametresi; eksikse (eski dosyalar) kütüphane varsayılanına düşer. */
 function param(n: ProjectNode, key: string): number {
@@ -86,8 +95,15 @@ export function inVoltage(n: ProjectNode): number {
 /** Düğümün diversity faktörü (yalnız pano tiplerinde anlamlı; yoksa 1). */
 function diversityOf(n: ProjectNode): number {
   if (!PANEL_TYPES.includes(n.type)) return 1
-  const d = param(n, 'diversity')
-  return Number.isFinite(d) ? Math.min(1, Math.max(0, d)) : 1
+  const raw = n.params.diversity ?? EQUIPMENT[n.type].defaults.diversity
+  return typeof raw === 'number' && Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : 1
+}
+
+/** Kesici/ayırıcı düğümün etkin durumu (senaryo geçersiz kılmasıyla); diğer ekipman her zaman 'kapali'. */
+function switchState(n: ProjectNode, scenario?: Scenario): 'acik' | 'kapali' {
+  if (n.type !== 'kesici') return 'kapali'
+  const v = scenario?.nodeStates?.[n.id] ?? n.params.durum ?? EQUIPMENT.kesici.defaults.durum
+  return v === 'acik' ? 'acik' : 'kapali'
 }
 
 function heatLocation(n: ProjectNode): HeatLocation {
@@ -128,9 +144,10 @@ export function upsEfficiency(n: ProjectNode, loadFraction: number): number {
  * hat anahtar durumları senaryoya göre geçersiz kılınır; yük, sağlam hatlara yeniden
  * dağıtılır (2N, yedek jeneratör, ATS/STS, bara kuplajı).
  */
-export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scenario?: Scenario): Analysis {
+export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scenario?: Scenario, baseResult?: Analysis): Analysis {
   const nodeById = new Map(model.nodes.map((n) => [n.id, n]))
   const failed = new Set((scenario?.failedNodes ?? []).filter((id) => nodeById.has(id)))
+  const openSwitches = new Set(model.nodes.filter((n) => switchState(n, scenario) === 'acik').map((n) => n.id))
   const allEdges = model.edges.filter((e) => nodeById.has(e.source) && nodeById.has(e.target))
   // Açık anahtarlı hatlar şemada yok sayılır (hem akış hem döngü denetimi için).
   const edges = allEdges.filter((e) => (scenario?.edgeStates[e.id] ?? e.durum) === 'kapali')
@@ -195,7 +212,7 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scena
   const energized = new Map<string, boolean>()
   for (const id of order) {
     const n = nodeById.get(id)!
-    if (failed.has(id)) energized.set(id, false)
+    if (failed.has(id) || openSwitches.has(id)) energized.set(id, false)
     else if (!EQUIPMENT[n.type].hasInput) energized.set(id, true)
     else energized.set(id, incoming.get(id)!.some((e) => energized.get(e.source) === true))
   }
@@ -220,7 +237,10 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scena
     const liveAll = ins.filter(edgeLive)
     // Kaynak seçilen düğümlerde (pano, bara, ATS...) normal kaynaklı canlı giriş varsa acil
     // (jeneratör kaynaklı) girişler yük almaz. Çift kablolu yükler (2N) iki tarafı paylaşır.
-    const liveNormal = LOAD_TYPES.includes(n.type) ? [] : liveAll.filter((e) => normalFed.get(e.source) === true)
+    // ATS/STS'de açıkça tercih (pay) verilmişse kullanıcının tercihi geçerlidir; kural yalnız tercih yoksa işler.
+    const honorPreference = TRANSFER_TYPES.includes(n.type) && ins.some((e) => e.pay !== null)
+    const liveNormal =
+      LOAD_TYPES.includes(n.type) || honorPreference ? [] : liveAll.filter((e) => normalFed.get(e.source) === true)
     const live = liveNormal.length > 0 ? liveNormal : liveAll
     const isTransfer = TRANSFER_TYPES.includes(n.type)
     if (live.length === 0) {
@@ -424,6 +444,7 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scena
       id,
       cyclic: false,
       failed: failed.has(id),
+      open: openSwitches.has(id),
       energized: en,
       unservedKw,
       itKw: out.it.p,
@@ -450,6 +471,7 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scena
       id: n.id,
       cyclic: true,
       failed: failed.has(n.id),
+      open: openSwitches.has(n.id),
       energized: false,
       unservedKw: 0,
       itKw: 0,
@@ -702,6 +724,8 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scena
   }
 
   // 8) Kaybedilen yük: kaynaklara normalde ulaşan ama senaryoda enerjisiz kalan yükler.
+  // Senaryoda yalnızca temel durumda enerjili olup kaybedilen yükler 'kayıp' sayılır.
+  const base = scenario ? (baseResult ?? analyze(model, th)) : undefined
   const unserved: Unserved = { itKw: 0, mechKw: 0, totalKw: 0 }
   const lost: { ad: string; kw: number }[] = []
   for (const n of model.nodes) {
@@ -711,12 +735,14 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scena
     if (isIt) unserved.itKw += r.unservedKw
     else unserved.mechKw += r.unservedKw
     unserved.totalKw += r.unservedKw
-    if (scenario && reach.has(n.id)) lost.push({ ad: n.ad, kw: r.unservedKw })
+    // Senaryoda: temelde enerjili olup kaybedilenler. Temel durumda: kaynağa yapısal bağlantısı olup
+    // açık anahtar/kesici nedeniyle enerjisiz kalan (gücü > 0) yükler.
+    if (base ? base.nodes[n.id]?.energized : reach.has(n.id) && r.unservedKw > 0) lost.push({ ad: n.ad, kw: r.unservedKw })
   }
   if (lost.length > 0) {
     const kw = lost.reduce((a, l) => a + l.kw, 0)
     const names = lost.slice(0, 3).map((l) => l.ad).join(', ') + (lost.length > 3 ? '…' : '')
-    issues.push({ severity: 'error', message: tr.analiz.lostLoads(lost.length, fmt(kw), names) })
+    issues.push({ severity: scenario ? 'error' : 'warning', message: tr.analiz.lostLoads(lost.length, fmt(kw), names) })
   }
 
   const pue = totals.itKw > 0 ? totals.totalKw / totals.itKw : undefined

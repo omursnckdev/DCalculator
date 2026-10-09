@@ -16,7 +16,7 @@ import type {
  * Proje dosyası şema sürümü. Şema değiştiğinde artır ve `migrate` içine
  * bir dönüşüm adımı ekle (plan §12).
  */
-export const SCHEMA_VERSION = 5
+export const SCHEMA_VERSION = 6
 
 export function newId(prefix = 'id'): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`
@@ -46,6 +46,8 @@ export const DEFAULT_LINE: LineData = {
   pay: null,
   isiKonum: 'elektrik',
   durum: 'kapali',
+  ad: '',
+  aciklama: '',
 }
 
 // --- React Flow <-> Project dönüşümü -------------------------------------
@@ -174,6 +176,8 @@ function parseEdge(raw: unknown, i: number): ProjectEdge {
     isiKonum: HEAT_LOCATIONS.includes(raw.isiKonum as never)
       ? (raw.isiKonum as ProjectEdge['isiKonum'])
       : DEFAULT_LINE.isiKonum,
+    ad: str(raw.ad),
+    aciklama: str(raw.aciklama),
     kaynakPort: port(raw.kaynakPort),
     hedefPort: port(raw.hedefPort),
     durum: EDGE_STATES.includes(raw.durum as never) ? (raw.durum as ProjectEdge['durum']) : DEFAULT_LINE.durum,
@@ -222,12 +226,31 @@ function parseScenario(raw: unknown, nodeIds: Set<string>, edgeIds: Set<string>)
       if (edgeIds.has(k) && EDGE_STATES.includes(v as never)) states[k] = v as Scenario['edgeStates'][string]
     }
   }
+  const nodeStates: Scenario['nodeStates'] = {}
+  if (isObj(raw.nodeStates)) {
+    for (const [k, v] of Object.entries(raw.nodeStates)) {
+      if (nodeIds.has(k) && EDGE_STATES.includes(v as never)) nodeStates[k] = v as Scenario['nodeStates'][string]
+    }
+  }
   return {
     id,
     ad: str(raw.ad, 'Senaryo'),
     // Silinmiş ekipmana başvuruları sessizce at.
     failedNodes: failed.filter((x): x is string => typeof x === 'string' && nodeIds.has(x)),
     edgeStates: states,
+    nodeStates,
+  }
+}
+
+/** v5 -> v6: hatlara `ad`/`aciklama`, senaryolara `nodeStates` (kesici durumu) eklendi. */
+function v5ToV6(raw: Record<string, unknown>): Record<string, unknown> {
+  const edges = Array.isArray(raw.edges) ? raw.edges : []
+  const scenarios = Array.isArray(raw.scenarios) ? raw.scenarios : []
+  return {
+    ...raw,
+    schemaVersion: 6,
+    edges: edges.map((e) => (isObj(e) ? { ad: '', aciklama: '', ...e } : e)),
+    scenarios: scenarios.map((s) => (isObj(s) ? { nodeStates: {}, ...s } : s)),
   }
 }
 
@@ -281,6 +304,7 @@ export function migrate(input: unknown): Project {
   if (typeof version === 'number' && version < 3) raw = v2ToV3(raw)
   if (typeof version === 'number' && version < 4) raw = v3ToV4(raw)
   if (typeof version === 'number' && version < 5) raw = v4ToV5(raw)
+  if (typeof version === 'number' && version < 6) raw = v5ToV6(raw)
   if (!Array.isArray(raw.nodes) || !Array.isArray(raw.edges)) {
     throw new ProjectFormatError('nodes/edges listeleri eksik.')
   }

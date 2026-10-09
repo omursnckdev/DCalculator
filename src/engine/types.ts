@@ -44,6 +44,8 @@ export interface NodeResult {
   cyclic: boolean
   /** Senaryoda arızalı kabul edilen ekipman. */
   failed: boolean
+  /** Açık durumdaki kesici/ayırıcı (arıza değil; hattı keser). */
+  open: boolean
   /** Bir kaynaktan canlı bir yolla besleniyor mu (arıza ve açık anahtarlar dahil). */
   energized: boolean
   /** Yük düğümü enerjisizse kaybedilen peak yük, kW (yoksa 0). */

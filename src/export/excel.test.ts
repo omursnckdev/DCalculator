@@ -21,7 +21,7 @@ function project(): Project {
   const nx = (k: string) => { const n = used.get(k) ?? 0; used.set(k, n + 1); return n }
   const e = (s: string, t: string) => ({ kaynakPort: nx(`${s}:o`), hedefPort: nx(`${t}:i`),
     id: `${s}>${t}`, source: s, target: t, tip: 'kablo' as const, uzunluk: 10, akimKapasitesi: 5000,
-    r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik' as const, durum: 'kapali' as const,
+    r: 0, x: 0, gerilim: 400, pay: null, isiKonum: 'elektrik' as const, durum: 'kapali' as const, ad: '', aciklama: '',
   })
   p.edges = [e('g', 'm'), e('m', 'it'), e('m', 'mek')]
   return p

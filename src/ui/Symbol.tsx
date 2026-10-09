@@ -47,6 +47,23 @@ export function Symbol({ type, color, size = 28 }: { type: EquipmentType; color:
         </>
       )
       break
+    case 'kesici':
+      body = (
+        <>
+          <path {...common} d="M12 3v5M12 16v5" />
+          <path {...common} d="M8.5 8.5l7 7M15.5 8.5l-7 7" />
+          <path {...common} d="M9.5 6l2.5-2.5L14.5 6M9.5 18l2.5 2.5 2.5-2.5" />
+        </>
+      )
+      break
+    case 'yardimci':
+      body = (
+        <>
+          <circle {...common} cx="12" cy="12" r="7" />
+          <path {...common} d="M12 5V3M9 12a3 3 0 0 1 6 0M9 12a3 3 0 0 0 6 0" />
+        </>
+      )
+      break
     case 'bara':
       body = <path {...common} strokeWidth={3.2} d="M3 12h18" />
       break
