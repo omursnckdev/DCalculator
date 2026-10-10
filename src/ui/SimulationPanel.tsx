@@ -17,6 +17,8 @@ const KIND_STYLE: Record<string, string> = {
   genStart: 'bg-amber-50 text-amber-800',
   battery: 'bg-amber-50 text-amber-800',
   overload: 'bg-red-50 text-red-700',
+  cleared: 'bg-green-100 text-green-800',
+  genStop: 'bg-slate-100 text-slate-700',
 }
 const KIND_ICON: Record<string, string> = {
   fault: '⚡',
@@ -30,6 +32,8 @@ const KIND_ICON: Record<string, string> = {
   genStart: '⚙',
   battery: '🔋',
   overload: '⚠',
+  cleared: '🔧',
+  genStop: '■',
 }
 
 /** Alt şerit: ekipman arızasını adım adım oynatır; tuval seçili adımın durumunu gösterir. */
@@ -40,6 +44,7 @@ export function SimulationPanel() {
   const scenario = useStore((s) => s.scenarios.find((x) => x.id === s.activeScenarioId))
   const startSim = useStore((s) => s.startSim)
   const stopSim = useStore((s) => s.stopSim)
+  const clearFault = useStore((s) => s.clearSimFault)
   const setIndex = useStore((s) => s.setSimIndex)
   const setPlaying = useStore((s) => s.setSimPlaying)
   const setSpeed = useStore((s) => s.setSimSpeed)
@@ -153,6 +158,15 @@ export function SimulationPanel() {
                   </option>
                 ))}
               </select>
+              <button
+                type="button"
+                disabled={index === 0 || step?.phase !== 'fault'}
+                title={tr.sim.clearFaultHint}
+                className="ml-2 rounded bg-green-600 px-3 py-0.5 text-sm text-white disabled:opacity-40"
+                onClick={clearFault}
+              >
+                🔧 {tr.sim.clearFault}
+              </button>
               <button type="button" className="ml-2 rounded border border-slate-300 px-2 py-0.5 text-sm" onClick={stopSim}>
                 {tr.sim.stop}
               </button>
@@ -165,7 +179,10 @@ export function SimulationPanel() {
         <div className="flex gap-4 border-t border-slate-100 px-3 py-2">
           <ol className="flex w-80 shrink-0 flex-col gap-1 overflow-y-auto" style={{ maxHeight: 190 }}>
             {sim.steps.map((st, i) => (
-              <li key={st.id}>
+              <li key={`${st.phase}-${st.id}`}>
+                {st.phase === 'recovery' && sim.steps[i - 1]?.phase !== 'recovery' && (
+                  <div className="mb-1 mt-1 border-t border-green-300 pt-1 text-[10px] font-semibold uppercase tracking-wide text-green-700">{tr.sim.recoveryHeading}</div>
+                )}
                 <button
                   type="button"
                   onClick={() => { setPlaying(false); setIndex(i) }}

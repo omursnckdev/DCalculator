@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EQUIPMENT } from '../library/equipment'
 import type { EquipmentType, Params, ProjectEdge, ProjectNode } from '../model/types'
-import { simulateFailure } from './simulate'
+import { simulateFailure, simulateRecovery } from './simulate'
 
 const portUse = new Map<string, number>()
 const nextPort = (key: string): number => {
@@ -139,3 +139,53 @@ describe('adım adım arıza simülasyonu', () => {
     expect(last.lostKw).toBe(0)
   })
 })
+
+describe('arıza giderme (geri dönüş) simülasyonu', () => {
+  it('trafo arızası giderilince: jeneratör yükte kalır → şebekeye geri transfer → jeneratör durur', () => {
+    const m = plant()
+    const steps = simulateFailure(m, ['tx'])
+    const staging = steps.find((x) => x.id === 'staging') ?? steps.find((x) => x.id === 'gen')!
+    const rec = simulateRecovery(m, ['tx'], staging)
+    expect(ids(rec)).toEqual(['clear', 'retransfer', 'genStop'])
+    expect(rec.every((x) => x.phase === 'recovery')).toBe(true)
+    const [clear, retransfer, stop] = rec
+    // Arıza giderildi ama henüz transfer olmadı: trafo enerjili, yük hâlâ jeneratörde.
+    expect(clear.analysis.nodes.tx.failed).toBe(false)
+    expect(clear.analysis.nodes.tx.energized).toBe(true)
+    expect(clear.changes[0].kind).toBe('cleared')
+    // Geri transfer: yük trafoda, jeneratör yüksüz çalışır.
+    expect(retransfer.analysis.nodes.gen1.totalKw).toBeLessThan(0.5)
+    expect(retransfer.analysis.nodes.gen1.running).toBe(true)
+    expect(retransfer.analysis.nodes.tx.totalKw).toBeGreaterThan(400)
+    // Soğutma sonrası jeneratör durur ve sistem normal duruma döner.
+    expect(stop.analysis.nodes.gen1.running).toBeFalsy()
+    expect(stop.changes.some((c) => c.kind === 'genStop')).toBe(true)
+    expect(Math.round(stop.analysis.totals.totalKw)).toBe(Math.round(steps[0].analysis.totals.totalKw))
+    expect(stop.lostKw).toBe(0)
+  })
+
+  it('UPS arızası giderilince bypass kesicileri geri açılır, yük UPS\'e döner', () => {
+    const m = plant()
+    const steps = simulateFailure(m, ['ups'])
+    const bypassStep = steps.find((x) => x.id === 'bypass')!
+    expect(bypassStep.analysis.nodes.byp1.autoClosed).toBe(true)
+    const rec = simulateRecovery(m, ['ups'], bypassStep)
+    expect(rec[0].id).toBe('clear')
+    // Giderilince bypass geri transfer gecikmesi dolana kadar kapalı kalır.
+    expect(rec[0].analysis.nodes.byp1.autoClosed).toBe(true)
+    const last = rec[rec.length - 1]
+    expect(last.analysis.nodes.byp1.autoClosed).toBe(false)
+    expect(last.analysis.nodes.ups.totalKw).toBeGreaterThan(300)
+    // Jeneratör hiç çalışmadığı için duruş adımı yok.
+    expect(ids(rec)).not.toContain('genStop')
+  })
+
+  it('arıza anından hemen giderilirse tek adım (clear) ile normale döner', () => {
+    const m = plant()
+    const steps = simulateFailure(m, ['chiller'])
+    const rec = simulateRecovery(m, ['chiller'], steps[1])
+    expect(rec[0].id).toBe('clear')
+    expect(rec[rec.length - 1].lostKw).toBe(0)
+  })
+})
+

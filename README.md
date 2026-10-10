@@ -82,6 +82,9 @@ Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmele
   **Jeneratör devrede** (~10 s) → **Senkron panosu kademelendirme** (~70 s) → **Batarya bitişi** (UPS özerkliği, varsayılan 10 dk).
   Değişmeyen adımlar atlanır. Her adımda tuval o anın durumunu gösterir (değişen ekipman titreşir) ve "ne değişti" listesi yazılır;
   ileri/geri, oynat ve hız düğmeleri vardır. Tüm bunlar projeyi değiştirmez.
+- **Arızayı giderme:** simülasyon sürerken (oynatırken de) seçili adımdan **Arızayı gider** düğmesine basın; arıza o adımdan itibaren giderilir ve
+  şu adımlar oynatılır: **Arıza giderildi** (normal kaynak geri geldi, yük hâlâ jeneratör/bypass üzerinde) → **Geri transfer** (~5 dk; MSB/ATS/STS normal girişe döner,
+  bypass kesicileri açılır, jeneratörler yüksüz çalışır, rozet "ÇALIŞIYOR") → **Jeneratörler durdu** (~10 dk, soğutma sonrası). Sonunda sistem arıza öncesi duruma döner.
 - **Otomatik bypass:** kesicide *Otomatik kapanma* = otomatik ise, aşağısındaki bara enerjisiz kalıp yukarısı enerjili olunca kesici kapanır
   (UPS arızasında hard bypass → UPS dağıtım panosu doğrudan ana dağıtımdan beslenir). Senaryoda kesiciyi elle açık/kapalı yaparsanız o seçim geçerlidir.
 - **Senkron panosu:** jeneratörlerin bağlandığı bara. *Mod* = sıralı iken yük, tek jeneratörün (senkron girişi sırasıyla ilk *r* jeneratörün) kapasitesinin

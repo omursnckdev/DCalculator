@@ -53,6 +53,7 @@ function CardNodeView({ id, data, selected }: NodeProps<EquipmentNode>) {
       {r?.autoClosed && <div className="mb-0.5 text-[10px] font-bold tracking-wide text-blue-600">{tr.senaryo.autoBadge}</div>}
       {r?.standby && <div className="mb-0.5 text-[10px] font-bold tracking-wide text-slate-500">{tr.senaryo.standbyBadge}</div>}
       {r?.onBattery && <div className="mb-0.5 text-[10px] font-bold tracking-wide text-amber-600">{tr.senaryo.batteryBadge}</div>}
+      {r?.running && !r.standby && r.totalKw <= 0.5 && <div className="mb-0.5 text-[10px] font-bold tracking-wide text-green-600">{tr.senaryo.runningBadge}</div>}
       {r && !r.energized && !r.failed && !r.open && !r.cyclic && (
         <div className="mb-0.5 text-[10px] font-semibold tracking-wide text-slate-500">{tr.senaryo.deenergized}</div>
       )}
@@ -177,6 +178,7 @@ function IconNodeView({ id, data, selected }: NodeProps<EquipmentNode>) {
   const open = r?.open
   const autoClosed = r?.autoClosed
   const standby = r?.standby
+  const idleRunning = !!r?.running && r.totalKw <= 0.5 && !r.failed
   const onBattery = r?.onBattery
   const dead = r && !r.energized && !failed && !open && !r.cyclic
   const status = r?.status ?? 'none'
@@ -239,15 +241,15 @@ function IconNodeView({ id, data, selected }: NodeProps<EquipmentNode>) {
           style={{ borderColor: open ? '#dc2626' : '#16a34a', background: open ? '#fff' : '#16a34a' }}
         />
       )}
-      {(autoClosed || standby || onBattery) && !failed && !open && (
+      {(autoClosed || standby || onBattery || idleRunning) && !failed && !open && (
         <span
           className="absolute -right-2 -top-2 rounded px-1 text-[9px] font-bold leading-4 text-white"
-          style={{ background: autoClosed ? '#2563eb' : onBattery ? '#d97706' : '#64748b' }}
+          style={{ background: autoClosed ? '#2563eb' : onBattery ? '#d97706' : idleRunning && !standby ? '#16a34a' : '#64748b' }}
         >
-          {autoClosed ? tr.senaryo.autoBadge : onBattery ? tr.senaryo.batteryBadge : tr.senaryo.standbyBadge}
+          {autoClosed ? tr.senaryo.autoBadge : onBattery ? tr.senaryo.batteryBadge : standby ? tr.senaryo.standbyBadge : tr.senaryo.runningBadge}
         </span>
       )}
-      {r?.loadingPct !== undefined && !failed && !open && !autoClosed && !standby && !onBattery && (
+      {r?.loadingPct !== undefined && !failed && !open && !autoClosed && !standby && !onBattery && !idleRunning && (
         <span
           className="absolute -right-2 -top-2 rounded px-1 text-[9px] font-bold leading-4"
           style={{ color: STATUS_COLOR[status], background: STATUS_BG[status] }}

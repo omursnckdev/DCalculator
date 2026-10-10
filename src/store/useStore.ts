@@ -25,7 +25,7 @@ import type {
   Scenario,
   EdgeState,
 } from '../model/types'
-import { simulateFailure } from '../engine'
+import { simulateFailure, simulateRecovery } from '../engine'
 import type { SimStep } from '../engine'
 import { saveProjectToDb } from './persistence'
 
@@ -72,6 +72,8 @@ interface State {
   /** Canlı simülasyon (arıza oynatma); null = kapalı. Projeye yazılmaz. */
   sim: SimState | null
   startSim: (failed: string[]) => void
+  /** Arızayı seçili adımdan itibaren giderir; sonraki adımlar giderme sürecidir. */
+  clearSimFault: () => void
   setSimIndex: (i: number) => void
   setSimPlaying: (p: boolean) => void
   setSimSpeed: (s: number) => void
@@ -146,6 +148,17 @@ export const useStore = create<State>((set, get) => ({
     const model = { nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }
     const steps = simulateFailure(model, failed, s.scenarios.find((x) => x.id === s.activeScenarioId))
     set({ sim: { failed, steps, index: 0, playing: false, speed: 1 } })
+  },
+  clearSimFault: () => {
+    const s = get()
+    const sim = s.sim
+    if (!sim) return
+    const from = sim.steps[sim.index]
+    if (!from || sim.index === 0 || from.phase !== 'fault') return
+    const model = { nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }
+    const rec = simulateRecovery(model, sim.failed, from, s.scenarios.find((x) => x.id === s.activeScenarioId))
+    const steps = [...sim.steps.slice(0, sim.index + 1), ...rec]
+    set({ sim: { ...sim, steps, index: Math.min(sim.index + 1, steps.length - 1), playing: rec.length > 1 } })
   },
   setSimIndex: (i) =>
     set((s) => (s.sim ? { sim: { ...s.sim, index: Math.max(0, Math.min(s.sim.steps.length - 1, i)) } } : {})),

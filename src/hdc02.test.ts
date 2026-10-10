@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { analyze, runN1, simulateFailure } from './engine'
+import { analyze, runN1, simulateFailure, simulateRecovery } from './engine'
 import { parseProject } from './model/project'
 import type { EquipmentType } from './model/types'
 
@@ -211,6 +211,25 @@ describe('HDC02 PL1: adım adım simülasyon', () => {
     expect(a.unserved.totalKw).toBe(0)
     const steps = simulateFailure(light, ['tx'])
     expect(steps.map((s) => s.id)).toContain('staging')
+  })
+
+  it('TX.PL1 arızası giderilince: STS/ATS geri transfer, jeneratörler yüksüz çalışıp durur', () => {
+    const steps = simulateFailure(p, ['tx'])
+    const gen = steps[steps.length - 1]
+    const rec = simulateRecovery(p, ['tx'], gen, undefined)
+    expect(rec.map((r) => r.id)).toEqual(['clear', 'retransfer', 'genStop'])
+    // Arıza giderildi ama MSB henüz jeneratörde (geri transfer gecikmesi)
+    expect(rec[0].analysis.nodes.tx.energized).toBe(true)
+    expect(rec[0].analysis.nodes.gen1.totalKw).toBeGreaterThan(100)
+    expect(rec[1].changes.some((c) => c.kind === 'transfer' && /MSB\.PL1/.test(c.text))).toBe(true)
+    expect(rec[1].analysis.nodes.gen1.totalKw).toBe(0)
+    expect(rec[1].analysis.nodes.gen1.running).toBe(true)
+    expect(rec[rec.length - 1].id).toBe('genStop')
+    const end = rec[rec.length - 1]
+    expect(end.lostKw).toBe(0)
+    expect(end.analysis.nodes.gen1.running).toBeFalsy()
+    expect(end.analysis.nodes.gen1.totalKw).toBe(0)
+    expect(end.analysis.nodes.tx.totalKw).toBeGreaterThan(0)
   })
 
   it('senkron panosu şemadaki gibi: iki jeneratör, GEN.PL1.1 öncelikli, %70 eşik', () => {

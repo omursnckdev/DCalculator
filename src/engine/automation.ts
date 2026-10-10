@@ -16,6 +16,8 @@ export interface SimOptions {
   battery: boolean
   /** Transfer düğümü -> kilitli giriş hattı id (transfer henüz olmadı). */
   hold?: Record<string, string>
+  /** Arıza giderilirken bypass kesicileri henüz geri açılmadı: bu kesiciler kapalı kalır. */
+  keepClosed?: string[]
 }
 
 export const FULL_AUTOMATION: SimOptions = { autoBypass: true, staging: true, genOnline: true, battery: false }
@@ -40,6 +42,7 @@ export function resolveAutoClosed(model: Model, scenario: Scenario | undefined, 
   if (!opts.autoBypass) return closed
   const auto = model.nodes.filter((n) => isAutoClosing(n, scenario) && switchState(n, scenario) === 'acik')
   if (auto.length === 0) return closed
+  for (const id of opts.keepClosed ?? []) if (auto.some((n) => n.id === id)) closed.add(id)
 
   const byId = new Map(model.nodes.map((n) => [n.id, n]))
   const edges = presentEdges(model, scenario)

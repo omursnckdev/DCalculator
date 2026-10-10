@@ -52,6 +52,8 @@ export interface NodeResult {
   standby: boolean
   /** UPS girişi yok, batarya ile besleniyor. */
   onBattery: boolean
+  /** Simülasyon: jeneratör motoru çalışıyor (yüksüz de olabilir). */
+  running?: boolean
   /** Bir kaynaktan canlı bir yolla besleniyor mu (arıza ve açık anahtarlar dahil). */
   energized: boolean
   /** Yük düğümü enerjisizse kaybedilen peak yük, kW (yoksa 0). */

@@ -269,6 +269,13 @@ function analyzeCore(
       LOAD_TYPES.includes(n.type) || honorPreference ? [] : liveAll.filter((e) => normalFed.get(e.source) === true)
     const live = liveNormal.length > 0 ? liveNormal : liveAll
     const isTransfer = TRANSFER_TYPES.includes(n.type)
+    // Simülasyon: normal kaynak döndü ama giriş değiştirme (geri transfer) gecikmesi dolmadı: jeneratör girişi sürer.
+    const heldPanel = !isTransfer ? liveAll.find((e) => e.id === opts.hold?.[n.id]) : undefined
+    if (heldPanel) {
+      const amount = total > 1e-12 ? total : 1
+      for (const e of ins) share.set(e.id, e.id === heldPanel.id ? amount : 0)
+      continue
+    }
     if (live.length === 0) {
       for (const e of ins) share.set(e.id, 0)
       continue
@@ -280,7 +287,7 @@ function analyzeCore(
       for (const e of byPort) if ((share.get(e.id) ?? 0) > (share.get(best.id) ?? 0) + 1e-12) best = e
       // Simülasyonda transfer henüz olmadıysa kilitli giriş korunur.
       const heldId = opts.hold?.[n.id]
-      if (heldId !== undefined) best = byPort.find((e) => e.id === heldId) ?? best
+      if (heldId !== undefined) best = liveAll.find((e) => e.id === heldId) ?? best
       const amount = total > 1e-12 ? total : 1
       for (const e of ins) share.set(e.id, e.id === best.id ? amount : 0)
       continue

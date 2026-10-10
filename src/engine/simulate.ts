@@ -8,7 +8,16 @@ import { DEFAULT_THRESHOLDS } from './thresholds'
 import type { Analysis, Model, Thresholds } from './types'
 
 /** Tipik cihaz gecikmeleri (saniye). Kararlı durum adımlarının zaman etiketi içindir. */
-export const SIM_TIMING = { sts: 0.004, bypass: 0.1, gen: 10, staging: 70 }
+export const SIM_TIMING = {
+  sts: 0.004,
+  bypass: 0.1,
+  gen: 10,
+  staging: 70,
+  /** Normal kaynak döndükten sonra ATS/STS geri transfer gecikmesi (tipik 5 dk). */
+  retransfer: 300,
+  /** Jeneratör yüksüz soğutma süresi (tipik 5 dk). */
+  cooldown: 300,
+}
 
 export type SimChangeKind =
   | 'fault'
@@ -22,6 +31,8 @@ export type SimChangeKind =
   | 'genStart'
   | 'battery'
   | 'overload'
+  | 'cleared'
+  | 'genStop'
 
 export interface SimChange {
   kind: SimChangeKind
@@ -29,7 +40,7 @@ export interface SimChange {
   nodeId?: string
 }
 
-export type SimStageId = 'normal' | 'fault' | 'sts' | 'bypass' | 'gen' | 'staging' | 'battery'
+export type SimStageId = 'normal' | 'fault' | 'sts' | 'bypass' | 'gen' | 'staging' | 'battery' | 'clear' | 'retransfer' | 'genStop'
 
 export interface SimStep {
   id: SimStageId
@@ -42,6 +53,12 @@ export interface SimStep {
   /** Bu adımda durumu değişen ekipman (arayüzde vurgulanır). */
   changedNodes: string[]
   lostKw: number
+  /** 'recovery': arıza giderildikten sonraki adımlar. */
+  phase: 'fault' | 'recovery'
+  /** Bu adımı üreten otomasyon durumu; arızanın bu adımdan giderilmesi için kullanılır. */
+  opts: Partial<SimOptions>
+  /** Çalışan (yüksüz de olsa) jeneratör kimlikleri. */
+  running: string[]
 }
 
 const fmt = (v: number, d = 0): string => v.toLocaleString('tr-TR', { maximumFractionDigits: d })
@@ -88,7 +105,7 @@ function signature(a: Analysis, model: Model): string {
   const loads = new Set(model.nodes.filter(isLoad).map((n) => n.id))
   const parts: string[] = []
   for (const [id, r] of Object.entries(a.nodes)) {
-    parts.push(`${id}:${loads.has(id) && r.energized ? 1 : 0}${r.open ? 1 : 0}${r.autoClosed ? 1 : 0}${r.standby ? 1 : 0}${r.onBattery ? 1 : 0}:${Math.round(r.totalKw)}`)
+    parts.push(`${id}:${loads.has(id) && r.energized ? 1 : 0}${r.open ? 1 : 0}${r.autoClosed ? 1 : 0}${r.standby ? 1 : 0}${r.onBattery ? 1 : 0}${r.running ? 1 : 0}:${Math.round(r.totalKw)}`)
   }
   // Boştaki kolların pay değişimi sayılmaz: yalnızca güç taşıyan hatlar.
   for (const [id, r] of Object.entries(a.edges)) if (r.kva > 0.5) parts.push(`${id}:${Math.round(r.kva)}:${Math.round(r.share * 100)}`)
@@ -132,13 +149,23 @@ export function diffAnalyses(
     if (!c.standby && p.standby) changes.push({ kind: 'standby', text: tr.sim.standbyOff(n.ad), nodeId: n.id })
     if (c.onBattery && !p.onBattery) changes.push({ kind: 'battery', text: tr.sim.batteryOn(n.ad), nodeId: n.id })
     if (!c.onBattery && p.onBattery && c.energized) changes.push({ kind: 'battery', text: tr.sim.batteryOff(n.ad), nodeId: n.id })
+    if (n.type === 'jenerator' && p.running && !c.running && !c.standby) {
+      changes.push({ kind: 'genStop', text: tr.sim.genStopped(n.ad), nodeId: n.id })
+      changed.add(n.id)
+    } else if (n.type === 'jenerator' && c.running && p.totalKw > 0.5 && c.totalKw <= 0.5) {
+      changes.push({ kind: 'genStop', text: tr.sim.genUnloaded(n.ad), nodeId: n.id })
+      changed.add(n.id)
+    }
     if (n.type === 'jenerator' && c.totalKw > 0.5 && p.totalKw <= 0.5) {
       changes.push({ kind: 'genStart', text: tr.sim.genStart(n.ad, fmt(c.totalKw), fmt(c.loadingPct ?? 0)), nodeId: n.id })
     }
     if (c.status === 'over' && p.status !== 'over' && c.loadingPct !== undefined) {
       changes.push({ kind: 'overload', text: tr.sim.overloaded(n.ad, fmt(c.loadingPct)), nodeId: n.id })
     }
-    if ((n.type === 'ats' || n.type === 'sts') && c.energized) {
+    // Tek aktif girişli çok girişli pano (ör. MSB'de trafo ↔ jeneratör): giriş değişimi de bir transferdir.
+    const singleFed = (x: Analysis) => model.edges.filter((e) => e.target === n.id && (x.edges[e.id]?.share ?? 0) > 1e-9 && x.edges[e.id]?.live).length === 1
+    const multiIn = model.edges.filter((e) => e.target === n.id).length >= 2
+    if (((n.type === 'ats' || n.type === 'sts') || (multiIn && (n.type === 'mdb' || n.type === 'dagitimPanosu') && singleFed(prev) && singleFed(cur))) && c.energized) {
       // Önceki adımda anahtar enerjisizdiyse (kilitli kaynak ölü) geçişi arıza öncesi aktif girişe göre anlat.
       const a0 = activeInput(prev, model, n.id) ?? (reference ? activeInput(reference, model, n.id) : undefined)
       const a1 = activeInput(cur, model, n.id)
@@ -155,6 +182,49 @@ export function diffAnalyses(
   if (off.length) changes.push({ kind: 'deenergized', text: tr.sim.deenergized(list(off)) })
   if (on.length) changes.push({ kind: 'energized', text: tr.sim.energizedAgain(list(on)) })
   return { changes, changedNodes: [...changed] }
+}
+
+/** Transfer anahtarlarının (ATS/STS) o anki aktif giriş hattı: arıza anında/arıza sonrasında korunur. */
+function holdFrom(a: Analysis, model: Model, genPanels = false): Record<string, string> {
+  const hold: Record<string, string> = {}
+  const byId = new Map(model.nodes.map((n) => [n.id, n]))
+  // Düğümün tüm kaynak uçları (girişi olmayan) jeneratör mü? (yalnız jeneratörle beslenen kol)
+  const memo = new Map<string, boolean>()
+  const genOnly = (id: string, depth = 0): boolean => {
+    const hit = memo.get(id)
+    if (hit !== undefined) return hit
+    const n = byId.get(id)
+    const ins = model.edges.filter((e) => e.target === id)
+    const v = !n || depth > 40 ? false : ins.length === 0 ? n.type === 'jenerator' : ins.every((e) => genOnly(e.source, depth + 1))
+    memo.set(id, v)
+    return v
+  }
+  for (const n of model.nodes) {
+    const transfer = n.type === 'ats' || n.type === 'sts'
+    if (!transfer) {
+      // Arıza giderme: jeneratör kolundan beslenen, ayrıca normal kaynak kolu da olan pano (ör. MSB).
+      if (!genPanels) continue
+      const ins = model.edges.filter((e) => e.target === n.id)
+      if (ins.length < 2 || !ins.some((e) => !genOnly(e.source)) || !ins.some((e) => genOnly(e.source))) continue
+    }
+    let bestId: string | undefined
+    let bestShare = 1e-9
+    for (const e of model.edges) {
+      const r = a.edges[e.id]
+      if (e.target === n.id && r && r.live && r.share > bestShare) {
+        bestShare = r.share
+        bestId = e.id
+      }
+    }
+    const bestEdge = model.edges.find((e) => e.id === bestId)
+    if (bestId && (transfer || (bestEdge && genOnly(bestEdge.source)))) hold[n.id] = bestId
+  }
+  return hold
+}
+
+/** Çalışan jeneratörleri işaretler (rozet ve değişiklik günlüğü için). */
+function markRunning(a: Analysis, ids: string[]): void {
+  for (const id of ids) if (a.nodes[id]) a.nodes[id] = { ...a.nodes[id], running: true }
 }
 
 /**
@@ -180,37 +250,23 @@ export function simulateFailure(
   const base = analyze(model, th, baseScenario)
   const run = (opts: Partial<SimOptions>) => analyze(model, th, scenario, base, opts)
 
-  // Arıza anında transfer anahtarları son seçili girişlerini korur.
-  const hold: Record<string, string> = {}
-  for (const n of model.nodes) {
-    if (n.type !== 'ats' && n.type !== 'sts') continue
-    let bestId: string | undefined
-    let bestShare = 1e-9
-    for (const e of model.edges) {
-      const r = base.edges[e.id]
-      if (e.target === n.id && r && r.live && r.share > bestShare) {
-        bestShare = r.share
-        bestId = e.id
-      }
-    }
-    if (bestId) hold[n.id] = bestId
-  }
+  const hold = holdFrom(base, model)
 
   const autonomyMin = Math.max(
     1,
     ...model.nodes.filter((n) => n.type === 'ups').map((n) => (typeof n.params.bataryaDk === 'number' ? n.params.bataryaDk : 10)),
   )
-  const stages: { id: SimStageId; seconds: number; opts: Partial<SimOptions> }[] = [
-    { id: 'fault', seconds: 0, opts: { autoBypass: false, staging: false, genOnline: false, battery: true, hold } },
-    { id: 'sts', seconds: SIM_TIMING.sts, opts: { autoBypass: false, staging: false, genOnline: false, battery: true } },
-    { id: 'bypass', seconds: SIM_TIMING.bypass, opts: { autoBypass: true, staging: false, genOnline: false, battery: true } },
-    { id: 'gen', seconds: SIM_TIMING.gen, opts: { autoBypass: true, staging: false, genOnline: true, battery: true } },
-    { id: 'staging', seconds: SIM_TIMING.staging, opts: { autoBypass: true, staging: true, genOnline: true, battery: true } },
-    { id: 'battery', seconds: autonomyMin * 60, opts: { ...FULL_AUTOMATION } },
+  const stages: { id: SimStageId; seconds: number; opts: Partial<SimOptions>; gens: boolean }[] = [
+    { id: 'fault', seconds: 0, opts: { autoBypass: false, staging: false, genOnline: false, battery: true, hold }, gens: false },
+    { id: 'sts', seconds: SIM_TIMING.sts, opts: { autoBypass: false, staging: false, genOnline: false, battery: true }, gens: false },
+    { id: 'bypass', seconds: SIM_TIMING.bypass, opts: { autoBypass: true, staging: false, genOnline: false, battery: true }, gens: false },
+    { id: 'gen', seconds: SIM_TIMING.gen, opts: { autoBypass: true, staging: false, genOnline: true, battery: true }, gens: true },
+    { id: 'staging', seconds: SIM_TIMING.staging, opts: { autoBypass: true, staging: true, genOnline: true, battery: true }, gens: true },
+    { id: 'battery', seconds: autonomyMin * 60, opts: { ...FULL_AUTOMATION }, gens: true },
   ]
 
   const steps: SimStep[] = []
-  const push = (id: SimStageId, seconds: number, analysis: Analysis, prev?: Analysis, faults: string[] = []) => {
+  const push = (id: SimStageId, seconds: number, analysis: Analysis, opts: Partial<SimOptions>, prev?: Analysis, faults: string[] = []) => {
     const { changes, changedNodes } = diffAnalyses(model, prev, analysis, faults, base)
     steps.push({
       id,
@@ -222,19 +278,83 @@ export function simulateFailure(
       changes,
       changedNodes: [...new Set([...changedNodes, ...(id === 'fault' ? failedIds : [])])],
       lostKw: Math.max(0, analysis.unserved.totalKw - base.unserved.totalKw),
+      phase: 'fault',
+      opts,
+      running: runningGens(analysis),
     })
   }
-  push('normal', -1, base)
+  push('normal', -1, base, { ...FULL_AUTOMATION })
   steps[0].timeLabel = ''
   let prev = base
   let prevSig = signature(base, model)
   for (const st of stages) {
     const a = run(st.opts)
+    // Jeneratör yalnızca yük taşıyorsa (normal kaynak kayıpken) çalıştırılmıştır.
+    if (st.gens) markRunning(a, model.nodes.filter((n) => n.type === 'jenerator' && a.nodes[n.id]?.totalKw > 0.5).map((n) => n.id))
     const sig = signature(a, model)
     if (st.id !== 'fault' && sig === prevSig) continue
-    push(st.id, st.seconds, a, prev, st.id === 'fault' ? faultNames : [])
+    push(st.id, st.seconds, a, st.opts, prev, st.id === 'fault' ? faultNames : [])
     prev = a
     prevSig = sig
   }
   return steps
+}
+
+const runningGens = (a: Analysis): string[] => Object.values(a.nodes).filter((r) => r.running).map((r) => r.id)
+
+/**
+ * Arızanın `from` adımından itibaren giderilmesini çözer: arıza giderildi (transferler ve bypass henüz
+ * eski konumda, jeneratörler yükte), normal kaynağa geri transfer (bypass geri açılır, jeneratör yüksüz
+ * çalışır), jeneratör soğutma sonrası durur. Dönen adımlar `from`dan sonra eklenir.
+ */
+export function simulateRecovery(
+  model: Model,
+  failedIds: string[],
+  from: SimStep,
+  baseScenario?: Scenario,
+  th: Thresholds = DEFAULT_THRESHOLDS,
+): SimStep[] {
+  const base = analyze(model, th, baseScenario)
+  const names = failedIds.map((id) => model.nodes.find((n) => n.id === id)?.ad ?? id)
+  const keepClosed = model.nodes.filter((n) => from.analysis.nodes[n.id]?.autoClosed).map((n) => n.id)
+  const stages: { id: SimStageId; seconds: number; opts: Partial<SimOptions>; running: string[] }[] = [
+    { id: 'clear', seconds: 0, opts: { ...from.opts, hold: holdFrom(from.analysis, model, true), keepClosed }, running: from.running },
+    {
+      id: 'retransfer',
+      seconds: SIM_TIMING.retransfer,
+      opts: { autoBypass: true, staging: true, genOnline: from.opts.genOnline ?? true, battery: true },
+      running: from.running,
+    },
+    { id: 'genStop', seconds: SIM_TIMING.retransfer + SIM_TIMING.cooldown, opts: { ...FULL_AUTOMATION }, running: [] },
+  ]
+  const out: SimStep[] = []
+  let prev = from.analysis
+  let prevSig = signature(prev, model)
+  let prevRunning = from.running.length
+  for (const st of stages) {
+    const a = analyze(model, th, baseScenario, base, st.opts)
+    markRunning(a, st.running)
+    const sig = signature(a, model)
+    if (st.id !== 'clear' && sig === prevSig && st.running.length === prevRunning) continue
+    const { changes, changedNodes } = diffAnalyses(model, prev, a, [], base)
+    if (st.id === 'clear') for (const n of names.slice().reverse()) changes.unshift({ kind: 'cleared', text: tr.sim.changeCleared(n) })
+    out.push({
+      id: st.id,
+      title: tr.sim.stages[st.id],
+      description: tr.sim.stageDesc[st.id],
+      seconds: st.seconds,
+      timeLabel: timeLabel(st.seconds),
+      analysis: a,
+      changes,
+      changedNodes: [...new Set([...changedNodes, ...(st.id === 'clear' ? failedIds : [])])],
+      lostKw: Math.max(0, a.unserved.totalKw - base.unserved.totalKw),
+      phase: 'recovery',
+      opts: st.opts,
+      running: st.running,
+    })
+    prev = a
+    prevSig = sig
+    prevRunning = st.running.length
+  }
+  return out
 }
