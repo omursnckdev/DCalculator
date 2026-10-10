@@ -32,6 +32,8 @@ npm run typecheck
 npm run build
 ```
 
+**Windows:** Node.js (LTS, 22.12 veya üzeri) kurulu olmalıdır; proje klasöründeki `baslat.bat` dosyasına çift tıklamak ilk seferde paketleri kurar, sonra uygulamayı başlatıp tarayıcıda açar.
+
 Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmeleriyle alınır (PNG için Şema sekmesi açık olmalı).
 
 ## Yapı
