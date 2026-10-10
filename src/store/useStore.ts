@@ -38,6 +38,10 @@ export interface SimState {
   /** Arıza uygulanan ekipman. */
   failed: string[]
   steps: SimStep[]
+  /** Yalnızca arıza adımları (giderme dalı olmadan). */
+  faultSteps: SimStep[]
+  /** Arızanın giderildiği adım; giderme adımları `steps`te bundan sonra gelir (yoksa null). */
+  branchAt: number | null
   index: number
   playing: boolean
   /** Oynatma hızı çarpanı. */
@@ -147,21 +151,27 @@ export const useStore = create<State>((set, get) => ({
     const s = get()
     const model = { nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }
     const steps = simulateFailure(model, failed, s.scenarios.find((x) => x.id === s.activeScenarioId))
-    set({ sim: { failed, steps, index: 0, playing: false, speed: 1 } })
+    set({ sim: { failed, steps, faultSteps: steps, branchAt: null, index: 0, playing: false, speed: 1 } })
   },
   clearSimFault: () => {
     const s = get()
     const sim = s.sim
     if (!sim) return
-    const from = sim.steps[sim.index]
-    if (!from || sim.index === 0 || from.phase !== 'fault') return
+    const from = sim.faultSteps[sim.index]
+    if (!from || sim.index === 0 || sim.steps[sim.index]?.phase !== 'fault') return
     const model = { nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }
     const rec = simulateRecovery(model, sim.failed, from, s.scenarios.find((x) => x.id === s.activeScenarioId))
-    const steps = [...sim.steps.slice(0, sim.index + 1), ...rec]
-    set({ sim: { ...sim, steps, index: Math.min(sim.index + 1, steps.length - 1), playing: rec.length > 1 } })
+    const steps = [...sim.faultSteps.slice(0, sim.index + 1), ...rec]
+    set({ sim: { ...sim, steps, branchAt: sim.index, index: Math.min(sim.index + 1, steps.length - 1), playing: rec.length > 1 } })
   },
   setSimIndex: (i) =>
-    set((s) => (s.sim ? { sim: { ...s.sim, index: Math.max(0, Math.min(s.sim.steps.length - 1, i)) } } : {})),
+    set((s) => {
+      if (!s.sim) return {}
+      // Giderme dalından önceki bir adıma dönülünce arıza sürer: giderme adımları atılır.
+      const revert = s.sim.branchAt !== null && i < s.sim.branchAt
+      const steps = revert ? s.sim.faultSteps : s.sim.steps
+      return { sim: { ...s.sim, steps, branchAt: revert ? null : s.sim.branchAt, index: Math.max(0, Math.min(steps.length - 1, i)) } }
+    }),
   setSimPlaying: (p) => set((s) => (s.sim ? { sim: { ...s.sim, playing: p } } : {})),
   setSimSpeed: (sp) => set((s) => (s.sim ? { sim: { ...s.sim, speed: sp } } : {})),
   stopSim: () => set({ sim: null }),

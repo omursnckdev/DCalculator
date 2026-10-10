@@ -235,3 +235,31 @@ describe('kesici durumu', () => {
   })
 })
 
+
+describe('canlı simülasyon: arızayı giderme dalı', () => {
+  it('giderme yalnız düğmeyle başlar; başa dönüp oynatınca yalnız arıza adımları gelir', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { parseProject } = await import('../model/project')
+    useStore.getState().loadProject(parseProject(readFileSync(new URL('../../examples/hdc02-pl1.dcalc.json', import.meta.url), 'utf8')))
+    const st = useStore.getState
+    st().startSim(['tx'])
+    const faultLen = st().sim!.steps.length
+    st().setSimIndex(faultLen - 1)
+    st().clearSimFault()
+    const sim = st().sim!
+    expect(sim.steps.length).toBeGreaterThan(faultLen)
+    expect(sim.steps[sim.index].phase).toBe('recovery')
+    expect(sim.branchAt).toBe(faultLen - 1)
+    // başa dön: giderme adımları atılır, arıza sürer
+    st().setSimIndex(0)
+    expect(st().sim!.steps).toHaveLength(faultLen)
+    expect(st().sim!.branchAt).toBeNull()
+    expect(st().sim!.steps.every((s) => s.phase === 'fault')).toBe(true)
+    // giderme adımında "gider" tekrar işlem yapmaz
+    st().setSimIndex(faultLen - 1)
+    st().clearSimFault()
+    const n = st().sim!.steps.length
+    st().clearSimFault()
+    expect(st().sim!.steps).toHaveLength(n)
+  })
+})
