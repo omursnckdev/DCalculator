@@ -1,0 +1,88 @@
+DCALCULATOR - WINDOWS KURULUM ADIMLARI
+=======================================
+
+Windows 10/11 icindir. Ilk kurulumda internet gerekir; sonra uygulama internetsiz de calisir.
+Not: Bu surum (canli simulasyon, ariza giderme) "claude/new-session-734v27" dalindadir.
+
+
+A. BIR KERELIK KURULUM
+----------------------
+
+1) Node.js kur
+   - https://nodejs.org adresinden LTS surumunu indir. Surum 22.12 veya daha yeni olmali.
+   - .msi dosyasini calistir, "Next" ile ilerle, ayarlari degistirme.
+
+2) Kurulumu kontrol et
+   - Baslat menusunde "cmd" yaz, "Komut Istemi"ni ac.
+   - "node -v" yaz: v22... gibi bir surum gorunmeli.
+   - "npm -v" yaz: bir surum numarasi gorunmeli.
+   - Hata alirsan bilgisayari yeniden baslat ve tekrar dene.
+
+3) Git kur (projeyi indirmek icin; ZIP ile indirecekseniz atlayabilirsiniz)
+   - https://git-scm.com/download/win adresinden indir ve kur. Hep "Next" ile gec.
+
+4) Projeyi indir (iki yoldan biri)
+
+   a) Git ile - Komut Istemi'nde:
+        cd %USERPROFILE%\Documents
+        git clone -b claude/new-session-734v27 https://github.com/omursnckdev/DCalculator
+
+   b) ZIP ile (Git kurmadan):
+        - Tarayicida https://github.com/omursnckdev/DCalculator adresini ac (GitHub'a giris yap).
+        - Dal listesinden "claude/new-session-734v27" dalini sec.
+        - Code > Download ZIP de.
+        - ZIP'i Belgelerim klasorune cikar.
+        (Depo ozelse ZIP'i kendi bilgisayarinda indirip USB/e-posta ile iletmek en kolayidir.)
+
+5) Paketleri kur
+   - Komut Istemi'nde proje klasorune gir:
+        cd %USERPROFILE%\Documents\DCalculator
+     (ZIP actiysaniz klasor adi DCalculator-claude-new-session-734v27 olabilir.)
+   - "npm install" yaz ve Enter'a bas. Birkac dakika surer.
+     Sari "warn" satirlari normaldir; kirmizi "error" olmamali.
+
+
+B. UYGULAMAYI ACMAK (HER SEFERINDE)
+-----------------------------------
+
+En kolayi: proje klasorundeki "baslat.bat" dosyasina cift tikla.
+   - Tarayici http://localhost:5173 adresinde acilir.
+   - Acilan siyah pencere acik kalmali; kapatirsan uygulama durur.
+   - Windows "bilinmeyen yayinci" uyarisi verirse "Yine de calistir" de.
+
+Elle acmak icin: Komut Istemi'nde proje klasorundeyken
+        npm run dev
+   yaz, sonra tarayicida http://localhost:5173 adresini ac (Chrome veya Edge).
+
+
+C. ILK KULLANIM
+---------------
+
+1) Ustteki "JSON yukle" dugmesine bas. "examples" klasorunden
+   "hdc02-pl1.dcalc.json" dosyasini sec.
+2) "Sema" sekmesinde altta "Canli simulasyon" seridi vardir.
+3) Ariza listesinden "TX.PL1" sec ve "Arizayi uygula"ya bas.
+4) "Oynat"a bas. Arizayi kaldirmak icin "Arizayi gider"e bas.
+5) Calismalari "JSON indir" ile dosyaya kaydet. Veriler tarayicida da saklanir ama
+   tarayici verisi temizlenirse silinir; bu yuzden dosya yedegi alin.
+
+
+D. SONRADAN GUNCELLEMEK
+-----------------------
+
+Git ile kurulduysa, Komut Istemi'nde proje klasorundeyken:
+        git pull
+        npm install
+
+ZIP ile kurulduysa: yeni ZIP'i indirip klasorun uzerine cikarin, sonra "npm install" calistirin.
+
+
+SIK KARSILASILAN SORUNLAR
+-------------------------
+
+- "node" taninmiyor      : Komut Istemi'ni kapatip yeniden ac; olmazsa bilgisayari yeniden baslat.
+- "npm install" hata veriyor : Node surumunu kontrol et (22.12+). Sirket proxy'si varsa BT'den
+                           npm icin izin iste.
+- Sayfa acilmiyor        : Siyah pencere acik mi bak. Port doluysa pencerede 5174 gibi baska
+                           bir adres yazar, onu kullan.
+- Guvenlik duvari uyarisi: "Ozel aglara izin ver" de. Uygulama yalnizca kendi bilgisayarinda calisir.
