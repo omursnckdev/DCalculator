@@ -121,6 +121,17 @@ export interface LossBreakdown {
   panelKw: number
 }
 
+/** Tek tek kayıp kalemi (kablo, busbar hattı, pano iç barası, trafo, UPS). `kw` ısıya yansıyan (ağırlıklı) değerdir. */
+export interface LossItem {
+  id: string
+  kind: 'kablo' | 'busbar' | 'pano' | 'trafo' | 'ups'
+  name: string
+  /** Hat/pano akımı, A. */
+  currentA: number
+  kw: number
+  location: HeatLocation
+}
+
 export interface Totals {
   itKw: number
   mechKw: number
@@ -146,6 +157,8 @@ export interface Analysis {
   /** Mekân bazında ısıl yük (kW). */
   heat: HeatSummary
   losses: LossBreakdown
+  /** Tek tek kayıp kalemleri (kayba göre azalan). Toplamı `losses` toplamına eşittir. */
+  lossItems: LossItem[]
   /** Yaklaşık PUE = toplam tesis gücü / IT gücü; IT yoksa tanımsız. */
   pue?: number
 }

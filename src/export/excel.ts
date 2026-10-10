@@ -140,6 +140,19 @@ export async function buildWorkbook(project: Project, a: Analysis, scenarioName?
   }
   for (let c = 15; c <= 20; c++) wl.getColumn(c).numFmt = '#,##0.00'
 
+  // --- Kayıplar (kalem kalem) -------------------------------------------------
+  const wk = wb.addWorksheet(tr.export.sheetLosses, { views: [{ state: 'frozen', ySplit: 1 }] })
+  wk.addRow([tr.isi.colName, tr.isi.colKind, head(tr.isi.colCurrent, 'A'), head(tr.isi.colLoss, 'kW'), head(tr.isi.colShare, '%'), tr.isi.colWhere])
+  const lossTotal = a.lossItems.reduce((s, i) => s + i.kw, 0)
+  for (const i of a.lossItems) {
+    wk.addRow([i.name, tr.isi.kind[i.kind], i.currentA, i.kw, lossTotal > 0 ? (i.kw / lossTotal) * 100 : 0, roomLabel(i.location)])
+  }
+  wk.getColumn(3).numFmt = '#,##0'
+  wk.getColumn(4).numFmt = '#,##0.000'
+  wk.getColumn(5).numFmt = '#,##0.0'
+  wk.getRow(1).font = { bold: true }
+  wk.columns.forEach((c, k) => (c.width = k === 0 ? 40 : 16))
+
   // --- Özet ----------------------------------------------------------------
   const wsum = wb.addWorksheet(tr.export.sheetSummary)
   const put = (label: string, value?: string | number | null, unit?: string, fmt = '#,##0.00') => {

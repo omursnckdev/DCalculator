@@ -37,6 +37,10 @@ iç bara kaybı da aynı formülle hesaplanır: **İç bara uzunluğu** (m) ve *
 nominal akımdan tahmin edilir (`R = 34,4 / In` mΩ/m). Varsayılan iç bara uzunlukları tahminidir (MDB 6 m, bara 5 m, dağıtım/UPS panosu 3 m, ATS/STS 2 m,
 senkron 4 m); kendi panonuza göre girin. Kayıp, panonun **Isıyı bıraktığı yer** alanındaki mekâna yazılır. Kesici ve ölçü elemanlarında kayıp hesaplanmaz.
 
+**Kayıpları nerede göreceksiniz:** (1) **Isıl özet** sekmesi → "Kayıp dökümü (kalem kalem)": her kablo, busbar hattı, pano iç barası, trafo ve UPS
+satır satır (kayıp kW, pay %, ısının bırakıldığı mekân; Kablo / Busbar / Pano / Trafo / UPS filtreleri). (2) Hat veya pano seçince sağ panelde "Kayıp (kendi)".
+(3) **Tablo** sekmesinde ekipman satırlarında "Kayıp (kendi)" ve hat satırlarında "Hat kaybı" sütunu. (4) Excel'de **Kayıplar** sayfası.
+
 **Windows:** Node.js (LTS, 22.12 veya üzeri) kurulu olmalıdır; proje klasöründeki `baslat.bat` dosyasına çift tıklamak ilk seferde paketleri kurar, sonra uygulamayı başlatıp tarayıcıda açar.
 
 Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmeleriyle alınır (PNG için Şema sekmesi açık olmalı).

@@ -46,9 +46,9 @@ const cellText = (ws: ExcelJS.Worksheet) => {
 }
 
 describe('Excel çıktısı', () => {
-  it('üç sayfa üretir', async () => {
+  it('dört sayfa üretir', async () => {
     const { wb } = await roundTrip()
-    expect(wb.worksheets.map((w) => w.name)).toEqual(['Ekipman', 'Hatlar', 'Özet'])
+    expect(wb.worksheets.map((w) => w.name)).toEqual(['Ekipman', 'Hatlar', 'Kayıplar', 'Özet'])
   })
 
   it('ekipman sayfasında girdiler ve sonuçlar sayı olarak yazılır', async () => {

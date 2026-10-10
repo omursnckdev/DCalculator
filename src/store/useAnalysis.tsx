@@ -13,6 +13,7 @@ const EMPTY: Analysis = {
   unserved: { itKw: 0, mechKw: 0, totalKw: 0 },
   heat: { salonKw: 0, elektrikKw: 0, disKw: 0, totalKw: 0 },
   losses: { upsKw: 0, trafoKw: 0, lineKw: 0, panelKw: 0 },
+  lossItems: [],
 }
 const Ctx = createContext<Analysis>(EMPTY)
 

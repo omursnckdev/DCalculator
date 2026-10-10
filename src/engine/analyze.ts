@@ -15,6 +15,7 @@ import type {
   HeatSummary,
   Issue,
   LossBreakdown,
+  LossItem,
   Model,
   NodeResult,
   PQ,
@@ -754,6 +755,7 @@ function analyzeCore(
   // mekâna yazılır. Tüm elektrik gücü sonunda ısıya dönüştüğünden Σ ısı = Σ çekilen güç.
   const heat: HeatSummary = { salonKw: 0, elektrikKw: 0, disKw: 0, totalKw: 0 }
   const losses: LossBreakdown = { upsKw: 0, trafoKw: 0, lineKw: 0, panelKw: 0 }
+  const lossItems: LossItem[] = []
   const addHeat = (loc: HeatLocation, kw: number) => {
     if (loc === 'salon') heat.salonKw += kw
     else if (loc === 'dis') heat.disKw += kw
@@ -771,9 +773,11 @@ function analyzeCore(
       addHeat(heatLocation(n), r.ownLossKw * w)
       if (n.type === 'ups') losses.upsKw += r.ownLossKw * w
       else losses.trafoKw += r.ownLossKw * w
+      lossItems.push({ id, kind: n.type === 'ups' ? 'ups' : 'trafo', name: n.ad, currentA: r.currentA, kw: r.ownLossKw * w, location: heatLocation(n) })
     } else if (PANEL_LOSS_TYPES.includes(n.type)) {
       addHeat(heatLocation(n), r.ownLossKw * w)
       losses.panelKw += r.ownLossKw * w
+      lossItems.push({ id, kind: 'pano', name: n.ad, currentA: r.currentA, kw: r.ownLossKw * w, location: heatLocation(n) })
     }
   }
   for (const e of edges) {
@@ -784,7 +788,16 @@ function analyzeCore(
     if (w <= 0) continue
     addHeat(e.isiKonum, r.lossKw * w)
     losses.lineKw += r.lossKw * w
+    lossItems.push({
+      id: e.id,
+      kind: e.tip === 'busbar' ? 'busbar' : 'kablo',
+      name: e.ad || `${src.ad} → ${nodeById.get(e.target)?.ad ?? ''}`,
+      currentA: r.currentA,
+      kw: r.lossKw * w,
+      location: e.isiKonum,
+    })
   }
+  lossItems.sort((a, b) => b.kw - a.kw)
 
   // 8) Kaybedilen yük: kaynaklara normalde ulaşan ama senaryoda enerjisiz kalan yükler.
   // Senaryoda yalnızca temel durumda enerjili olup kaybedilen yükler 'kayıp' sayılır.
@@ -810,5 +823,5 @@ function analyzeCore(
 
   const pue = totals.itKw > 0 ? totals.totalKw / totals.itKw : undefined
 
-  return { nodes: nodeResults, edges: edgeResults, issues, totals, unserved, heat, losses, pue }
+  return { nodes: nodeResults, edges: edgeResults, issues, totals, unserved, heat, losses, lossItems, pue }
 }

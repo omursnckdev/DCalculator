@@ -279,4 +279,20 @@ describe('pano iç bara kaybı (3·I²·R·L / 1000)', () => {
     const a = analyze(f, undefined, { id: 's', ad: 's', failedNodes: ['g'], edgeStates: {}, nodeStates: {} })
     expect(a.nodes.m.ownLossKw).toBe(0)
   })
+
+  it('kayıp dökümü: kalemler tür/ad ile listelenir, toplamı toplam kayba eşittir', () => {
+    const f = plant({ baraDirenc: 0.05, baraUzunluk: 10 })
+    f.edges[1].tip = 'busbar'
+    f.edges[1].r = 0.1
+    f.edges[1].ad = 'BB/TEST'
+    f.edges[1].uzunluk = 20
+    const a = analyze(f)
+    const bus = a.lossItems.find((i) => i.kind === 'busbar')!
+    expect(bus.name).toBe('BB/TEST')
+    expect(bus.kw).toBeCloseTo(a.edges['m>l'].lossKw, 9)
+    expect(a.lossItems.find((i) => i.kind === 'pano')!.kw).toBeCloseTo(0.24, 2) // hat kaybı panonun akımını biraz artırır
+    const sum = a.lossItems.reduce((x, i) => x + i.kw, 0)
+    expect(sum).toBeCloseTo(a.losses.upsKw + a.losses.trafoKw + a.losses.lineKw + a.losses.panelKw, 9)
+    expect(a.lossItems[0].kw).toBeGreaterThanOrEqual(a.lossItems[a.lossItems.length - 1].kw)
+  })
 })
