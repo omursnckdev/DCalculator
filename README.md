@@ -93,6 +93,10 @@ Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmele
   **Jeneratör devrede** (~10 s) → **Senkron panosu kademelendirme** (~70 s) → **Batarya bitişi** (UPS özerkliği, varsayılan 10 dk).
   Değişmeyen adımlar atlanır. Her adımda tuval o anın durumunu gösterir (değişen ekipman titreşir) ve "ne değişti" listesi yazılır;
   ileri/geri, oynat ve hız düğmeleri vardır. Tüm bunlar projeyi değiştirmez.
+- **Ana dağıtım panosunu (MDB) uzatma:** MDB'yi seçince iki yanında tutamaçlar çıkar; sürükleyerek yatay uzatın (çok girişli/çıkışlı baralar için).
+  Genişlik projeye kaydedilir; özellikler panelindeki "Şemada genişlik" alanıyla da girilebilir (0 = otomatik).
+- **Arıza listesine ekle:** şemada bir ekipmanı seçince sağ panelin üstündeki **⚡ Arıza listesine ekle** düğmesi, ekipmanı alttaki Canlı simülasyon
+  arıza listesine ekler (aynı düğme listeden çıkarır). Birden fazla ekipmanı tek tek tıklayarak listeye alıp **Arızayı uygula** diyebilirsiniz.
 - **Seçmeli giderme:** birden çok ekipmana arıza verdiyseniz, **Arızayı gider** düğmesinin yanındaki listeden hangisinin giderileceğini seçin
   (ör. yalnız GEN.PL1.1; TX.PL1 arızalı kalır). Kalan arıza sonraki adımlardan yine giderilebilir. Onarılan jeneratör hemen devreye girmez;
   geri transfer adımında devreye alınır.

@@ -1,4 +1,4 @@
-import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react'
+import { Handle, NodeResizer, Position, useUpdateNodeInternals } from '@xyflow/react'
 import type { NodeProps } from '@xyflow/react'
 import { useEffect } from 'react'
 import { tr } from '../i18n/tr'
@@ -40,7 +40,11 @@ function CardNodeView({ id, data, selected }: NodeProps<EquipmentNode>) {
       } ${selected ? 'border-blue-600 ring-2 ring-blue-200' : r?.failed ? 'border-red-400' : 'border-slate-300'} ${
         r && !r.energized && !r.failed && !r.open && !r.cyclic ? 'opacity-60' : ''
       }`}
-      style={{ borderLeftColor: def.color, minWidth: compact ? 120 : Math.max(176, Math.max(nIn, nOut) * PORT_SPACING) }}
+      style={{
+        borderLeftColor: def.color,
+        minWidth: compact ? 120 : Math.max(176, Math.max(nIn, nOut) * PORT_SPACING),
+        ...(data.kind === 'mdb' && Number(data.params.genislik) > 0 ? { width: Number(data.params.genislik) } : {}),
+      }}
     >
       {r?.failed && (
         <div className="-mx-3 -mt-2 mb-1 rounded-t bg-red-600 px-3 py-0.5 text-[10px] font-bold tracking-wide text-white">
@@ -168,7 +172,15 @@ function IconNodeView({ id, data, selected }: NodeProps<EquipmentNode>) {
 
   // Çok portlu ekipman (pano, bara) port sayısı kadar genişler; şemadaki bara gibi görünür.
   const size = small ? 36 : 48
-  const width = Math.max(size, Math.max(nIn, nOut) * ICON_PORT_SPACING + 8)
+  const minWidth = Math.max(size, Math.max(nIn, nOut) * ICON_PORT_SPACING + 8)
+  // Ana dağıtım barası (MDB) tutamaçlarla yatay uzatılabilir; genişlik şemaya kaydedilir.
+  const resizable = data.kind === 'mdb'
+  const savedWidth = typeof data.params.genislik === 'number' ? data.params.genislik : 0
+  // Sürükleme sırasında canlı genişlik düğümün kendisinden (React Flow) gelir.
+  const liveWidth = useStore((s) => (resizable ? s.nodes.find((n) => n.id === id)?.width : undefined))
+  const wanted = liveWidth ?? savedWidth
+  const width = resizable && wanted > minWidth ? wanted : minWidth
+  const updateNodeParam = useStore((s) => s.updateNodeParam)
   const stateByPort = new Map(inputs.map((i) => [i.port, i.state]))
   const active = inputs.filter((i) => i.state === 'aktif')
   const left = (i: number, n: number) => `${((i + 1) / (n + 1)) * 100}%`
@@ -197,6 +209,16 @@ function IconNodeView({ id, data, selected }: NodeProps<EquipmentNode>) {
 
   return (
     <div className={`relative ${dead ? 'opacity-55' : standby ? 'opacity-70' : ''}`} style={{ width, height: size }} title={tip}>
+      {resizable && (
+        <NodeResizer
+          isVisible={!!selected}
+          minWidth={minWidth}
+          maxWidth={4000}
+          minHeight={size}
+          maxHeight={size}
+          onResizeEnd={(_, p) => updateNodeParam(id, 'genislik', Math.round(p.width))}
+        />
+      )}
       <div
         className={`flex h-full w-full items-center justify-center rounded-lg border-2 ${
           failed ? 'bg-red-50' : dead ? 'bg-slate-100' : onBattery ? 'bg-amber-50' : 'bg-white'

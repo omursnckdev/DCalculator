@@ -77,6 +77,7 @@ const heatField: SelectField = {
 }
 const busLength = n('baraUzunluk', A.baraUzunluk, 'm', { min: 0, step: 0.5 })
 const busResistance = n('baraDirenc', A.baraDirenc, 'mΩ/m', { min: 0, step: 0.001 })
+const widthField = n('genislik', A.genislik, 'px', { min: 0, step: 10 })
 const diversity = n('diversity', A.diversity, undefined, { min: 0, max: 1, step: 0.01 })
 
 const categoryField: SelectField = {
@@ -156,8 +157,8 @@ const defs: EquipmentDef[] = [
     hasInput: true,
     hasOutput: true,
     color: '#2563eb',
-    defaults: { gerilim: 400, nominalAkim: 4000, diversity: 1, baraUzunluk: 6, baraDirenc: 0, isiKonum: 'elektrik' },
-    fields: [voltage, rating, diversity, busLength, busResistance, heatField],
+    defaults: { gerilim: 400, nominalAkim: 4000, diversity: 1, baraUzunluk: 6, baraDirenc: 0, isiKonum: 'elektrik', genislik: 0 },
+    fields: [voltage, rating, diversity, busLength, busResistance, heatField, widthField],
     summary: panelSummary,
   },
   {

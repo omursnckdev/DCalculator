@@ -73,6 +73,13 @@ interface State {
   setFlowAnim: (v: boolean) => void
   /** Canlı simülasyon (arıza oynatma); null = kapalı. Projeye yazılmaz. */
   sim: SimState | null
+  /** Arıza listesine eklenen ekipman (Canlı simülasyon şeridi); şemadan ve panelden doldurulur. */
+  simPicked: string[]
+  toggleSimPick: (id: string) => void
+  setSimPicked: (ids: string[]) => void
+  /** Simülasyon şeridi açık mı. */
+  simOpen: boolean
+  setSimOpen: (v: boolean) => void
   startSim: (failed: string[]) => void
   /** Arızayı seçili adımdan itibaren giderir; sonraki adımlar giderme sürecidir. */
   clearSimFault: (ids?: string[]) => void
@@ -145,6 +152,15 @@ export const useStore = create<State>((set, get) => ({
     set({ flowAnim: v })
   },
   sim: null,
+  simPicked: [],
+  toggleSimPick: (id) =>
+    set((s) => ({
+      simPicked: s.simPicked.includes(id) ? s.simPicked.filter((x) => x !== id) : [...s.simPicked, id],
+      simOpen: true,
+    })),
+  setSimPicked: (ids) => set({ simPicked: ids }),
+  simOpen: true,
+  setSimOpen: (v) => set({ simOpen: v }),
   startSim: (failed) => {
     const s = get()
     const model = { nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }
@@ -295,9 +311,16 @@ export const useStore = create<State>((set, get) => ({
         v = Math.min(MAX_PORTS, Math.max(used, Math.round(v)))
       }
       return {
-        nodes: s.nodes.map((n) =>
-          n.id === id ? { ...n, data: { ...n.data, params: { ...n.data.params, [key]: v } } } : n,
-        ),
+        nodes: s.nodes.map((n) => {
+          if (n.id !== id) return n
+          const next = { ...n, data: { ...n.data, params: { ...n.data.params, [key]: v } } }
+          // Şema genişliği React Flow düğüm genişliğiyle eşit tutulur (0 = otomatik).
+          if (key === 'genislik') {
+            if (typeof v === 'number' && v > 0) next.width = v
+            else delete next.width
+          }
+          return next
+        }),
         dirty: true,
       }
     }),
@@ -447,6 +470,7 @@ export const useStore = create<State>((set, get) => ({
       scenarios: p.scenarios,
       activeScenarioId: null,
       sim: null,
+      simPicked: [],
       dirty: false,
     })),
 

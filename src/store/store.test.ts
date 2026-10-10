@@ -263,3 +263,31 @@ describe('canlı simülasyon: arızayı giderme dalı', () => {
     expect(st().sim!.steps).toHaveLength(n)
   })
 })
+
+describe('arıza listesi ve şema genişliği', () => {
+  it('ekipman arıza listesine eklenip çıkarılır; yeni projede liste boşalır', () => {
+    const st = useStore.getState
+    const id = st().addNode('mdb', 0, 0)
+    st().toggleSimPick(id)
+    expect(st().simPicked).toEqual([id])
+    expect(st().simOpen).toBe(true)
+    st().toggleSimPick(id)
+    expect(st().simPicked).toEqual([])
+    st().toggleSimPick(id)
+    st().newProject()
+    expect(st().simPicked).toEqual([])
+  })
+
+  it('MDB şema genişliği düğüm genişliğine yansır ve projeye yazılır', async () => {
+    const { fromProjectNodes, toProjectNodes } = await import('../model/project')
+    const st = useStore.getState
+    const id = st().addNode('mdb', 0, 0)
+    st().updateNodeParam(id, 'genislik', 600)
+    expect(st().nodes.find((n) => n.id === id)!.width).toBe(600)
+    const saved = toProjectNodes(st().nodes)
+    expect(saved[0].params.genislik).toBe(600)
+    expect(fromProjectNodes(saved)[0].width).toBe(600)
+    st().updateNodeParam(id, 'genislik', 0)
+    expect(st().nodes.find((n) => n.id === id)!.width).toBeUndefined()
+  })
+})

@@ -230,6 +230,9 @@ export function PropertiesPanel() {
   const setNodeFailed = useStore((s) => s.setNodeFailed)
   const setEdgeState = useStore((s) => s.setEdgeState)
   const setNodeSwitch = useStore((s) => s.setNodeSwitch)
+  const simPicked = useStore((s) => s.simPicked)
+  const toggleSimPick = useStore((s) => s.toggleSimPick)
+  const simRunning = useStore((s) => s.sim !== null)
 
   const node = useMemo(() => nodes.find((n) => n.selected), [nodes])
   const edge = useMemo(() => (node ? undefined : edges.find((e) => e.selected)), [node, edges])
@@ -247,6 +250,21 @@ export function PropertiesPanel() {
           <p className="mb-3 text-xs text-slate-500">
             {tr.props.type}: {EQUIPMENT[node.data.kind].label}
           </p>
+          {EQUIPMENT[node.data.kind].hasOutput && (
+            <button
+              type="button"
+              disabled={simRunning}
+              title={simRunning ? tr.sim.listBusy : tr.sim.listHint}
+              onClick={() => toggleSimPick(node.id)}
+              className={`mb-3 w-full rounded border px-2 py-1.5 text-sm disabled:opacity-40 ${
+                simPicked.includes(node.id)
+                  ? 'border-red-400 bg-red-50 text-red-800 hover:bg-red-100'
+                  : 'border-red-300 text-red-700 hover:bg-red-50'
+              }`}
+            >
+              {simPicked.includes(node.id) ? `✕ ${tr.sim.removeFromList}` : `⚡ ${tr.sim.addToList}`}
+            </button>
+          )}
           {activeScenario && (
             <label className="mb-3 flex items-center gap-2 rounded border border-red-200 bg-red-50 px-2 py-1.5 text-sm text-red-800">
               <input
@@ -280,7 +298,8 @@ export function PropertiesPanel() {
           </Row>
           <hr className="my-3 border-slate-200" />
           {EQUIPMENT[node.data.kind].fields.map((f: FieldDef) => {
-            const raw = node.data.params[f.key]
+            // Eski projelerde olmayan alan: motorun kullandığı varsayılanı göster.
+            const raw = node.data.params[f.key] ?? EQUIPMENT[node.data.kind].defaults[f.key]
             if (f.kind === 'select') {
               const isSwitch = node.data.kind === 'kesici' && f.key === 'durum'
               const shown = isSwitch ? (activeScenario?.nodeStates[node.id] ?? raw) : raw

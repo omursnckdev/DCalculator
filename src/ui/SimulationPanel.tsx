@@ -48,9 +48,17 @@ export function SimulationPanel() {
   const setIndex = useStore((s) => s.setSimIndex)
   const setPlaying = useStore((s) => s.setSimPlaying)
   const setSpeed = useStore((s) => s.setSimSpeed)
-  const [picked, setPicked] = useState<string[]>([])
-  const [open, setOpen] = useState(true)
+  const picked = useStore((s) => s.simPicked)
+  const setPicked = useStore((s) => s.setSimPicked)
+  const open = useStore((s) => s.simOpen)
+  const setOpen = useStore((s) => s.setSimOpen)
   const [clearPick, setClearPick] = useState('')
+
+  // Silinen ekipman arıza listesinde kalmasın.
+  useEffect(() => {
+    const alive = picked.filter((id) => nodes.some((n) => n.id === id))
+    if (alive.length !== picked.length) setPicked(alive)
+  }, [nodes, picked, setPicked])
 
   const candidates = useMemo(
     () => nodes.filter((n) => EQUIPMENT[n.data.kind].hasOutput && !picked.includes(n.id)),

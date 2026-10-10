@@ -89,6 +89,8 @@ export function fromProjectNodes(nodes: ProjectNode[]): EquipmentNode[] {
     id: n.id,
     type: 'equipment',
     position: { x: n.x, y: n.y },
+    // Şemada elle uzatılan ekipman (ana dağıtım barası): kayıtlı genişlik.
+    ...(typeof n.params.genislik === 'number' && n.params.genislik > 0 ? { width: n.params.genislik } : {}),
     data: {
       kind: n.type,
       ad: n.ad,
