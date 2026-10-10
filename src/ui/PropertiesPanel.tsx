@@ -339,7 +339,7 @@ export function PropertiesPanel() {
                 <Stat label={tr.results.current} value={`${fmtNum(nodeResult.currentA)} A`} />
                 {nodeResult.ownLossKw > 0 && (
                   <>
-                    <Stat label={tr.results.ownLoss} value={`${fmtNum(nodeResult.ownLossKw, 2)} kW`} />
+                    <Stat label={tr.results.ownLoss} value={`${fmtNum(nodeResult.ownLossKw, nodeResult.ownLossKw < 1 ? 3 : 2)} kW`} />
                     <Stat label={tr.results.input} value={`${fmtNum(nodeResult.inputKw)} kW`} />
                   </>
                 )}

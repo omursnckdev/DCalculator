@@ -59,6 +59,8 @@ export interface SimStep {
   opts: Partial<SimOptions>
   /** Çalışan (yüksüz de olsa) jeneratör kimlikleri. */
   running: string[]
+  /** Bu adımdan sonra hâlâ arızalı olan (simülasyonda arıza verilen) ekipman. */
+  failed: string[]
 }
 
 const fmt = (v: number, d = 0): string => v.toLocaleString('tr-TR', { maximumFractionDigits: d })
@@ -281,6 +283,7 @@ export function simulateFailure(
       phase: 'fault',
       opts,
       running: runningGens(analysis),
+      failed: id === 'normal' ? [] : failedIds,
     })
   }
   push('normal', -1, base, { ...FULL_AUTOMATION })
@@ -303,41 +306,63 @@ export function simulateFailure(
 const runningGens = (a: Analysis): string[] => Object.values(a.nodes).filter((r) => r.running).map((r) => r.id)
 
 /**
- * Arızanın `from` adımından itibaren giderilmesini çözer: arıza giderildi (transferler ve bypass henüz
- * eski konumda, jeneratörler yükte), normal kaynağa geri transfer (bypass geri açılır, jeneratör yüksüz
- * çalışır), jeneratör soğutma sonrası durur. Dönen adımlar `from`dan sonra eklenir.
+ * Arızanın `from` adımından itibaren giderilmesini çözer. `clearIds` verilen ekipmanın arızası kalkar,
+ * diğer arızalar sürer. Adımlar: arıza giderildi (transferler, bypass ve jeneratör kolu eski konumunda,
+ * onarılan jeneratör henüz çalışmıyor), normal kaynağa geri transfer (bypass açılır, jeneratörler
+ * yüksüz çalışır), jeneratör soğutma sonrası durur (yük taşımaya devam edenler hariç).
+ * Dönen adımlar `from`dan sonra eklenir.
  */
 export function simulateRecovery(
   model: Model,
-  failedIds: string[],
   from: SimStep,
+  clearIds: string[],
   baseScenario?: Scenario,
   th: Thresholds = DEFAULT_THRESHOLDS,
 ): SimStep[] {
   const base = analyze(model, th, baseScenario)
-  const names = failedIds.map((id) => model.nodes.find((n) => n.id === id)?.ad ?? id)
+  const byId = new Map(model.nodes.map((n) => [n.id, n]))
+  const cleared = from.failed.filter((id) => clearIds.includes(id))
+  const remaining = from.failed.filter((id) => !clearIds.includes(id))
+  const scenario: Scenario | undefined =
+    remaining.length === 0
+      ? baseScenario
+      : {
+          id: 'sim',
+          ad: 'sim',
+          failedNodes: [...new Set([...(baseScenario?.failedNodes ?? []), ...remaining])],
+          edgeStates: baseScenario?.edgeStates ?? {},
+          nodeStates: baseScenario?.nodeStates ?? {},
+        }
   const keepClosed = model.nodes.filter((n) => from.analysis.nodes[n.id]?.autoClosed).map((n) => n.id)
-  const stages: { id: SimStageId; seconds: number; opts: Partial<SimOptions>; running: string[] }[] = [
-    { id: 'clear', seconds: 0, opts: { ...from.opts, hold: holdFrom(from.analysis, model, true), keepClosed }, running: from.running },
+  const repairedGens = cleared.filter((id) => byId.get(id)?.type === 'jenerator')
+  const carrying = (a: Analysis): string[] => model.nodes.filter((n) => n.type === 'jenerator' && a.nodes[n.id]?.totalKw > 0.5).map((n) => n.id)
+  const stillRunning = from.running.filter((id) => !remaining.includes(id) && !repairedGens.includes(id))
+
+  const stages: { id: SimStageId; seconds: number; opts: Partial<SimOptions>; running: (a: Analysis) => string[] }[] = [
+    {
+      id: 'clear',
+      seconds: 0,
+      opts: { ...from.opts, hold: holdFrom(from.analysis, model, true), keepClosed, offGens: repairedGens },
+      running: () => stillRunning,
+    },
     {
       id: 'retransfer',
       seconds: SIM_TIMING.retransfer,
       opts: { autoBypass: true, staging: true, genOnline: from.opts.genOnline ?? true, battery: true },
-      running: from.running,
+      running: (a) => [...new Set([...stillRunning, ...carrying(a)])],
     },
-    { id: 'genStop', seconds: SIM_TIMING.retransfer + SIM_TIMING.cooldown, opts: { ...FULL_AUTOMATION }, running: [] },
+    { id: 'genStop', seconds: SIM_TIMING.retransfer + SIM_TIMING.cooldown, opts: { ...FULL_AUTOMATION }, running: carrying },
   ]
   const out: SimStep[] = []
   let prev = from.analysis
   let prevSig = signature(prev, model)
-  let prevRunning = from.running.length
   for (const st of stages) {
-    const a = analyze(model, th, baseScenario, base, st.opts)
-    markRunning(a, st.running)
+    const a = analyze(model, th, scenario, base, st.opts)
+    markRunning(a, st.running(a))
     const sig = signature(a, model)
-    if (st.id !== 'clear' && sig === prevSig && st.running.length === prevRunning) continue
+    if (st.id !== 'clear' && sig === prevSig) continue
     const { changes, changedNodes } = diffAnalyses(model, prev, a, [], base)
-    if (st.id === 'clear') for (const n of names.slice().reverse()) changes.unshift({ kind: 'cleared', text: tr.sim.changeCleared(n) })
+    if (st.id === 'clear') for (const id of cleared.slice().reverse()) changes.unshift({ kind: 'cleared', text: tr.sim.changeCleared(byId.get(id)?.ad ?? id) })
     out.push({
       id: st.id,
       title: tr.sim.stages[st.id],
@@ -346,15 +371,15 @@ export function simulateRecovery(
       timeLabel: timeLabel(st.seconds),
       analysis: a,
       changes,
-      changedNodes: [...new Set([...changedNodes, ...(st.id === 'clear' ? failedIds : [])])],
+      changedNodes: [...new Set([...changedNodes, ...(st.id === 'clear' ? cleared : [])])],
       lostKw: Math.max(0, a.unserved.totalKw - base.unserved.totalKw),
       phase: 'recovery',
       opts: st.opts,
-      running: st.running,
+      running: runningGens(a),
+      failed: remaining,
     })
     prev = a
     prevSig = sig
-    prevRunning = st.running.length
   }
   return out
 }

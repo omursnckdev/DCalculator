@@ -13,7 +13,7 @@ let seq = 0
 function node(id: string, type: EquipmentType, params: Params = {}): ProjectNode {
   portUse.delete(`${id}:in`)
   portUse.delete(`${id}:out`)
-  return { id, type, ad: id, etiket: '', grup: '', notlar: '', x: 0, y: seq++ * 10, params: { ...EQUIPMENT[type].defaults, girisSayisi: 12, cikisSayisi: 12, ...params } }
+  return { id, type, ad: id, etiket: '', grup: '', notlar: '', x: 0, y: seq++ * 10, params: { ...EQUIPMENT[type].defaults, baraUzunluk: 0, girisSayisi: 12, cikisSayisi: 12, ...params } }
 }
 function edge(source: string, target: string, over: Partial<ProjectEdge> = {}): ProjectEdge {
   return {
@@ -145,7 +145,7 @@ describe('arıza giderme (geri dönüş) simülasyonu', () => {
     const m = plant()
     const steps = simulateFailure(m, ['tx'])
     const staging = steps.find((x) => x.id === 'staging') ?? steps.find((x) => x.id === 'gen')!
-    const rec = simulateRecovery(m, ['tx'], staging)
+    const rec = simulateRecovery(m, staging, ['tx'])
     expect(ids(rec)).toEqual(['clear', 'retransfer', 'genStop'])
     expect(rec.every((x) => x.phase === 'recovery')).toBe(true)
     const [clear, retransfer, stop] = rec
@@ -169,7 +169,7 @@ describe('arıza giderme (geri dönüş) simülasyonu', () => {
     const steps = simulateFailure(m, ['ups'])
     const bypassStep = steps.find((x) => x.id === 'bypass')!
     expect(bypassStep.analysis.nodes.byp1.autoClosed).toBe(true)
-    const rec = simulateRecovery(m, ['ups'], bypassStep)
+    const rec = simulateRecovery(m, bypassStep, ['ups'])
     expect(rec[0].id).toBe('clear')
     // Giderilince bypass geri transfer gecikmesi dolana kadar kapalı kalır.
     expect(rec[0].analysis.nodes.byp1.autoClosed).toBe(true)
@@ -183,9 +183,37 @@ describe('arıza giderme (geri dönüş) simülasyonu', () => {
   it('arıza anından hemen giderilirse tek adım (clear) ile normale döner', () => {
     const m = plant()
     const steps = simulateFailure(m, ['chiller'])
-    const rec = simulateRecovery(m, ['chiller'], steps[1])
+    const rec = simulateRecovery(m, steps[1], ['chiller'])
     expect(rec[0].id).toBe('clear')
     expect(rec[rec.length - 1].lostKw).toBe(0)
   })
-})
 
+  it('birden çok arıza: yalnız seçilen ekipmanın arızası giderilir, diğeri sürer', () => {
+    const m = plant()
+    const steps = simulateFailure(m, ['tx', 'gen1'])
+    const last = steps[steps.length - 1]
+    expect(last.failed).toEqual(['tx', 'gen1'])
+    expect(last.analysis.nodes.gen2.totalKw).toBeGreaterThan(400) // gen1 arızalı: gen2 tek başına taşır
+
+    const rec = simulateRecovery(m, last, ['gen1'])
+    expect(rec[0].id).toBe('clear')
+    expect(rec.every((r) => r.failed.length === 1 && r.failed[0] === 'tx')).toBe(true)
+    expect(rec.every((r) => r.analysis.nodes.tx.failed && !r.analysis.nodes.gen1.failed)).toBe(true)
+    // Onarılan jeneratör hemen çalışmaz; trafo arızalı olduğundan yük jeneratörlerde kalır.
+    expect(rec[0].analysis.nodes.gen1.running).toBeFalsy()
+    expect(rec[0].changes[0]).toMatchObject({ kind: 'cleared' })
+    expect(rec[0].changes[0].text).toContain('gen1')
+    const end = rec[rec.length - 1]
+    expect(end.lostKw).toBe(0)
+    const carriers = ['gen1', 'gen2'].filter((g) => end.analysis.nodes[g].totalKw > 400)
+    expect(carriers).toHaveLength(1)
+    expect(end.running).toContain(carriers[0]) // yük taşıyan jeneratör durmaz
+
+    // Kalan arıza da (trafo) giderilebilir: jeneratörler durur, sistem normale döner.
+    const rec2 = simulateRecovery(m, end, ['tx'])
+    const fin = rec2[rec2.length - 1]
+    expect(fin.failed).toEqual([])
+    expect(fin.running).toEqual([])
+    expect(Math.round(fin.analysis.totals.totalKw)).toBe(Math.round(steps[0].analysis.totals.totalKw))
+  })
+})

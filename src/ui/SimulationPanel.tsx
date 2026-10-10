@@ -50,6 +50,7 @@ export function SimulationPanel() {
   const setSpeed = useStore((s) => s.setSimSpeed)
   const [picked, setPicked] = useState<string[]>([])
   const [open, setOpen] = useState(true)
+  const [clearPick, setClearPick] = useState('')
 
   const candidates = useMemo(
     () => nodes.filter((n) => EQUIPMENT[n.data.kind].hasOutput && !picked.includes(n.id)),
@@ -126,7 +127,7 @@ export function SimulationPanel() {
         {sim && (
           <>
             <span className="text-xs text-slate-500">
-              {sim.failed.map(nameOf).join(', ')} · {tr.sim.step(index + 1, sim.steps.length)}
+              {(step?.failed.length ? step.failed : sim.failed).map(nameOf).join(', ')} · {tr.sim.step(index + 1, sim.steps.length)}
             </span>
             <div className="ml-auto flex items-center gap-1">
               <button type="button" className="rounded border border-slate-300 px-2 py-0.5 text-sm" onClick={() => { setPlaying(false); setIndex(0) }} aria-label="|◀">
@@ -158,12 +159,27 @@ export function SimulationPanel() {
                   </option>
                 ))}
               </select>
+              {(step?.failed.length ?? 0) > 1 && (
+                <select
+                  className="ml-2 rounded border border-slate-300 px-1 py-0.5 text-sm"
+                  value={step!.failed.includes(clearPick) ? clearPick : ''}
+                  onChange={(e) => setClearPick(e.target.value)}
+                  aria-label={tr.sim.clearWhich}
+                >
+                  <option value="">{tr.sim.clearAll(step!.failed.length)}</option>
+                  {step!.failed.map((id) => (
+                    <option key={id} value={id}>
+                      {nameOf(id)}
+                    </option>
+                  ))}
+                </select>
+              )}
               <button
                 type="button"
-                disabled={index === 0 || step?.phase !== 'fault'}
+                disabled={index === 0 || (step?.failed.length ?? 0) === 0}
                 title={tr.sim.clearFaultHint}
-                className="ml-2 rounded bg-green-600 px-3 py-0.5 text-sm text-white disabled:opacity-40"
-                onClick={clearFault}
+                className={`${(step?.failed.length ?? 0) > 1 ? '' : 'ml-2 '}rounded bg-green-600 px-3 py-0.5 text-sm text-white disabled:opacity-40`}
+                onClick={() => clearFault(step && clearPick && step.failed.includes(clearPick) ? [clearPick] : undefined)}
               >
                 🔧 {tr.sim.clearFault}
               </button>

@@ -170,6 +170,7 @@ export async function buildWorkbook(project: Project, a: Analysis, scenarioName?
   put(tr.isi.ups, a.losses.upsKw, 'kW')
   put(tr.isi.trafo, a.losses.trafoKw, 'kW')
   put(tr.isi.line, a.losses.lineKw, 'kW')
+  put(tr.isi.panel, a.losses.panelKw, 'kW')
 
   section(tr.isi.title)
   const heatRow = (label: string, kw: number) => {

@@ -249,11 +249,11 @@ describe('canlı simülasyon: arızayı giderme dalı', () => {
     const sim = st().sim!
     expect(sim.steps.length).toBeGreaterThan(faultLen)
     expect(sim.steps[sim.index].phase).toBe('recovery')
-    expect(sim.branchAt).toBe(faultLen - 1)
+    expect(sim.history).toHaveLength(1)
     // başa dön: giderme adımları atılır, arıza sürer
     st().setSimIndex(0)
     expect(st().sim!.steps).toHaveLength(faultLen)
-    expect(st().sim!.branchAt).toBeNull()
+    expect(st().sim!.history).toHaveLength(0)
     expect(st().sim!.steps.every((s) => s.phase === 'fault')).toBe(true)
     // giderme adımında "gider" tekrar işlem yapmaz
     st().setSimIndex(faultLen - 1)

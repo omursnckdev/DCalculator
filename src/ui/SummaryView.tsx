@@ -58,7 +58,8 @@ export function SummaryView() {
               <Row label={tr.isi.ups} kw={losses.upsKw} />
               <Row label={tr.isi.trafo} kw={losses.trafoKw} />
               <Row label={tr.isi.line} kw={losses.lineKw} />
-              <Row label={tr.summary.loss} kw={losses.upsKw + losses.trafoKw + losses.lineKw} bold />
+              <Row label={tr.isi.panel} kw={losses.panelKw} />
+              <Row label={tr.summary.loss} kw={losses.upsKw + losses.trafoKw + losses.lineKw + losses.panelKw} bold />
             </tbody>
           </table>
         </Card>

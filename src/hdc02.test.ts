@@ -216,7 +216,7 @@ describe('HDC02 PL1: adım adım simülasyon', () => {
   it('TX.PL1 arızası giderilince: STS/ATS geri transfer, jeneratörler yüksüz çalışıp durur', () => {
     const steps = simulateFailure(p, ['tx'])
     const gen = steps[steps.length - 1]
-    const rec = simulateRecovery(p, ['tx'], gen, undefined)
+    const rec = simulateRecovery(p, gen, ['tx'])
     expect(rec.map((r) => r.id)).toEqual(['clear', 'retransfer', 'genStop'])
     // Arıza giderildi ama MSB henüz jeneratörde (geri transfer gecikmesi)
     expect(rec[0].analysis.nodes.tx.energized).toBe(true)

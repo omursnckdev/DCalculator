@@ -9,7 +9,7 @@ import { buildWorkbook, workbookToBlob } from './excel'
 function project(): Project {
   const p = emptyProject('Test Tesisi')
   const n = (id: string, type: EquipmentType, ad: string, params: Params = {}) => ({
-    id, type, ad, etiket: '', grup: '', notlar: '', x: 0, y: 0, params: { ...EQUIPMENT[type].defaults, ...params },
+    id, type, ad, etiket: '', grup: '', notlar: '', x: 0, y: 0, params: { ...EQUIPMENT[type].defaults, baraUzunluk: 0, ...params },
   })
   p.nodes = [
     n('g', 'sebeke', 'Şebeke', { gerilim: 400 }),

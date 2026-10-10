@@ -16,7 +16,7 @@ function node(id: string, type: EquipmentType, params: Params = {}): ProjectNode
   portUse.delete(`${id}:out`)
   return {
     id, type, ad: id, etiket: '', grup: '', notlar: '', x: 0, y: seq++ * 10,
-    params: { ...EQUIPMENT[type].defaults, girisSayisi: 12, cikisSayisi: 12, ...params },
+    params: { ...EQUIPMENT[type].defaults, baraUzunluk: 0, girisSayisi: 12, cikisSayisi: 12, ...params },
   }
 }
 function edge(source: string, target: string, over: Partial<ProjectEdge> = {}): ProjectEdge {

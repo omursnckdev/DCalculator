@@ -75,6 +75,8 @@ const heatField: SelectField = {
     { value: 'dis', label: A.konumDis },
   ],
 }
+const busLength = n('baraUzunluk', A.baraUzunluk, 'm', { min: 0, step: 0.5 })
+const busResistance = n('baraDirenc', A.baraDirenc, 'mΩ/m', { min: 0, step: 0.001 })
 const diversity = n('diversity', A.diversity, undefined, { min: 0, max: 1, step: 0.01 })
 
 const categoryField: SelectField = {
@@ -154,8 +156,8 @@ const defs: EquipmentDef[] = [
     hasInput: true,
     hasOutput: true,
     color: '#2563eb',
-    defaults: { gerilim: 400, nominalAkim: 4000, diversity: 1 },
-    fields: [voltage, rating, diversity],
+    defaults: { gerilim: 400, nominalAkim: 4000, diversity: 1, baraUzunluk: 6, baraDirenc: 0, isiKonum: 'elektrik' },
+    fields: [voltage, rating, diversity, busLength, busResistance, heatField],
     summary: panelSummary,
   },
   {
@@ -165,8 +167,8 @@ const defs: EquipmentDef[] = [
     hasInput: true,
     hasOutput: true,
     color: '#0891b2',
-    defaults: { gerilim: 400, nominalAkim: 800, diversity: 1 },
-    fields: [voltage, rating, diversity],
+    defaults: { gerilim: 400, nominalAkim: 800, diversity: 1, baraUzunluk: 3, baraDirenc: 0, isiKonum: 'elektrik' },
+    fields: [voltage, rating, diversity, busLength, busResistance, heatField],
     summary: panelSummary,
   },
   {
@@ -176,8 +178,8 @@ const defs: EquipmentDef[] = [
     hasInput: true,
     hasOutput: true,
     color: '#475569',
-    defaults: { gerilim: 400, nominalAkim: 3200, diversity: 1 },
-    fields: [voltage, rating, diversity],
+    defaults: { gerilim: 400, nominalAkim: 3200, diversity: 1, baraUzunluk: 5, baraDirenc: 0, isiKonum: 'elektrik' },
+    fields: [voltage, rating, diversity, busLength, busResistance, heatField],
     summary: panelSummary,
   },
   // ATS/STS: birden çok girişten yalnızca biri aktif olur (tercih edilen = en yüksek pay).
@@ -189,8 +191,8 @@ const defs: EquipmentDef[] = [
     hasInput: true,
     hasOutput: true,
     color: '#b45309',
-    defaults: { gerilim: 400, nominalAkim: 1600, diversity: 1 },
-    fields: [voltage, rating, diversity],
+    defaults: { gerilim: 400, nominalAkim: 1600, diversity: 1, baraUzunluk: 2, baraDirenc: 0, isiKonum: 'elektrik' },
+    fields: [voltage, rating, diversity, busLength, busResistance, heatField],
     summary: panelSummary,
   },
   {
@@ -200,8 +202,8 @@ const defs: EquipmentDef[] = [
     hasInput: true,
     hasOutput: true,
     color: '#be185d',
-    defaults: { gerilim: 400, nominalAkim: 800, diversity: 1 },
-    fields: [voltage, rating, diversity],
+    defaults: { gerilim: 400, nominalAkim: 800, diversity: 1, baraUzunluk: 2, baraDirenc: 0, isiKonum: 'elektrik' },
+    fields: [voltage, rating, diversity, busLength, busResistance, heatField],
     summary: panelSummary,
   },
   {
@@ -245,7 +247,7 @@ const defs: EquipmentDef[] = [
     color: '#ea580c',
     // Jeneratörleri paralel bağlar ve yük paylaşımını yönetir (PMS). Jeneratörler girişlerine
     // (kesicilerden geçerek) bağlanır; giriş port sırası çalışma önceliğidir.
-    defaults: { gerilim: 400, nominalAkim: 5000, diversity: 1, mod: 'sirali', esik: 70 },
+    defaults: { gerilim: 400, nominalAkim: 5000, diversity: 1, mod: 'sirali', esik: 70, baraUzunluk: 4, baraDirenc: 0, isiKonum: 'elektrik' },
     fields: [
       voltage,
       rating,
@@ -254,6 +256,9 @@ const defs: EquipmentDef[] = [
         { value: 'esit', label: A.modEsit },
       ] },
       n('esik', A.esik, '%', { min: 10, max: 100, step: 1 }),
+      busLength,
+      busResistance,
+      heatField,
     ],
     summary: (p) => `${fmt(num(p, 'nominalAkim'))} A · ${p.mod === 'esit' ? A.modEsit.split(' ')[0] : `${A.modSirali.split(' ')[0]} %${fmt(num(p, 'esik'))}`}`,
   },
@@ -333,8 +338,8 @@ const defs: EquipmentDef[] = [
     hasInput: true,
     hasOutput: true,
     color: '#059669',
-    defaults: { gerilim: 400, nominalAkim: 1600, diversity: 1 },
-    fields: [voltage, rating, diversity],
+    defaults: { gerilim: 400, nominalAkim: 1600, diversity: 1, baraUzunluk: 3, baraDirenc: 0, isiKonum: 'elektrik' },
+    fields: [voltage, rating, diversity, busLength, busResistance, heatField],
     summary: panelSummary,
   },
   {
@@ -344,8 +349,8 @@ const defs: EquipmentDef[] = [
     hasInput: true,
     hasOutput: true,
     color: '#0d9488',
-    defaults: { gerilim: 400, nominalAkim: 250, diversity: 1 },
-    fields: [voltage, rating, diversity],
+    defaults: { gerilim: 400, nominalAkim: 250, diversity: 1, baraUzunluk: 1.5, baraDirenc: 0, isiKonum: 'elektrik' },
+    fields: [voltage, rating, diversity, busLength, busResistance, heatField],
     summary: panelSummary,
   },
   {

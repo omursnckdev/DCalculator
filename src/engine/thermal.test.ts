@@ -15,7 +15,7 @@ let seq = 0
 function node(id: string, type: EquipmentType, params: Params = {}): ProjectNode {
   portUse.delete(`${id}:in`)
   portUse.delete(`${id}:out`)
-  return { id, type, ad: id, etiket: '', grup: '', notlar: '', x: 0, y: seq++ * 10, params: { ...EQUIPMENT[type].defaults, girisSayisi: 12, cikisSayisi: 12, ...params } }
+  return { id, type, ad: id, etiket: '', grup: '', notlar: '', x: 0, y: seq++ * 10, params: { ...EQUIPMENT[type].defaults, baraUzunluk: 0, girisSayisi: 12, cikisSayisi: 12, ...params } }
 }
 function edge(source: string, target: string, over: Partial<ProjectEdge> = {}): ProjectEdge {
   return {
@@ -248,5 +248,35 @@ describe('değişmezler', () => {
       edges: [edge('m', 'l')],
     })
     expect(a.heat.totalKw).toBe(0)
+  })
+})
+
+describe('pano iç bara kaybı (3·I²·R·L / 1000)', () => {
+  // 400 V, pf = 1: 277,128 kW → I = 400 A.
+  const plant = (panel: Params) => {
+    const nodes = [node('g', 'sebeke'), node('m', 'mdb', { nominalAkim: 4000, ...panel }), node('l', 'itYuku', { kuruluKw: 400 * Math.sqrt(3) * 0.4, pf: 1, df: 1 })]
+    return { nodes, edges: [edge('g', 'm'), edge('m', 'l')] }
+  }
+
+  it('elle girilen direnç: R = 0,05 mΩ/m, L = 10 m → 3·400²·5e-5·10/1000 = 0,24 kW', () => {
+    const a = analyze(plant({ baraDirenc: 0.05, baraUzunluk: 10 }))
+    expect(a.nodes.m.ownLossKw).toBeCloseTo(0.24, 6)
+    expect(a.losses.panelKw).toBeCloseTo(0.24, 6)
+    expect(a.totals.totalKw).toBeCloseTo(400 * Math.sqrt(3) * 0.4 + 0.24, 6)
+    expect(a.heat.totalKw).toBeCloseTo(a.totals.totalKw, 9)
+    expect(a.heat.elektrikKw).toBeCloseTo(0.24, 6)
+  })
+
+  it('direnç 0 ise nominal akımdan tahmin edilir: R = 34,4 / In mΩ/m', () => {
+    const a = analyze(plant({ baraUzunluk: 6 }))
+    // R = 34,4/4000 = 0,0086 mΩ/m → 3·400²·8,6e-6·6/1000 = 0,024768 kW
+    expect(a.nodes.m.ownLossKw).toBeCloseTo(0.024768, 6)
+  })
+
+  it('uzunluk 0 ise kayıp yok; enerjisiz panoda kayıp yok', () => {
+    expect(analyze(plant({ baraUzunluk: 0 })).losses.panelKw).toBe(0)
+    const f = plant({ baraDirenc: 0.05, baraUzunluk: 10 })
+    const a = analyze(f, undefined, { id: 's', ad: 's', failedNodes: ['g'], edgeStates: {}, nodeStates: {} })
+    expect(a.nodes.m.ownLossKw).toBe(0)
   })
 })

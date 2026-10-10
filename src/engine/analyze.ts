@@ -25,6 +25,8 @@ import type {
 
 const SQRT3 = Math.sqrt(3)
 const LOAD_TYPES: EquipmentType[] = ['itYuku', 'mekanikYuk', 'aydinlatma', 'genelYuk']
+/** İç bara kaybı hesaplanan pano tipleri (kesici ve ölçü elemanları hariç). */
+const PANEL_LOSS_TYPES: EquipmentType[] = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu', 'ats', 'sts', 'senkron']
 const PANEL_TYPES: EquipmentType[] = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu', 'ats', 'sts', 'kesici', 'senkron']
 const TRANSFER_TYPES: EquipmentType[] = ['ats', 'sts']
 
@@ -102,6 +104,9 @@ function diversityOf(n: ProjectNode): number {
   const raw = n.params.diversity ?? EQUIPMENT[n.type].defaults.diversity
   return typeof raw === 'number' && Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : 1
 }
+
+/** Otomatik bara direnci: R[mΩ/m] = 34,4 / In[A] (Cu, ρ≈0,0215 Ω·mm²/m, J≈1,6 A/mm²). */
+const PANEL_BUS_R_COEFF = 34.4
 
 function heatLocation(n: ProjectNode): HeatLocation {
   const v = n.params.isiKonum ?? EQUIPMENT[n.type].defaults.isiKonum
@@ -239,6 +244,7 @@ function analyzeCore(
   // enerjisizdir; kaynağı enerjisiz olan hat canlı değildir.
   const dead = new Set<string>([...failed, ...openSwitches, ...standby])
   if (!opts.genOnline) for (const n of model.nodes) if (n.type === 'jenerator') dead.add(n.id)
+  for (const id of opts.offGens ?? []) dead.add(id)
   const { energized: energizedSet, onBattery } = energize({ nodes: model.nodes, edges, dead, battery: opts.battery, hold: opts.hold })
   const energized = new Map<string, boolean>()
   for (const id of order) energized.set(id, energizedSet.has(id))
@@ -430,6 +436,18 @@ function analyzeCore(
         formula: `${fmt(param(n, 'uk'))}% × ${fmt(sn)} kVA × (${fmt(ratio, 4)})²`,
         result: `${fmt(lossQ)} kvar`,
       })
+    } else if (PANEL_LOSS_TYPES.includes(n.type) && en) {
+      // Pano iç bara kaybı: 3·I²·R·L / 1000 (kW). I, panonun çıkış akımıdır; R faz başına (mΩ/m).
+      // Direnç girilmemişse nominal akımdan tahmin edilir (Cu bara, ~1,6 A/mm², 85 °C).
+      const cur = currentOf(kvaOf(sumPQ(out)), outVoltage(n))
+      const len = param(n, 'baraUzunluk')
+      const nominal = param(n, 'nominalAkim')
+      const rMilli = param(n, 'baraDirenc') > 0 ? param(n, 'baraDirenc') : nominal > 0 ? PANEL_BUS_R_COEFF / nominal : 0
+      const lossP = (3 * cur * cur * (rMilli / 1000) * len) / 1000
+      ownLoss = lossP
+      input = { it: { ...out.it }, mech: { ...out.mech }, loss: { p: out.loss.p + lossP, q: out.loss.q } }
+      explain.push({ label: tr.hesap.panelR, formula: param(n, 'baraDirenc') > 0 ? tr.alan.baraDirenc : `${PANEL_BUS_R_COEFF} / ${fmt(nominal)} A`, result: `${fmt(rMilli, 4)} mΩ/m` })
+      explain.push({ label: tr.hesap.panelLoss, formula: `3 × ${fmt(cur)}² × ${fmt(rMilli, 4)} mΩ/m × ${fmt(len)} m / 10⁶`, result: `${fmt(lossP, 3)} kW` })
     } else {
       input = out
     }
@@ -735,7 +753,7 @@ function analyzeCore(
   // 7) Isıl yük: her ekipmanın yük/kayıp kalemi, ağırlığıyla ölçeklenip bırakıldığı
   // mekâna yazılır. Tüm elektrik gücü sonunda ısıya dönüştüğünden Σ ısı = Σ çekilen güç.
   const heat: HeatSummary = { salonKw: 0, elektrikKw: 0, disKw: 0, totalKw: 0 }
-  const losses: LossBreakdown = { upsKw: 0, trafoKw: 0, lineKw: 0 }
+  const losses: LossBreakdown = { upsKw: 0, trafoKw: 0, lineKw: 0, panelKw: 0 }
   const addHeat = (loc: HeatLocation, kw: number) => {
     if (loc === 'salon') heat.salonKw += kw
     else if (loc === 'dis') heat.disKw += kw
@@ -753,6 +771,9 @@ function analyzeCore(
       addHeat(heatLocation(n), r.ownLossKw * w)
       if (n.type === 'ups') losses.upsKw += r.ownLossKw * w
       else losses.trafoKw += r.ownLossKw * w
+    } else if (PANEL_LOSS_TYPES.includes(n.type)) {
+      addHeat(heatLocation(n), r.ownLossKw * w)
+      losses.panelKw += r.ownLossKw * w
     }
   }
   for (const e of edges) {

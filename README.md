@@ -32,6 +32,11 @@ npm run typecheck
 npm run build
 ```
 
+**Isı kaybı:** kablo ve busbar hatlarında `3·I²·R·L/1000` (R: Ω/km, L: m→km). Panolarda (MDB, dağıtım panosu, bara, UPS panosu, PDU, ATS/STS, senkron)
+iç bara kaybı da aynı formülle hesaplanır: **İç bara uzunluğu** (m) ve **Bara direnci** (mΩ/m, faz başı) panel alanlarından girilir; direnç 0 ise
+nominal akımdan tahmin edilir (`R = 34,4 / In` mΩ/m). Varsayılan iç bara uzunlukları tahminidir (MDB 6 m, bara 5 m, dağıtım/UPS panosu 3 m, ATS/STS 2 m,
+senkron 4 m); kendi panonuza göre girin. Kayıp, panonun **Isıyı bıraktığı yer** alanındaki mekâna yazılır. Kesici ve ölçü elemanlarında kayıp hesaplanmaz.
+
 **Windows:** Node.js (LTS, 22.12 veya üzeri) kurulu olmalıdır; proje klasöründeki `baslat.bat` dosyasına çift tıklamak ilk seferde paketleri kurar, sonra uygulamayı başlatıp tarayıcıda açar.
 
 Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmeleriyle alınır (PNG için Şema sekmesi açık olmalı).
@@ -84,6 +89,9 @@ Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmele
   **Jeneratör devrede** (~10 s) → **Senkron panosu kademelendirme** (~70 s) → **Batarya bitişi** (UPS özerkliği, varsayılan 10 dk).
   Değişmeyen adımlar atlanır. Her adımda tuval o anın durumunu gösterir (değişen ekipman titreşir) ve "ne değişti" listesi yazılır;
   ileri/geri, oynat ve hız düğmeleri vardır. Tüm bunlar projeyi değiştirmez.
+- **Seçmeli giderme:** birden çok ekipmana arıza verdiyseniz, **Arızayı gider** düğmesinin yanındaki listeden hangisinin giderileceğini seçin
+  (ör. yalnız GEN.PL1.1; TX.PL1 arızalı kalır). Kalan arıza sonraki adımlardan yine giderilebilir. Onarılan jeneratör hemen devreye girmez;
+  geri transfer adımında devreye alınır.
 - **Arızayı giderme:** simülasyon sürerken (oynatırken de) seçili adımdan **Arızayı gider** düğmesine basın; arıza o adımdan itibaren giderilir ve
   şu adımlar oynatılır: **Arıza giderildi** (normal kaynak geri geldi, yük hâlâ jeneratör/bypass üzerinde) → **Geri transfer** (~5 dk; MSB/ATS/STS normal girişe döner,
   bypass kesicileri açılır, jeneratörler yüksüz çalışır, rozet "ÇALIŞIYOR") → **Jeneratörler durdu** (~10 dk, soğutma sonrası). Sonunda sistem arıza öncesi duruma döner.

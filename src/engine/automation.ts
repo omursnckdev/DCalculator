@@ -18,6 +18,8 @@ export interface SimOptions {
   hold?: Record<string, string>
   /** Arıza giderilirken bypass kesicileri henüz geri açılmadı: bu kesiciler kapalı kalır. */
   keepClosed?: string[]
+  /** Onarılmış ama henüz çalıştırılmamış jeneratörler: devrede sayılmaz. */
+  offGens?: string[]
 }
 
 export const FULL_AUTOMATION: SimOptions = { autoBypass: true, staging: true, genOnline: true, battery: false }
@@ -62,7 +64,7 @@ export function resolveAutoClosed(model: Model, scenario: Scenario | undefined, 
     const dead = new Set<string>(failed)
     for (const n of model.nodes) {
       if (switchState(n, scenario) === 'acik' && !closed.has(n.id)) dead.add(n.id)
-      if (n.type === 'jenerator' && (!opts.genOnline || standby.has(n.id))) dead.add(n.id)
+      if (n.type === 'jenerator' && (!opts.genOnline || standby.has(n.id) || opts.offGens?.includes(n.id))) dead.add(n.id)
     }
     return dead
   }

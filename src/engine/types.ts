@@ -117,6 +117,8 @@ export interface LossBreakdown {
   upsKw: number
   trafoKw: number
   lineKw: number
+  /** Pano / bara düğümlerinin iç bara kayıpları. */
+  panelKw: number
 }
 
 export interface Totals {
