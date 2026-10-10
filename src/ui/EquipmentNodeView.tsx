@@ -23,6 +23,7 @@ function CardNodeView({ id, data, selected }: NodeProps<EquipmentNode>) {
   const nIn = portCount(data.kind, data.params, 'in')
   const nOut = portCount(data.kind, data.params, 'out')
   const isTransfer = data.kind === 'ats' || data.kind === 'sts'
+  const pulse = useStore((st) => st.sim?.steps[st.sim.index]?.changedNodes.includes(id) ?? false)
   const compact = COMPACT.includes(data.kind)
   const setNodeSwitch = useStore((s) => s.setNodeSwitch)
   const updateInternals = useUpdateNodeInternals()
@@ -34,7 +35,7 @@ function CardNodeView({ id, data, selected }: NodeProps<EquipmentNode>) {
 
   return (
     <div
-      className={`rounded-lg border border-l-4 shadow-sm ${compact ? 'px-2 py-1' : 'px-3 py-2'} ${
+      className={`rounded-lg border border-l-4 shadow-sm ${pulse ? 'sim-pulse' : ''} ${compact ? 'px-2 py-1' : 'px-3 py-2'} ${
         r?.failed ? 'bg-red-50' : r && !r.energized && !r.cyclic ? 'bg-slate-100' : 'bg-white'
       } ${selected ? 'border-blue-600 ring-2 ring-blue-200' : r?.failed ? 'border-red-400' : 'border-slate-300'} ${
         r && !r.energized && !r.failed && !r.open && !r.cyclic ? 'opacity-60' : ''
@@ -49,6 +50,9 @@ function CardNodeView({ id, data, selected }: NodeProps<EquipmentNode>) {
       {r?.open && (
         <div className="mb-0.5 text-[10px] font-bold tracking-wide text-red-600">{tr.senaryo.openBadge}</div>
       )}
+      {r?.autoClosed && <div className="mb-0.5 text-[10px] font-bold tracking-wide text-blue-600">{tr.senaryo.autoBadge}</div>}
+      {r?.standby && <div className="mb-0.5 text-[10px] font-bold tracking-wide text-slate-500">{tr.senaryo.standbyBadge}</div>}
+      {r?.onBattery && <div className="mb-0.5 text-[10px] font-bold tracking-wide text-amber-600">{tr.senaryo.batteryBadge}</div>}
       {r && !r.energized && !r.failed && !r.open && !r.cyclic && (
         <div className="mb-0.5 text-[10px] font-semibold tracking-wide text-slate-500">{tr.senaryo.deenergized}</div>
       )}
@@ -168,11 +172,15 @@ function IconNodeView({ id, data, selected }: NodeProps<EquipmentNode>) {
   const active = inputs.filter((i) => i.state === 'aktif')
   const left = (i: number, n: number) => `${((i + 1) / (n + 1)) * 100}%`
 
+  const pulse = useStore((st) => st.sim?.steps[st.sim.index]?.changedNodes.includes(id) ?? false)
   const failed = r?.failed
   const open = r?.open
+  const autoClosed = r?.autoClosed
+  const standby = r?.standby
+  const onBattery = r?.onBattery
   const dead = r && !r.energized && !failed && !open && !r.cyclic
   const status = r?.status ?? 'none'
-  const ring = failed || open ? '#dc2626' : status === 'over' || status === 'warning' ? STATUS_COLOR[status] : dead ? '#94a3b8' : def.color
+  const ring = failed || open ? '#dc2626' : autoClosed ? '#2563eb' : onBattery ? '#d97706' : status === 'over' || status === 'warning' ? STATUS_COLOR[status] : dead ? '#94a3b8' : def.color
   const feed = active.length ? active.map((a) => `${a.sourceName} (${tr.port.inputShort}${a.port + 1})`).join(', ') : tr.port.noFeed
   const tip = [
     data.ad,
@@ -180,18 +188,18 @@ function IconNodeView({ id, data, selected }: NodeProps<EquipmentNode>) {
     r && !r.cyclic && (r.totalKw > 0 || !def.hasOutput) ? `${fmtNum(r.totalKw)} kW · ${fmtNum(r.kva)} kVA · ${fmtNum(r.currentA, 0)} A` : '',
     r?.loadingPct !== undefined ? `${tr.results.loading} %${fmtNum(r.loadingPct)}` : '',
     isTransfer ? `${tr.port.feed}: ${feed}` : '',
-    failed ? tr.senaryo.failedBadge : open ? tr.senaryo.openBadge : dead ? tr.senaryo.deenergized : '',
+    failed ? tr.senaryo.failedBadge : open ? tr.senaryo.openBadge : autoClosed ? tr.senaryo.autoBadge : standby ? tr.senaryo.standbyBadge : onBattery ? tr.senaryo.batteryBadge : dead ? tr.senaryo.deenergized : '',
   ]
     .filter(Boolean)
     .join('\n')
 
   return (
-    <div className={`relative ${dead ? 'opacity-55' : ''}`} style={{ width, height: size }} title={tip}>
+    <div className={`relative ${dead ? 'opacity-55' : standby ? 'opacity-70' : ''}`} style={{ width, height: size }} title={tip}>
       <div
         className={`flex h-full w-full items-center justify-center rounded-lg border-2 ${
-          failed ? 'bg-red-50' : dead ? 'bg-slate-100' : 'bg-white'
-        } ${selected ? 'ring-2 ring-blue-400' : ''}`}
-        style={{ borderColor: ring, borderStyle: open ? 'dashed' : 'solid' }}
+          failed ? 'bg-red-50' : dead ? 'bg-slate-100' : onBattery ? 'bg-amber-50' : 'bg-white'
+        } ${selected ? 'ring-2 ring-blue-400' : ''} ${pulse ? 'sim-pulse' : ''}`}
+        style={{ borderColor: ring, borderStyle: open || standby ? 'dashed' : 'solid' }}
       >
         <Symbol type={data.kind} color={failed || open ? '#dc2626' : def.color} size={small ? 22 : 30} />
       </div>
@@ -231,7 +239,15 @@ function IconNodeView({ id, data, selected }: NodeProps<EquipmentNode>) {
           style={{ borderColor: open ? '#dc2626' : '#16a34a', background: open ? '#fff' : '#16a34a' }}
         />
       )}
-      {r?.loadingPct !== undefined && !failed && !open && (
+      {(autoClosed || standby || onBattery) && !failed && !open && (
+        <span
+          className="absolute -right-2 -top-2 rounded px-1 text-[9px] font-bold leading-4 text-white"
+          style={{ background: autoClosed ? '#2563eb' : onBattery ? '#d97706' : '#64748b' }}
+        >
+          {autoClosed ? tr.senaryo.autoBadge : onBattery ? tr.senaryo.batteryBadge : tr.senaryo.standbyBadge}
+        </span>
+      )}
+      {r?.loadingPct !== undefined && !failed && !open && !autoClosed && !standby && !onBattery && (
         <span
           className="absolute -right-2 -top-2 rounded px-1 text-[9px] font-bold leading-4"
           style={{ color: STATUS_COLOR[status], background: STATUS_BG[status] }}

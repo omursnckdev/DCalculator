@@ -27,7 +27,7 @@ def add(id, type, ad, pos, params, etiket='', notlar='', grup=''):
 
 def breaker(id, ad, tip, amp, kutup, dxf, durum='kapali', etiket='', notlar='', grup=''):
     return add(id, 'kesici', ad, (X(dxf[0]), Y(dxf[1])),
-               dict(tip=tip, nominalAkim=amp, kutup=kutup, durum=durum, gerilim=V), etiket, notlar, grup)
+               dict(tip=tip, nominalAkim=amp, kutup=kutup, durum=durum, otomatik='yok', gerilim=V), etiket, notlar, grup)
 
 def bus(id, ad, amp, dxf, tip='mdb', etiket='', notlar='', grup=''):
     return add(id, tip, ad, (X(dxf[0]), Y(dxf[1])), dict(gerilim=V, nominalAkim=amp, diversity=1), etiket, notlar, grup)
@@ -76,7 +76,9 @@ breaker('acb_g1a', 'ACB GEN.PL1.1 (jeneratör çıkışı)', 'ACB', 2500, '4P', 
 breaker('acb_g2a', 'ACB GEN.PL1.2 (jeneratör çıkışı)', 'ACB', 2500, '4P', (29925, -12170), etiket='K1', notlar='Şema: 2500 A, 4P ACB, K1 kilidi.')
 breaker('acb_g1b', 'ACB GEN.PL1.1 (senkron panosu)', 'ACB', 2500, '4P', (24331, -7655), notlar='Şema: 2500 A, 4P ACB (PMS).')
 breaker('acb_g2b', 'ACB GEN.PL1.2 (senkron panosu)', 'ACB', 2500, '4P', (29931, -7655), notlar='Şema: 2500 A, 4P ACB (PMS).')
-bus('sync', 'GEN.PL1 Senkronizasyon barası', 5000, (27100, -6300), tip='bara', etiket='GEN.PL1', notlar='Şema: Synchronization / PMS, jeneratör senkron panosu.')
+bus('sync', 'GEN.PL1 Senkronizasyon panosu (PMS)', 5000, (27100, -6300), tip='senkron', etiket='GEN.PL1',
+    notlar='Şema: Synchronization / PMS, jeneratör senkron panosu. Yük paylaşımı: sıralı; toplam yük tek jeneratör kapasitesinin %70\'ine inerse 2. jeneratör kapanır (varsayım: eşik %70, öncelik GEN.PL1.1).')
+nodes['sync']['params'].update(mod='sirali', esik=70)
 breaker('acb_sync', 'ACB GEN.PL1 çıkış (5000 A)', 'ACB', 5000, '4P', (29510, -5354), notlar='Şema: 5000 A, 4P ACB.')
 breaker('acb_gen_in', 'ACB MSB jeneratör girişi', 'ACB', 5000, '3P', (29522, 2365), etiket='PMS', notlar='Şema: 5000 A, 3P ACB (PMS), MSB.PL1 jeneratör girişi.')
 breaker('acb_tx', 'ACB MSB trafo girişi', 'ACB', 5000, '3P', (35202, 2344), etiket='PMS', notlar='Şema: 5000 A, 3P ACB (PMS), MSB.PL1 TX.PL1 girişi.')
@@ -107,7 +109,7 @@ for h in ('msb_ct', 'msb_pqm', 'msb_spd'):
 
 # ---- UPS.PL1.1 ve UPS.PL1.2 (IT UPS, 900 kW) ve UPS.PL1.3 (Essential UPS, 200 kW)
 UPS_PARAMS = lambda kw, kva: dict(nominalKva=kva, nominalKw=kw, girisGerilim=V, cikisGerilim=V, verim=96, girisPf=0.99, verimModu='sabit',
-                                   verim25=94.5, verim50=96, verim75=96.5, verim100=96.3, isiKonum='elektrik', girisSayisi=1, cikisSayisi=1)
+                                   verim25=94.5, verim50=96, verim75=96.5, verim100=96.3, bataryaDk=10, isiKonum='elektrik', girisSayisi=1, cikisSayisi=1)
 def power_line(n, ups_label, kw, kva, key, x_byp, x_in, x_ups, x_udp_byp, x_udp_ups, udp_x, udp_amp, kind, amp, bb):
     # MSB tarafı
     breaker(f'mb_byp{n}', f'{kind} MSB → UDP.PL1.{n} bypass', kind, amp, '4P', (x_byp, 7657), durum='acik', etiket=key,
@@ -279,6 +281,12 @@ edge('crp', 'crp_c2', '', '', cap=2500, length=2)
 edge('crp_c1', 'cat1', 'BB/C1', '2500 A BUSBAR (5P)', cap=2500, length=10)
 edge('crp_c2', 'cat2', 'BB/C2', '2500 A BUSBAR (5P)', cap=2500, length=10)
 
+# Bakım bypass kesicileri: UPS arızasında (UDP enerjisiz kalırsa) OTOMATİK KAPANIR -> UDP doğrudan MSB'den beslenir.
+for n_ in (1, 2, 3):
+    for k_ in (f'mb_byp{n_}', f'ud_byp{n_}'):
+        nodes[k_]['params']['otomatik'] = 'otomatik'
+        nodes[k_]['notlar'] += ' Otomatik kapanır: UPS arızasında hard bypass ON konumuna geçer, UDP doğrudan MSB\'den beslenir.'
+
 # ---------------------------------------------------------------- port ataması (x sırasına göre)
 def nx(n): return nodes[n]['x']
 outs, ins = {}, {}
@@ -292,13 +300,13 @@ for n, es in ins.items():
 for e in edges:
     e.setdefault('kaynakPort', 0); e.setdefault('hedefPort', 0)
 DEFAULT_PORTS = {'sebeke': (0, 1), 'jenerator': (0, 1), 'trafo': (1, 1), 'mdb': (2, 6), 'dagitimPanosu': (1, 6), 'bara': (2, 8), 'ups': (1, 1),
-                 'ats': (2, 1), 'sts': (2, 1), 'kesici': (1, 1), 'yardimci': (1, 0), 'itYuku': (1, 0), 'mekanikYuk': (1, 0), 'aydinlatma': (1, 0), 'genelYuk': (1, 0)}
+                 'ats': (2, 1), 'sts': (2, 1), 'kesici': (1, 1), 'yardimci': (1, 0), 'senkron': (2, 1), 'itYuku': (1, 0), 'mekanikYuk': (1, 0), 'aydinlatma': (1, 0), 'genelYuk': (1, 0)}
 for n in nodes.values():
     di, do = DEFAULT_PORTS[n['type']]
     if di: n['params']['girisSayisi'] = max(di, len(ins.get(n['id'], [])), n['params'].get('girisSayisi', 0))
     if do: n['params']['cikisSayisi'] = max(do, len(outs.get(n['id'], [])), n['params'].get('cikisSayisi', 0))
     # Pano/bara: yalnızca çizilen port kadar (şemadaki gibi); gereksiz boş port bırakma.
-    if n['type'] in ('mdb', 'dagitimPanosu', 'bara'):
+    if n['type'] in ('mdb', 'dagitimPanosu', 'bara', 'senkron'):
         n['params']['girisSayisi'] = max(1, len(ins.get(n['id'], [])))
         n['params']['cikisSayisi'] = max(1, len(outs.get(n['id'], [])))
 
@@ -331,10 +339,10 @@ for n in nodes.values():
 
 SCENARIOS = [
     dict(id='sen_tx', ad='TX.PL1 arızası (jeneratörler devralır)', failedNodes=['tx'], edgeStates={}, nodeStates={}),
-    dict(id='sen_ups1', ad='UPS.PL1.1 arızası (STS → catcher)', failedNodes=['ups1'], edgeStates={}, nodeStates={}),
-    dict(id='sen_ups1_byp', ad='UPS.PL1.1 bakım bypass (UPS devre dışı, bypass ACB\'ler kapalı)', failedNodes=['ups1'], edgeStates={},
+    dict(id='sen_ups1', ad='UPS.PL1.1 arızası (otomatik hard bypass)', failedNodes=['ups1'], edgeStates={}, nodeStates={}),
+    dict(id='sen_ups1_byp', ad='UPS.PL1.1 bakım: bypass ACB\'ler ELLE kapatıldı', failedNodes=['ups1'], edgeStates={},
          nodeStates={'mb_byp1': 'kapali', 'ud_byp1': 'kapali', 'ud_ups1': 'acik', 'mb_in1': 'acik'}),
-    dict(id='sen_ups3', ad='UPS.PL1.3 arızası (Essential UPS)', failedNodes=['ups3'], edgeStates={}, nodeStates={}),
+    dict(id='sen_ups3', ad='UPS.PL1.3 arızası (Essential UPS, otomatik bypass)', failedNodes=['ups3'], edgeStates={}, nodeStates={}),
     dict(id='sen_tx_gen1', ad='TX.PL1 + GEN.PL1.1 arızası (tek jeneratör)', failedNodes=['tx', 'gen1'], edgeStates={}, nodeStates={}),
 ]
 proj = dict(schemaVersion=6, id='hdc02_pl1', name='HDC02 PL1 — LV Distribution Power Line-up 1',

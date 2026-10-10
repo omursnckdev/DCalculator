@@ -25,6 +25,8 @@ import type {
   Scenario,
   EdgeState,
 } from '../model/types'
+import { simulateFailure } from '../engine'
+import type { SimStep } from '../engine'
 import { saveProjectToDb } from './persistence'
 
 /**
@@ -32,7 +34,25 @@ import { saveProjectToDb } from './persistence'
  * türetilir (`getProject`). Undo/redo (Faz 5) için tek bir değişim noktası
  * olan `set` çağrıları burada toplanmıştır.
  */
+export interface SimState {
+  /** Arıza uygulanan ekipman. */
+  failed: string[]
+  steps: SimStep[]
+  index: number
+  playing: boolean
+  /** Oynatma hızı çarpanı. */
+  speed: number
+}
+
 export type NodeView = 'icon' | 'card'
+const FLOW_KEY = 'dcalculator:flowAnim'
+function loadFlow(): boolean {
+  try {
+    return localStorage.getItem(FLOW_KEY) !== 'off'
+  } catch {
+    return true
+  }
+}
 const VIEW_KEY = 'dcalculator:nodeView'
 function loadView(): NodeView {
   try {
@@ -46,6 +66,16 @@ interface State {
   /** Düğüm gösterimi: 'icon' = ikon + ad (varsayılan), 'card' = ayrıntılı kart. Kişisel tercih, projeye yazılmaz. */
   nodeView: NodeView
   setNodeView: (v: NodeView) => void
+  /** Hatlarda akan enerji animasyonu (kişisel tercih). */
+  flowAnim: boolean
+  setFlowAnim: (v: boolean) => void
+  /** Canlı simülasyon (arıza oynatma); null = kapalı. Projeye yazılmaz. */
+  sim: SimState | null
+  startSim: (failed: string[]) => void
+  setSimIndex: (i: number) => void
+  setSimPlaying: (p: boolean) => void
+  setSimSpeed: (s: number) => void
+  stopSim: () => void
   projectId: string
   projectName: string
   createdAt: string
@@ -101,6 +131,27 @@ export const useStore = create<State>((set, get) => ({
   nodes: [],
   edges: [],
   nodeView: loadView(),
+  flowAnim: loadFlow(),
+  setFlowAnim: (v) => {
+    try {
+      localStorage.setItem(FLOW_KEY, v ? 'on' : 'off')
+    } catch {
+      /* tercih kaydedilemedi; sorun değil */
+    }
+    set({ flowAnim: v })
+  },
+  sim: null,
+  startSim: (failed) => {
+    const s = get()
+    const model = { nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }
+    const steps = simulateFailure(model, failed, s.scenarios.find((x) => x.id === s.activeScenarioId))
+    set({ sim: { failed, steps, index: 0, playing: false, speed: 1 } })
+  },
+  setSimIndex: (i) =>
+    set((s) => (s.sim ? { sim: { ...s.sim, index: Math.max(0, Math.min(s.sim.steps.length - 1, i)) } } : {})),
+  setSimPlaying: (p) => set((s) => (s.sim ? { sim: { ...s.sim, playing: p } } : {})),
+  setSimSpeed: (sp) => set((s) => (s.sim ? { sim: { ...s.sim, speed: sp } } : {})),
+  stopSim: () => set({ sim: null }),
   setNodeView: (v) => {
     try {
       localStorage.setItem(VIEW_KEY, v)
@@ -360,6 +411,7 @@ export const useStore = create<State>((set, get) => ({
       edges: fromProjectEdges(p.edges),
       scenarios: p.scenarios,
       activeScenarioId: null,
+      sim: null,
       dirty: false,
     })),
 

@@ -18,6 +18,8 @@ bir web uygulamasıdır. Kapsam, mimari ve yol haritası için bkz. [docs/PLAN.m
 - **Faz 4 (arıza senaryoları) tamamlandı:** hat anahtar durumu (açık/kapalı), ATS/STS, bara kuplajı,
   arızada yükün sağlam hatlara aktarılması (2N, yedek jeneratör), otomatik N-1 taraması, kaydedilebilir
   senaryolar ve senaryo karşılaştırma.
+- **Canlı simülasyon ve otomasyon (Faz 4 eki):** akan enerjiyi gösteren hat animasyonu, otomatik bypass kesicisi,
+  senkron panosu (jeneratör kademelendirme), UPS batarya geçişi ve arızanın adım adım izlenmesi.
 - Faz 5: PDF rapor, şablon topolojiler, gruplama, undo/redo.
 
 ## Çalıştırma
@@ -70,6 +72,22 @@ Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmele
   (senaryo açıksa yalnız o senaryoda). Açık kesici hattı keser; ölçü/koruma elemanları (CT, sayaç, parafudr) güç akışını etkilemez.
 - Hatlara **ad ve açıklama** verilebilir (ör. `BB/MSB.PL1/01`).
 - Hat etiketindeki yuvarlak düğme anahtarı açar/kapar (senaryo açıksa yalnız o senaryoda).
+
+## Canlı simülasyon
+
+- **Akış animasyonu:** tuvaldeki **Akış** düğmesi (varsayılan açık) enerjili hatlarda güç yönünü gösteren hareketli çizgi çizer;
+  hat kalınlığı/rengi doluluğa göre, enerjisiz hatlar sönüktür.
+- **Adım adım arıza:** **Şema** sekmesinin altındaki *Canlı simülasyon* şeridinden arızalı ekipmanı seçip **Arızayı uygula** deyin.
+  Sıra: **Arıza anı** (transferler tutulur, UPS bataryaya geçer) → **STS/ATS** (~4 ms) → **Otomatik bypass** (~100 ms) →
+  **Jeneratör devrede** (~10 s) → **Senkron panosu kademelendirme** (~70 s) → **Batarya bitişi** (UPS özerkliği, varsayılan 10 dk).
+  Değişmeyen adımlar atlanır. Her adımda tuval o anın durumunu gösterir (değişen ekipman titreşir) ve "ne değişti" listesi yazılır;
+  ileri/geri, oynat ve hız düğmeleri vardır. Tüm bunlar projeyi değiştirmez.
+- **Otomatik bypass:** kesicide *Otomatik kapanma* = otomatik ise, aşağısındaki bara enerjisiz kalıp yukarısı enerjili olunca kesici kapanır
+  (UPS arızasında hard bypass → UPS dağıtım panosu doğrudan ana dağıtımdan beslenir). Senaryoda kesiciyi elle açık/kapalı yaparsanız o seçim geçerlidir.
+- **Senkron panosu:** jeneratörlerin bağlandığı bara. *Mod* = sıralı iken yük, tek jeneratörün (senkron girişi sırasıyla ilk *r* jeneratörün) kapasitesinin
+  **eşik %'sine** (varsayılan 70) inince fazladan jeneratör durdurulur; durdurulan jeneratör "Beklemede" rozeti alır. Mod *eşit* ise hepsi paylaşır.
+- **Sınırlar:** simülasyon, tipik gecikmelerle sıralanmış kararlı hal görüntüleridir; elektromanyetik geçici rejim hesaplanmaz.
+  Süreler sabit tipik değerlerdir. Batarya devredeyken UPS çıkışı çalışır, yukarı akıma çekim yoktur.
 
 ## HDC02 PL1 şeması
 

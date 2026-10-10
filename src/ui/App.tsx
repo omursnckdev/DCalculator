@@ -7,6 +7,7 @@ import { Canvas } from './Canvas'
 import { IssuesPanel } from './IssuesPanel'
 import { PropertiesPanel } from './PropertiesPanel'
 import { ScenarioView } from './ScenarioView'
+import { SimulationPanel } from './SimulationPanel'
 import { SummaryBar } from './SummaryBar'
 import { SummaryView } from './SummaryView'
 import { TableView } from './TableView'
@@ -69,7 +70,20 @@ export function App() {
         )}
         <SummaryBar />
         <div className="flex min-h-0 flex-1">
-          {view === 'diagram' ? <Canvas /> : view === 'table' ? <TableView /> : view === 'summary' ? <SummaryView /> : <ScenarioView />}
+          {view === 'diagram' ? (
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <div className="flex min-h-0 flex-1">
+                <Canvas />
+              </div>
+              <SimulationPanel />
+            </div>
+          ) : view === 'table' ? (
+            <TableView />
+          ) : view === 'summary' ? (
+            <SummaryView />
+          ) : (
+            <ScenarioView />
+          )}
           <div className="flex w-72 shrink-0 flex-col border-l border-slate-200">
             <div className="min-h-0 flex-1 overflow-y-auto">
               <PropertiesPanel />

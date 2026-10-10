@@ -25,7 +25,8 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   const edges = useStore((s) => s.edges)
   const scenarios = useStore((s) => s.scenarios)
   const activeId = useStore((s) => s.activeScenarioId)
-  const value = useMemo(
+  const simAnalysis = useStore((s) => (s.sim ? s.sim.steps[s.sim.index]?.analysis : undefined))
+  const computed = useMemo(
     () =>
       analyze(
         { nodes: toProjectNodes(nodes), edges: toProjectEdges(edges) },
@@ -34,6 +35,8 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
       ),
     [nodes, edges, scenarios, activeId],
   )
+  // Canlı simülasyon açıkken tuval, seçili adımın durumunu gösterir.
+  const value = simAnalysis ?? computed
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 

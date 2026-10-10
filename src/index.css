@@ -16,3 +16,39 @@ body {
 .react-flow__edge.selected .react-flow__edge-path {
   stroke: #2563eb;
 }
+
+/* Hatlarda akan enerji: noktalı çizgi kaynaktan hedefe kayar. Süre ve kalınlık yüke göre ayarlanır. */
+@keyframes flow-dash {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+.flow-dash {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 3 13;
+  animation: flow-dash 0.9s linear infinite;
+  pointer-events: none;
+}
+
+/* Simülasyon adımında durumu değişen ekipman nabız atar. */
+@keyframes sim-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.75);
+  }
+  50% {
+    box-shadow: 0 0 0 9px rgba(37, 99, 235, 0);
+  }
+}
+.sim-pulse {
+  animation: sim-pulse 1.2s ease-in-out infinite;
+  border-radius: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-dash,
+  .sim-pulse {
+    animation: none;
+  }
+}

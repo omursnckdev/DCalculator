@@ -32,6 +32,8 @@ function CanvasInner() {
   const viewTick = useStore((s) => s.viewTick)
   const nodeView = useStore((s) => s.nodeView)
   const setNodeView = useStore((s) => s.setNodeView)
+  const flowAnim = useStore((s) => s.flowAnim)
+  const setFlowAnim = useStore((s) => s.setFlowAnim)
   const { screenToFlowPosition, getViewport, fitView } = useReactFlow()
 
   // Proje yüklenince çizimi görünür alana sığdır. fitView kimliği değişebildiği
@@ -96,6 +98,7 @@ function CanvasInner() {
         >
           <Background gap={GRID} />
           <Panel position="top-left">
+            <div className="flex items-center">
             <div role="group" aria-label={tr.nodeView.title} className="flex overflow-hidden rounded border border-slate-300 bg-white text-xs shadow-sm">
               {(['icon', 'card'] as const).map((v) => (
                 <button
@@ -108,6 +111,15 @@ function CanvasInner() {
                   {tr.nodeView[v]}
                 </button>
               ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setFlowAnim(!flowAnim)}
+              aria-pressed={flowAnim}
+              className={`ml-2 rounded border px-2.5 py-1 text-xs shadow-sm ${flowAnim ? 'border-green-600 bg-green-600 text-white' : 'border-slate-300 bg-white text-slate-700'}`}
+            >
+              {tr.sim.flowAnim} {flowAnim ? '▶' : '❚❚'}
+            </button>
             </div>
           </Panel>
           <Controls />

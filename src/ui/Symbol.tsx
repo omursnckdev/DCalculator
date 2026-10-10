@@ -47,6 +47,16 @@ export function Symbol({ type, color, size = 28 }: { type: EquipmentType; color:
         </>
       )
       break
+    case 'senkron':
+      body = (
+        <>
+          <path {...common} d="M3 12h18M7 12V7M17 12V7" />
+          <circle {...common} cx="7" cy="5" r="2.2" />
+          <circle {...common} cx="17" cy="5" r="2.2" />
+          <path {...common} d="M12 12v6M9 21l3-3 3 3" />
+        </>
+      )
+      break
     case 'kesici':
       body = (
         <>

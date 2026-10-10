@@ -46,6 +46,12 @@ export interface NodeResult {
   failed: boolean
   /** Açık durumdaki kesici/ayırıcı (arıza değil; hattı keser). */
   open: boolean
+  /** Otomatik kapanan kesici bu durumda KAPANDI (ör. UPS arızasında hard bypass). */
+  autoClosed: boolean
+  /** Jeneratör yük sıralaması nedeniyle devre dışı (yedekte) jeneratör. */
+  standby: boolean
+  /** UPS girişi yok, batarya ile besleniyor. */
+  onBattery: boolean
   /** Bir kaynaktan canlı bir yolla besleniyor mu (arıza ve açık anahtarlar dahil). */
   energized: boolean
   /** Yük düğümü enerjisizse kaybedilen peak yük, kW (yoksa 0). */

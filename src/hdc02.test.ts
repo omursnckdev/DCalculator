@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { analyze, runN1 } from './engine'
+import { analyze, runN1, simulateFailure } from './engine'
 import { parseProject } from './model/project'
 import type { EquipmentType } from './model/types'
 
@@ -110,12 +110,19 @@ describe('HDC02 PL1: senaryolar', () => {
     expect(a.nodes.catcher_src.totalKw).toBe(0) // STS tercihi A (UPS), jeneratörlü tarafta da korunur
   })
 
-  it('UPS.PL1.1 arızası: STS\'ler catcher\'a geçer, yalnız tekil beslenen RPP.POP.1A kaybedilir', () => {
+  it('UPS.PL1.1 arızası: hard bypass otomatik kapanır, UDP doğrudan MSB\'den beslenir, yük kaybı yok', () => {
     const a = analyze(p, undefined, scn('sen_ups1'))
-    expect(a.unserved.itKw).toBeCloseTo(82, 6)
-    expect(a.nodes.catcher_src.totalKw).toBeCloseTo(2 * 270, -1) // 1A + 1B (+ hat kayıpları)
-    expect(a.nodes.catcher_src.totalKw).toBeGreaterThan(540)
-    expect(a.nodes['1A_sts'].totalKw).toBeCloseTo(270, 0)
+    expect(a.nodes.ups1.energized).toBe(false)
+    for (const id of ['mb_byp1', 'ud_byp1']) {
+      expect(a.nodes[id].autoClosed, id).toBe(true)
+      expect(a.nodes[id].open, id).toBe(false)
+    }
+    expect(a.nodes.udp1.energized).toBe(true)
+    expect(a.unserved.totalKw).toBe(0)
+    expect(a.nodes.udp1.itKw).toBeCloseTo(2 * 270 + 82, 0) // UDP.PL1.1 yükü MSB bypass hattından
+    expect(a.nodes.catcher_src.totalKw).toBe(0) // STS tercihi A: bypass ile geri enerjili
+    // UPS.PL1.2 etkilenmez
+    expect(a.nodes.mb_byp2.autoClosed).toBe(false)
   })
 
   it('UPS.PL1.1 bakım bypass: yük kaybı yok', () => {
@@ -125,8 +132,18 @@ describe('HDC02 PL1: senaryolar', () => {
     expect(a.nodes.ups1.totalKw).toBe(0)
   })
 
-  it('UPS.PL1.3 arızası: UDB yükleri kaybedilir (yedek yok)', () => {
-    expect(analyze(p, undefined, scn('sen_ups3')).unserved.mechKw).toBeCloseTo(110, 6)
+  it('UPS.PL1.3 arızası: Essential UPS bypass\'ı (MCCB) otomatik kapanır, UDB yükleri korunur', () => {
+    const a = analyze(p, undefined, scn('sen_ups3'))
+    expect(a.nodes.mb_byp3.autoClosed).toBe(true)
+    expect(a.nodes.ud_byp3.autoClosed).toBe(true)
+    expect(a.unserved.totalKw).toBe(0)
+  })
+
+  it('elle kilitlenen (senaryoda açık bırakılan) bypass otomatik kapanmaz: yük kaybı', () => {
+    const lock = { ...scn('sen_ups3'), nodeStates: { mb_byp3: 'acik' as const } }
+    const a = analyze(p, undefined, lock)
+    expect(a.nodes.mb_byp3.autoClosed).toBe(false)
+    expect(a.unserved.mechKw).toBeCloseTo(110, 6)
   })
 
   it('TX.PL1 + bir jeneratör arızası: kalan jeneratör aşırı yüklenir', () => {
@@ -138,13 +155,67 @@ describe('HDC02 PL1: senaryolar', () => {
   it('N-1: TX, UPS.PL1.1/2, tek jeneratör ve STS yolu sağlanır; tekil besleyiciler sağlanmaz', () => {
     const rows = runN1(p)
     const row = (id: string) => rows.find((r) => r.id === id)!
-    for (const id of ['tx', 'gen1', 'gen2', '1A_sts']) {
+    for (const id of ['tx', 'gen1', 'gen2', 'ups1', 'ups2', 'ups3', '1A_sts']) {
       // STS arızası: STS tek cihaz, çıkışı tekil yük -> sağlanmaz; diğerleri sağlanır
       if (id !== '1A_sts') expect(row(id).ok, id).toBe(true)
     }
     expect(row('1A_sts').ok).toBe(false)
     expect(row('msb').ok).toBe(false)
     expect(row('mf_acc1').lostMechKw).toBeCloseTo(289, 6)
-    expect(row('ups1').lostItKw).toBeCloseTo(82, 6)
+    expect(row('ups1').lostItKw).toBe(0) // otomatik bypass
+    expect(row('ups1').ok).toBe(true)
+    expect(row('ups3').ok).toBe(true)
+  })
+})
+
+describe('HDC02 PL1: adım adım simülasyon', () => {
+  it('UPS.PL1.1 arızası: STS geçişi, sonra otomatik bypass ve geri transfer', () => {
+    const steps = simulateFailure(p, ['ups1'])
+    expect(steps.map((s) => s.id)).toEqual(['normal', 'fault', 'sts', 'bypass'])
+    const [, fault, sts, bypass] = steps
+    // t = 0: UDP.PL1.1 enerjisiz, STS'ler kilitli kaynakta -> UPS.PL1.1 bloğunun tüm yükleri kaybı
+    expect(fault.lostKw).toBeCloseTo(2 * 270 + 82, 0)
+    // STS'ler catcher'a geçer: IT yükleri geri gelir, yalnız RPP.POP.1A (tekil) kayıp
+    expect(sts.lostKw).toBeCloseTo(82, 0)
+    expect(sts.changes.some((c) => c.kind === 'transfer' && /STS\.PL1\.1A/.test(c.text))).toBe(true)
+    // Bypass kesicileri otomatik kapanır: yük kaybı sıfır, STS tercih edilen kaynağa döner
+    expect(bypass.lostKw).toBe(0)
+    expect(bypass.changes.filter((c) => c.kind === 'autoClose').length).toBe(2)
+    expect(bypass.analysis.nodes['1A_sts'].energized).toBe(true)
+  })
+
+  it('TX.PL1 arızası: UPS\'ler bataryada, jeneratörler devreye girer ve yükü paylaşır', () => {
+    const steps = simulateFailure(p, ['tx'])
+    expect(steps.map((s) => s.id)).toEqual(['normal', 'fault', 'gen'])
+    const [, fault, gen] = steps
+    expect(fault.analysis.nodes.ups1.onBattery).toBe(true)
+    expect(fault.analysis.nodes.ups3.onBattery).toBe(true)
+    expect(fault.analysis.nodes['1A_load'].energized).toBe(true) // IT yükleri bataryada
+    expect(fault.lostKw).toBeCloseTo(2 * 289 + 2 * 46 + 31 + 225, 0) // mekanik: chiller + aux + DB (UPS3 kapsamındaki UDB hariç)
+    expect(gen.lostKw).toBe(0)
+    expect(gen.analysis.nodes.gen1.totalKw).toBeCloseTo(gen.analysis.nodes.gen2.totalKw, 6)
+    expect(gen.analysis.nodes.gen1.standby).toBe(false) // yük > %70 eşik: iki jeneratör de çalışır
+  })
+
+  it('yük azalınca 2. jeneratör kapanır (HDC02 yükleri %40\'a düşürülünce)', () => {
+    const light = {
+      ...p,
+      nodes: p.nodes.map((n) => (typeof n.params.kuruluKw === 'number' ? { ...n, params: { ...n.params, kuruluKw: (n.params.kuruluKw as number) * 0.4 } } : n)),
+    }
+    const a = analyze(light, undefined, scn('sen_tx'))
+    expect(a.nodes.gen2.standby).toBe(true)
+    expect(a.nodes.gen2.totalKw).toBe(0)
+    expect(a.nodes.gen1.totalKw).toBeGreaterThan(0)
+    // tek jeneratör %70 eşiğini aşmaz
+    expect(a.nodes.sync.kva).toBeLessThanOrEqual(0.7 * 1800 + 1e-6)
+    expect(a.unserved.totalKw).toBe(0)
+    const steps = simulateFailure(light, ['tx'])
+    expect(steps.map((s) => s.id)).toContain('staging')
+  })
+
+  it('senkron panosu şemadaki gibi: iki jeneratör, GEN.PL1.1 öncelikli, %70 eşik', () => {
+    expect(node('sync').type).toBe('senkron')
+    expect(node('sync').params).toMatchObject({ mod: 'sirali', esik: 70 })
+    expect(p.edges.filter((e) => e.target === 'sync')).toHaveLength(2)
   })
 })

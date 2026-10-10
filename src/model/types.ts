@@ -15,6 +15,7 @@ export const EQUIPMENT_TYPES = [
   'sts',
   'kesici',
   'yardimci',
+  'senkron',
   'itYuku',
   'mekanikYuk',
   'aydinlatma',

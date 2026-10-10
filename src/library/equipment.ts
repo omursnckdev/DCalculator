@@ -212,7 +212,7 @@ const defs: EquipmentDef[] = [
     hasOutput: true,
     color: '#b91c1c',
     // Açık kesici hattı keser (normalde açık bypass/kuplaj/load bank gibi). Kapalıysa geçirgendir.
-    defaults: { tip: 'ACB', nominalAkim: 1600, kutup: '4P', durum: 'kapali', gerilim: 400 },
+    defaults: { tip: 'ACB', nominalAkim: 1600, kutup: '4P', durum: 'kapali', otomatik: 'yok', gerilim: 400 },
     fields: [
       { kind: 'select', key: 'tip', label: A.kesiciTip, options: [
         { value: 'ACB', label: 'ACB' },
@@ -228,9 +228,34 @@ const defs: EquipmentDef[] = [
         { value: 'kapali', label: tr.senaryo.kapali },
         { value: 'acik', label: tr.senaryo.acik },
       ] },
+      { kind: 'select', key: 'otomatik', label: A.otomatik, options: [
+        { value: 'yok', label: A.otoYok },
+        { value: 'otomatik', label: A.otoVar },
+      ] },
       voltage,
     ],
     summary: (p) => `${p.tip ?? 'ACB'} ${fmt(num(p, 'nominalAkim'))} A ${p.kutup ?? ''} · ${p.durum === 'acik' ? tr.senaryo.acik : tr.senaryo.kapali}`,
+  },
+  {
+    type: 'senkron',
+    label: tr.ekipman.senkron,
+    group: 'kaynak',
+    hasInput: true,
+    hasOutput: true,
+    color: '#ea580c',
+    // Jeneratörleri paralel bağlar ve yük paylaşımını yönetir (PMS). Jeneratörler girişlerine
+    // (kesicilerden geçerek) bağlanır; giriş port sırası çalışma önceliğidir.
+    defaults: { gerilim: 400, nominalAkim: 5000, diversity: 1, mod: 'sirali', esik: 70 },
+    fields: [
+      voltage,
+      rating,
+      { kind: 'select', key: 'mod', label: A.mod, options: [
+        { value: 'sirali', label: A.modSirali },
+        { value: 'esit', label: A.modEsit },
+      ] },
+      n('esik', A.esik, '%', { min: 10, max: 100, step: 1 }),
+    ],
+    summary: (p) => `${fmt(num(p, 'nominalAkim'))} A · ${p.mod === 'esit' ? A.modEsit.split(' ')[0] : `${A.modSirali.split(' ')[0]} %${fmt(num(p, 'esik'))}`}`,
   },
   {
     type: 'yardimci',
@@ -272,6 +297,7 @@ const defs: EquipmentDef[] = [
       verim50: 96,
       verim75: 96.5,
       verim100: 96.3,
+      bataryaDk: 10,
       isiKonum: 'elektrik',
     },
     fields: [
@@ -294,6 +320,7 @@ const defs: EquipmentDef[] = [
       n('verim50', A.verim50, '%', { min: 50, max: 100, step: 0.1 }),
       n('verim75', A.verim75, '%', { min: 50, max: 100, step: 0.1 }),
       n('verim100', A.verim100, '%', { min: 50, max: 100, step: 0.1 }),
+      n('bataryaDk', A.bataryaDk, 'dk', { min: 0, step: 1 }),
       heatField,
     ],
     summary: (p) =>
@@ -385,6 +412,7 @@ const PORT_DEFAULTS: Record<EquipmentType, { in: number; out: number }> = {
   pdu: { in: 2, out: 6 },
   ats: { in: 2, out: 1 },
   sts: { in: 2, out: 1 },
+  senkron: { in: 2, out: 1 },
   kesici: { in: 1, out: 1 },
   yardimci: { in: 1, out: 0 },
   itYuku: { in: 1, out: 0 },

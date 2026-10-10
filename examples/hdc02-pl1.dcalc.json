@@ -87,6 +87,7 @@
     "nominalAkim": 2500,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -106,6 +107,7 @@
     "nominalAkim": 2500,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -125,6 +127,7 @@
     "nominalAkim": 2500,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -144,6 +147,7 @@
     "nominalAkim": 2500,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -151,17 +155,19 @@
   },
   {
    "id": "sync",
-   "type": "bara",
-   "ad": "GEN.PL1 Senkronizasyon barası",
+   "type": "senkron",
+   "ad": "GEN.PL1 Senkronizasyon panosu (PMS)",
    "etiket": "GEN.PL1",
    "grup": "",
-   "notlar": "Şema: Synchronization / PMS, jeneratör senkron panosu.",
+   "notlar": "Şema: Synchronization / PMS, jeneratör senkron panosu. Yük paylaşımı: sıralı; toplam yük tek jeneratör kapasitesinin %70'ine inerse 2. jeneratör kapanır (varsayım: eşik %70, öncelik GEN.PL1.1).",
    "x": 1355,
    "y": 337,
    "params": {
     "gerilim": 415,
     "nominalAkim": 5000,
     "diversity": 1,
+    "mod": "sirali",
+    "esik": 70,
     "girisSayisi": 2,
     "cikisSayisi": 1
    }
@@ -180,6 +186,7 @@
     "nominalAkim": 5000,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -199,6 +206,7 @@
     "nominalAkim": 5000,
     "kutup": "3P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -218,6 +226,7 @@
     "nominalAkim": 5000,
     "kutup": "3P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -291,7 +300,7 @@
    "ad": "ACB MSB → UDP.PL1.1 bypass",
    "etiket": "K3",
    "grup": "",
-   "notlar": "Şema: 1600 A / 1600 A, 4P ACB, K3 kilidi. Bakım bypass hattı; normalde AÇIK (varsayım: UPS çevrimiçi çalışıyor).",
+   "notlar": "Şema: 1600 A / 1600 A, 4P ACB, K3 kilidi. Bakım bypass hattı; normalde AÇIK (varsayım: UPS çevrimiçi çalışıyor). Otomatik kapanır: UPS arızasında hard bypass ON konumuna geçer, UDP doğrudan MSB'den beslenir.",
    "x": -783,
    "y": 828,
    "params": {
@@ -299,6 +308,7 @@
     "nominalAkim": 1600,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "otomatik",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -318,6 +328,7 @@
     "nominalAkim": 1600,
     "kutup": "3P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -344,6 +355,7 @@
     "verim50": 96,
     "verim75": 96.5,
     "verim100": 96.3,
+    "bataryaDk": 10,
     "isiKonum": "elektrik",
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -355,7 +367,7 @@
    "ad": "ACB UDP.PL1.1 bypass girişi",
    "etiket": "",
    "grup": "",
-   "notlar": "Şema: 1600 A, 4P ACB; bypass girişi, normalde AÇIK.",
+   "notlar": "Şema: 1600 A, 4P ACB; bypass girişi, normalde AÇIK. Otomatik kapanır: UPS arızasında hard bypass ON konumuna geçer, UDP doğrudan MSB'den beslenir.",
    "x": -783,
    "y": 1468,
    "params": {
@@ -363,6 +375,7 @@
     "nominalAkim": 1600,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "otomatik",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -382,6 +395,7 @@
     "nominalAkim": 1600,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -410,7 +424,7 @@
    "ad": "ACB MSB → UDP.PL1.2 bypass",
    "etiket": "K4",
    "grup": "",
-   "notlar": "Şema: 1600 A / 1600 A, 4P ACB, K4 kilidi. Bakım bypass hattı; normalde AÇIK (varsayım: UPS çevrimiçi çalışıyor).",
+   "notlar": "Şema: 1600 A / 1600 A, 4P ACB, K4 kilidi. Bakım bypass hattı; normalde AÇIK (varsayım: UPS çevrimiçi çalışıyor). Otomatik kapanır: UPS arızasında hard bypass ON konumuna geçer, UDP doğrudan MSB'den beslenir.",
    "x": 745,
    "y": 828,
    "params": {
@@ -418,6 +432,7 @@
     "nominalAkim": 1600,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "otomatik",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -437,6 +452,7 @@
     "nominalAkim": 1600,
     "kutup": "3P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -463,6 +479,7 @@
     "verim50": 96,
     "verim75": 96.5,
     "verim100": 96.3,
+    "bataryaDk": 10,
     "isiKonum": "elektrik",
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -474,7 +491,7 @@
    "ad": "ACB UDP.PL1.2 bypass girişi",
    "etiket": "",
    "grup": "",
-   "notlar": "Şema: 1600 A, 4P ACB; bypass girişi, normalde AÇIK.",
+   "notlar": "Şema: 1600 A, 4P ACB; bypass girişi, normalde AÇIK. Otomatik kapanır: UPS arızasında hard bypass ON konumuna geçer, UDP doğrudan MSB'den beslenir.",
    "x": 745,
    "y": 1468,
    "params": {
@@ -482,6 +499,7 @@
     "nominalAkim": 1600,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "otomatik",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -501,6 +519,7 @@
     "nominalAkim": 1600,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -529,7 +548,7 @@
    "ad": "MCCB MSB → UDP.PL1.3 bypass",
    "etiket": "K5",
    "grup": "",
-   "notlar": "Şema: 400 A / 400 A, 4P MCCB, K5 kilidi. Bakım bypass hattı; normalde AÇIK (varsayım: UPS çevrimiçi çalışıyor).",
+   "notlar": "Şema: 400 A / 400 A, 4P MCCB, K5 kilidi. Bakım bypass hattı; normalde AÇIK (varsayım: UPS çevrimiçi çalışıyor). Otomatik kapanır: UPS arızasında hard bypass ON konumuna geçer, UDP doğrudan MSB'den beslenir.",
    "x": 2496,
    "y": 828,
    "params": {
@@ -537,6 +556,7 @@
     "nominalAkim": 400,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "otomatik",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -556,6 +576,7 @@
     "nominalAkim": 400,
     "kutup": "3P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -582,6 +603,7 @@
     "verim50": 96,
     "verim75": 96.5,
     "verim100": 96.3,
+    "bataryaDk": 10,
     "isiKonum": "elektrik",
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -593,7 +615,7 @@
    "ad": "MCCB UDP.PL1.3 bypass girişi",
    "etiket": "",
    "grup": "",
-   "notlar": "Şema: 400 A, 4P MCCB; bypass girişi, normalde AÇIK.",
+   "notlar": "Şema: 400 A, 4P MCCB; bypass girişi, normalde AÇIK. Otomatik kapanır: UPS arızasında hard bypass ON konumuna geçer, UDP doğrudan MSB'den beslenir.",
    "x": 2494,
    "y": 1445,
    "params": {
@@ -601,6 +623,7 @@
     "nominalAkim": 400,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "otomatik",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -620,6 +643,7 @@
     "nominalAkim": 400,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -688,6 +712,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -707,6 +732,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -726,6 +752,7 @@
     "nominalAkim": 160,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -745,6 +772,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -847,6 +875,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -866,6 +895,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -885,6 +915,7 @@
     "nominalAkim": 160,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -904,6 +935,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1040,6 +1072,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1059,6 +1092,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1095,6 +1129,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1114,6 +1149,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1203,6 +1239,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1222,6 +1259,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1258,6 +1296,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1277,6 +1316,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1366,6 +1406,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1385,6 +1426,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1421,6 +1463,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1440,6 +1483,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1529,6 +1573,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1548,6 +1593,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1584,6 +1630,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1603,6 +1650,7 @@
     "nominalAkim": 1250,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1703,6 +1751,7 @@
     "nominalAkim": 125,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1722,6 +1771,7 @@
     "nominalAkim": 250,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1815,6 +1865,7 @@
     "nominalAkim": 630,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1853,6 +1904,7 @@
     "nominalAkim": 630,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1891,6 +1943,7 @@
     "nominalAkim": 100,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1929,6 +1982,7 @@
     "nominalAkim": 100,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -1967,6 +2021,7 @@
     "nominalAkim": 63,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -2005,6 +2060,7 @@
     "nominalAkim": 630,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -2043,6 +2099,7 @@
     "nominalAkim": 400,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -2081,6 +2138,7 @@
     "nominalAkim": 5000,
     "kutup": "4P",
     "durum": "acik",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -2134,6 +2192,7 @@
     "nominalAkim": 2500,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -2170,6 +2229,7 @@
     "nominalAkim": 2500,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -2189,6 +2249,7 @@
     "nominalAkim": 2500,
     "kutup": "4P",
     "durum": "kapali",
+    "otomatik": "yok",
     "gerilim": 415,
     "girisSayisi": 1,
     "cikisSayisi": 1
@@ -4659,7 +4720,7 @@
   },
   {
    "id": "sen_ups1",
-   "ad": "UPS.PL1.1 arızası (STS → catcher)",
+   "ad": "UPS.PL1.1 arızası (otomatik hard bypass)",
    "failedNodes": [
     "ups1"
    ],
@@ -4668,7 +4729,7 @@
   },
   {
    "id": "sen_ups1_byp",
-   "ad": "UPS.PL1.1 bakım bypass (UPS devre dışı, bypass ACB'ler kapalı)",
+   "ad": "UPS.PL1.1 bakım: bypass ACB'ler ELLE kapatıldı",
    "failedNodes": [
     "ups1"
    ],
@@ -4682,7 +4743,7 @@
   },
   {
    "id": "sen_ups3",
-   "ad": "UPS.PL1.3 arızası (Essential UPS)",
+   "ad": "UPS.PL1.3 arızası (Essential UPS, otomatik bypass)",
    "failedNodes": [
     "ups3"
    ],

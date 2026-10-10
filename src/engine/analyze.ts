@@ -2,6 +2,10 @@ import { tr } from '../i18n/tr'
 import { EQUIPMENT, portCount } from '../library/equipment'
 import { HEAT_LOCATIONS } from '../model/types'
 import type { EquipmentType, HeatLocation, ProjectEdge, ProjectNode, Scenario } from '../model/types'
+import { resolveAutoClosed, stagingStandby, withDefaults } from './automation'
+import type { SimOptions } from './automation'
+import { energize } from './energize'
+import { switchState } from './switches'
 import { DEFAULT_THRESHOLDS, statusOf } from './thresholds'
 import type {
   Analysis,
@@ -21,7 +25,7 @@ import type {
 
 const SQRT3 = Math.sqrt(3)
 const LOAD_TYPES: EquipmentType[] = ['itYuku', 'mekanikYuk', 'aydinlatma', 'genelYuk']
-const PANEL_TYPES: EquipmentType[] = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu', 'ats', 'sts', 'kesici']
+const PANEL_TYPES: EquipmentType[] = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu', 'ats', 'sts', 'kesici', 'senkron']
 const TRANSFER_TYPES: EquipmentType[] = ['ats', 'sts']
 
 // --- küçük yardımcılar -----------------------------------------------------
@@ -99,13 +103,6 @@ function diversityOf(n: ProjectNode): number {
   return typeof raw === 'number' && Number.isFinite(raw) ? Math.min(1, Math.max(0, raw)) : 1
 }
 
-/** Kesici/ayırıcı düğümün etkin durumu (senaryo geçersiz kılmasıyla); diğer ekipman her zaman 'kapali'. */
-function switchState(n: ProjectNode, scenario?: Scenario): 'acik' | 'kapali' {
-  if (n.type !== 'kesici') return 'kapali'
-  const v = scenario?.nodeStates?.[n.id] ?? n.params.durum ?? EQUIPMENT.kesici.defaults.durum
-  return v === 'acik' ? 'acik' : 'kapali'
-}
-
 function heatLocation(n: ProjectNode): HeatLocation {
   const v = n.params.isiKonum ?? EQUIPMENT[n.type].defaults.isiKonum
   return HEAT_LOCATIONS.includes(v as HeatLocation) ? (v as HeatLocation) : 'elektrik'
@@ -144,10 +141,41 @@ export function upsEfficiency(n: ProjectNode, loadFraction: number): number {
  * hat anahtar durumları senaryoya göre geçersiz kılınır; yük, sağlam hatlara yeniden
  * dağıtılır (2N, yedek jeneratör, ATS/STS, bara kuplajı).
  */
-export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scenario?: Scenario, baseResult?: Analysis): Analysis {
+export function analyze(
+  model: Model,
+  th: Thresholds = DEFAULT_THRESHOLDS,
+  scenario?: Scenario,
+  baseResult?: Analysis,
+  sim?: Partial<SimOptions>,
+): Analysis {
+  const opts = withDefaults(sim)
+  // 1) Otomatik kapanan kesiciler (yapısal ön hesap). 2) Çözüm. 3) Jeneratör yük sıralaması: gerekirse
+  // fazla jeneratör devre dışı bırakılıp yeniden çözülür.
+  const autoClosed = resolveAutoClosed(model, scenario, opts, new Set())
+  let res = analyzeCore(model, th, scenario, baseResult, opts, autoClosed, new Set())
+  const standby = opts.staging && opts.genOnline ? stagingStandby(model, res, scenario) : new Set<string>()
+  if (standby.size > 0) {
+    const closed2 = resolveAutoClosed(model, scenario, opts, standby)
+    res = analyzeCore(model, th, scenario, baseResult, opts, closed2, standby)
+    for (const id of standby) res.nodes[id] = { ...res.nodes[id], energized: true, standby: true }
+  }
+  return res
+}
+
+function analyzeCore(
+  model: Model,
+  th: Thresholds,
+  scenario: Scenario | undefined,
+  baseResult: Analysis | undefined,
+  opts: SimOptions,
+  autoClosed: Set<string>,
+  standby: Set<string>,
+): Analysis {
   const nodeById = new Map(model.nodes.map((n) => [n.id, n]))
   const failed = new Set((scenario?.failedNodes ?? []).filter((id) => nodeById.has(id)))
-  const openSwitches = new Set(model.nodes.filter((n) => switchState(n, scenario) === 'acik').map((n) => n.id))
+  const openSwitches = new Set(
+    model.nodes.filter((n) => switchState(n, scenario) === 'acik' && !autoClosed.has(n.id)).map((n) => n.id),
+  )
   const allEdges = model.edges.filter((e) => nodeById.has(e.source) && nodeById.has(e.target))
   // Açık anahtarlı hatlar şemada yok sayılır (hem akış hem döngü denetimi için).
   const edges = allEdges.filter((e) => (scenario?.edgeStates[e.id] ?? e.durum) === 'kapali')
@@ -209,13 +237,11 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scena
 
   // 2a) Enerji durumu: kaynaklardan canlı bir yolla beslenen düğümler. Arızalı düğüm
   // enerjisizdir; kaynağı enerjisiz olan hat canlı değildir.
+  const dead = new Set<string>([...failed, ...openSwitches, ...standby])
+  if (!opts.genOnline) for (const n of model.nodes) if (n.type === 'jenerator') dead.add(n.id)
+  const { energized: energizedSet, onBattery } = energize({ nodes: model.nodes, edges, dead, battery: opts.battery, hold: opts.hold })
   const energized = new Map<string, boolean>()
-  for (const id of order) {
-    const n = nodeById.get(id)!
-    if (failed.has(id) || openSwitches.has(id)) energized.set(id, false)
-    else if (!EQUIPMENT[n.type].hasInput) energized.set(id, true)
-    else energized.set(id, incoming.get(id)!.some((e) => energized.get(e.source) === true))
-  }
+  for (const id of order) energized.set(id, energizedSet.has(id))
   // Normal kaynaktan (şebeke/trafo zinciri) canlı bir yolla besleniyor mu? Jeneratör acil
   // kaynaktır: normal kaynak varken yük almaz, yalnızca normal kaynak kalmayınca devreye girer.
   const normalFed = new Map<string, boolean>()
@@ -252,6 +278,9 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scena
       const byPort = [...live].sort((a, b) => a.hedefPort - b.hedefPort)
       let best = byPort[0]
       for (const e of byPort) if ((share.get(e.id) ?? 0) > (share.get(best.id) ?? 0) + 1e-12) best = e
+      // Simülasyonda transfer henüz olmadıysa kilitli giriş korunur.
+      const heldId = opts.hold?.[n.id]
+      if (heldId !== undefined) best = byPort.find((e) => e.id === heldId) ?? best
       const amount = total > 1e-12 ? total : 1
       for (const e of ins) share.set(e.id, e.id === best.id ? amount : 0)
       continue
@@ -445,6 +474,9 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scena
       cyclic: false,
       failed: failed.has(id),
       open: openSwitches.has(id),
+      autoClosed: autoClosed.has(id),
+      standby: false,
+      onBattery: onBattery.has(id),
       energized: en,
       unservedKw,
       itKw: out.it.p,
@@ -472,6 +504,9 @@ export function analyze(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, scena
       cyclic: true,
       failed: failed.has(n.id),
       open: openSwitches.has(n.id),
+      autoClosed: false,
+      standby: false,
+      onBattery: false,
       energized: false,
       unservedKw: 0,
       itKw: 0,

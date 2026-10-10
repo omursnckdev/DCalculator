@@ -16,6 +16,7 @@ export function LineEdgeView(props: EdgeProps<LineEdge>) {
   })
   const setEdgeState = useStore((s) => s.setEdgeState)
   const compact = useStore((s) => s.nodeView === 'icon') && !selected
+  const flowAnim = useStore((s) => s.flowAnim)
   const open = effective === 'acik'
   const [path, labelX, labelY] = getSmoothStepPath({
     sourceX,
@@ -40,6 +41,18 @@ export function LineEdgeView(props: EdgeProps<LineEdge>) {
           strokeDasharray: open ? '6 5' : r && !r.live ? '2 4' : undefined,
         }}
       />
+      {flowAnim && r && r.live && r.kva > 0.5 && !open && (
+        <path
+          d={path}
+          className="flow-dash"
+          style={{
+            stroke: status === 'over' ? '#ef4444' : status === 'warning' ? '#f59e0b' : '#22c55e',
+            strokeWidth: busbar ? 3.5 : 2.5,
+            // Doluluk arttıkça akış hızlanır (1,4 sn → 0,5 sn).
+            animationDuration: `${(1.4 - 0.9 * Math.min(1, (r.loadingPct ?? 40) / 100)).toFixed(2)}s`,
+          }}
+        />
+      )}
       <EdgeLabelRenderer>
         <div
           className="nodrag nopan pointer-events-none absolute whitespace-nowrap rounded bg-white/90 px-1 text-[10px] text-slate-600"
