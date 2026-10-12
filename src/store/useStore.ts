@@ -118,6 +118,8 @@ interface State {
   updateNodeData: (id: string, patch: Partial<Omit<EquipmentData, 'params' | 'kind'>>) => void
   updateNodeParam: (id: string, key: string, value: ParamValue) => void
   updateEdgeData: (id: string, patch: Partial<LineData>) => void
+  /** Kablo seçim önerisini hatta uygular (direnç, reaktans, akım kapasitesi, açıklama). */
+  applyCableSpec: (edgeId: string, spec: { n: number; s: number; r: number; x: number; capacityA: number }) => void
   /** Hattı ekipmanın başka bir boş portuna taşır; başarılıysa true. */
   setEdgePort: (edgeId: string, side: 'source' | 'target', port: number) => boolean
   setPreferredInput: (nodeId: string, edgeId: string) => void
@@ -382,6 +384,20 @@ export const useStore = create<State>((set, get) => ({
       edges: s.edges.map((e) =>
         e.target === nodeId ? { ...e, data: { ...(e.data ?? DEFAULT_LINE), pay: e.id === edgeId ? 100 : 0 } } : e,
       ),
+      dirty: true,
+    })),
+
+  applyCableSpec: (edgeId, spec) =>
+    set((s) => ({
+      edges: s.edges.map((e) => {
+        if (e.id !== edgeId) return e
+        const d = e.data ?? DEFAULT_LINE
+        const tag = `${spec.n}×${spec.s} mm² Cu/XLPE`
+        return {
+          ...e,
+          data: { ...d, r: Math.round(spec.r * 1e4) / 1e4, x: Math.round(spec.x * 1e4) / 1e4, akimKapasitesi: Math.floor(spec.capacityA), aciklama: d.aciklama.includes('mm² Cu/XLPE') ? d.aciklama : [d.aciklama, tag].filter(Boolean).join(' · ') },
+        }
+      }),
       dirty: true,
     })),
 

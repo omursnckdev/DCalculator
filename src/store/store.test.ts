@@ -364,3 +364,19 @@ describe('geri al / yinele', () => {
     }
   })
 })
+
+describe('kablo önerisini uygulama', () => {
+  it('hat direnci, reaktansı, akım kapasitesi ve açıklama güncellenir', () => {
+    const st = useStore.getState
+    const a = st().addNode('mdb', 0, 0)
+    const b = st().addNode('mdb', 200, 0)
+    st().onConnect({ source: a, target: b, sourceHandle: 'out-0', targetHandle: 'in-0' })
+    const id = st().edges[0].id
+    st().applyCableSpec(id, { n: 2, s: 185, r: 0.063, x: 0.04, capacityA: 830.7 })
+    const d = st().edges[0].data!
+    expect(d).toMatchObject({ r: 0.063, x: 0.04, akimKapasitesi: 830 })
+    expect(d.aciklama).toContain('2×185 mm² Cu/XLPE')
+    st().applyCableSpec(id, { n: 1, s: 240, r: 0.096, x: 0.08, capacityA: 500 })
+    expect(st().edges[0].data!.aciklama.match(/mm² Cu\/XLPE/g)).toHaveLength(1) // yinelenmez
+  })
+})

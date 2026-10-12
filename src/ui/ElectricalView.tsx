@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { analyze } from '../engine'
+import { cableStudy } from '../engine/cableSizing'
 import { arcFlashStudy, curvePoints, selectivityStudy, tripSettings } from '../engine/protection'
 import type { ArcFlashRow, SelectivityRow } from '../engine/protection'
 import { tr } from '../i18n/tr'
@@ -8,7 +9,7 @@ import { useStore } from '../store/useStore'
 import { Legend, TccChart } from './charts'
 import { fmtNum } from './status'
 
-type Tab = 'sel' | 'arc'
+type Tab = 'sel' | 'arc' | 'cable'
 
 const STATUS: Record<SelectivityRow['status'], { cls: string; label: string }> = {
   total: { cls: 'text-green-700', label: tr.elk.selTotal },
@@ -130,12 +131,95 @@ function ArcPanel() {
   )
 }
 
+function CablePanel() {
+  const model = useBaseModel()
+  const s = useStore((st) => st.ayarlar)
+  const setAyarlar = useStore((st) => st.setAyarlar)
+  const apply = useStore((st) => st.applyCableSpec)
+  const a = useMemo(() => analyze(model), [model])
+  const rows = useMemo(() => cableStudy(model, a, s), [model, a, s])
+  const [onlyBad, setOnlyBad] = useState(false)
+  const shown = onlyBad ? rows.filter((r) => !r.adequate) : rows
+  const num = (label: string, key: 'kabloOrtam' | 'kabloGruplama' | 'kabloDusum' | 'kabloKscSure', step: number) => (
+    <label className="flex items-center gap-2">
+      {label}
+      <input type="number" step={step} className="w-20 rounded border border-slate-300 px-1.5 py-0.5 text-right" value={s[key]} onChange={(e) => setAyarlar({ [key]: Number(e.target.value) || 0 })} />
+    </label>
+  )
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-slate-500">{tr.elk.cableIntro}</p>
+      <div className="flex flex-wrap gap-4 text-sm">
+        {num(tr.elk.cableAmb, 'kabloOrtam', 1)}
+        {num(tr.elk.cableGroup, 'kabloGruplama', 0.05)}
+        {num(tr.elk.cableDrop, 'kabloDusum', 0.5)}
+        {num(tr.elk.cableSc, 'kabloKscSure', 0.1)}
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={onlyBad} onChange={(e) => setOnlyBad(e.target.checked)} />
+          {tr.elk.cableOnlyBad}
+        </label>
+        <button
+          type="button"
+          className="ml-auto rounded bg-blue-600 px-3 py-1 text-white disabled:opacity-40"
+          disabled={!rows.some((r) => !r.adequate && r.rec)}
+          onClick={() => rows.filter((r) => !r.adequate && r.rec).forEach((r) => apply(r.edgeId, r.rec!))}
+        >
+          {tr.elk.cableApplyAll}
+        </button>
+      </div>
+      <section className="rounded-lg border border-slate-200 bg-white p-4">
+        <div className="max-h-[32rem] overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-white text-left text-xs text-slate-500">
+              <tr>
+                <th className="py-1 pr-2 font-medium">{tr.elk.cableLine}</th>
+                <th className="py-1 pr-2 text-right font-medium">L (m)</th>
+                <th className="py-1 pr-2 text-right font-medium">I (A)</th>
+                <th className="py-1 pr-2 text-right font-medium">{tr.elk.cableCurCap}</th>
+                <th className="py-1 pr-2 text-right font-medium">ΔU (%)</th>
+                <th className="py-1 pr-2 font-medium">{tr.elk.status}</th>
+                <th className="py-1 pr-2 font-medium">{tr.elk.cableRec}</th>
+                <th className="py-1 pr-2 text-right font-medium">{tr.elk.cableRecCap}</th>
+                <th className="py-1 pr-2 text-right font-medium">ΔU (%)</th>
+                <th className="py-1" />
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((r) => (
+                <tr key={r.edgeId} className="border-t border-slate-100">
+                  <td className="py-0.5 pr-2">{r.name}</td>
+                  <td className="py-0.5 pr-2 text-right tabular-nums">{fmtNum(r.lengthM, 0)}</td>
+                  <td className="py-0.5 pr-2 text-right tabular-nums">{fmtNum(r.currentA, 0)}</td>
+                  <td className="py-0.5 pr-2 text-right tabular-nums">{fmtNum(r.currentCapacityA, 0)}</td>
+                  <td className="py-0.5 pr-2 text-right tabular-nums">{r.currentDropPct === undefined ? '—' : fmtNum(r.currentDropPct, 2)}</td>
+                  <td className={`py-0.5 pr-2 ${r.adequate ? 'text-green-700' : 'font-semibold text-red-700'}`}>{r.adequate ? tr.elk.cableOk : r.reason === 'capacity' ? tr.elk.cableLowCap : tr.elk.cableHighDrop}</td>
+                  <td className="py-0.5 pr-2">{r.rec ? `${r.rec.n}×${r.rec.s} mm²` : tr.elk.cableNone}</td>
+                  <td className="py-0.5 pr-2 text-right tabular-nums">{r.rec ? fmtNum(r.rec.capacityA, 0) : '—'}</td>
+                  <td className="py-0.5 pr-2 text-right tabular-nums">{r.rec ? fmtNum(r.rec.dropPct, 2) : '—'}</td>
+                  <td className="py-0.5 text-right">
+                    {r.rec && (
+                      <button type="button" className="rounded border border-slate-300 px-2 py-0.5 text-xs hover:bg-slate-50" onClick={() => apply(r.edgeId, r.rec!)}>
+                        {tr.elk.cableApply}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 /** Elektrik çalışmaları: koruma seçiciliği (TCC) ve ark flaşı. */
 export function ElectricalView() {
   const [tab, setTab] = useState<Tab>('sel')
   const tabs: [Tab, string][] = [
     ['sel', tr.elk.tabSel],
     ['arc', tr.elk.tabArc],
+    ['cable', tr.elk.tabCable],
   ]
   return (
     <div className="min-w-0 flex-1 overflow-auto bg-slate-50 p-4">
@@ -150,6 +234,7 @@ export function ElectricalView() {
         </div>
         {tab === 'sel' && <SelectivityPanel />}
         {tab === 'arc' && <ArcPanel />}
+        {tab === 'cable' && <CablePanel />}
       </div>
     </div>
   )
