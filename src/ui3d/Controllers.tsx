@@ -68,6 +68,7 @@ export function Controllers() {
       },
       marqState: () => ({ ...marq }),
       stairs: () => autoStairs(scRef.current.rooms),
+      overlaps: () => [...scRef.current.overlaps].map((id) => scRef.current.byId.get(id)?.ad),
       boxes: () => [...scRef.current.boxById.values()].map((b) => ({ ...b, ad: scRef.current.byId.get(b.id)?.ad })),
       setCam: (pos: [number, number, number], target: [number, number, number]) => {
         camera.position.set(...pos)

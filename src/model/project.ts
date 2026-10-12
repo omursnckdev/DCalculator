@@ -9,6 +9,8 @@ import type {
   LineData,
   Nokta3D,
   Oda3D,
+  Plan3D,
+  PlanEkipman,
   Boru3D,
   Params,
   Project,
@@ -200,6 +202,37 @@ function parseOdalar(v: unknown): Oda3D[] | undefined {
     })
   }
   return out
+}
+
+/** Kat planı: bozuk satırlar atılır; en çok 20 000 duvar, 500 oda, 2 000 ekipman. */
+export function parsePlan(v: unknown): Plan3D | undefined {
+  if (!isObj(v) || !Array.isArray(v.duvarlar)) return undefined
+  const duvarlar: Plan3D['duvarlar'] = []
+  for (const w of v.duvarlar.slice(0, 20000)) {
+    if (!Array.isArray(w) || w.length < 4) continue
+    const q = [optNum(w[0]), optNum(w[1]), optNum(w[2]), optNum(w[3])]
+    if (q.every((x) => x !== undefined)) duvarlar.push(q as [number, number, number, number])
+  }
+  const odalar = (parseOdalar(Array.isArray(v.odalar) ? v.odalar.slice(0, 500).map((o, i) => (isObj(o) ? { id: `p${i}`, ...o } : o)) : []) ?? []).map((o) => {
+    const { id: _id, ...rest } = o
+    void _id
+    return rest
+  })
+  const ekipman: PlanEkipman[] = []
+  for (const e of (Array.isArray(v.ekipman) ? v.ekipman : []).slice(0, 2000)) {
+    if (!isObj(e) || typeof e.etiket !== 'string' || !e.etiket) continue
+    const x = optNum(e.x)
+    const z = optNum(e.z)
+    const g = optNum(e.g)
+    const d = optNum(e.d)
+    if (x === undefined || z === undefined || g === undefined || d === undefined || g <= 0 || d <= 0) continue
+    const rot = optNum(e.rot)
+    ekipman.push({ etiket: e.etiket, x, z, g, d, ...(rot !== undefined ? { rot } : {}) })
+  }
+  const sinir = isObj(v.sinir) ? v.sinir : v
+  const g = optNum(sinir.g) ?? Math.max(1, ...duvarlar.map((w) => Math.max(w[0], w[2])))
+  const d = optNum(sinir.d) ?? Math.max(1, ...duvarlar.map((w) => Math.max(w[1], w[3])))
+  return { ad: str(v.ad, 'Kat planı'), ...(typeof v.kaynak === 'string' ? { kaynak: v.kaynak } : {}), g, d, duvarlar, odalar, ekipman }
 }
 
 function parseTavalar(v: unknown): Tava3D[] | undefined {
@@ -478,6 +511,7 @@ export function migrate(input: unknown): Project {
     scenarios,
     ayarlar: parseSettings(raw.ayarlar),
     ...(parseOdalar(raw.odalar3d) ? { odalar3d: parseOdalar(raw.odalar3d) } : {}),
+    ...(parsePlan(raw.plan3d) ? { plan3d: parsePlan(raw.plan3d) } : {}),
     ...(parseGorunumler(raw.gorunumler3d) ? { gorunumler3d: parseGorunumler(raw.gorunumler3d) } : {}),
     ...(parseTavalar(raw.tavalar3d) ? { tavalar3d: parseTavalar(raw.tavalar3d) } : {}),
     ...(parseBorular(raw.borular3d) ? { borular3d: parseBorular(raw.borular3d) } : {}),

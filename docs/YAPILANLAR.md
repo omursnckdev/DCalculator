@@ -38,6 +38,7 @@ Hesap motoru (`src/engine`) saf TypeScript'tir; React'tan bağımsız ve testlid
 | **Faz K** | Jeneratör yakıt özerkliği, yük atma, sıralı yük alma ve gerilim çökmesi |
 | **Faz M** | Ekipman kataloğu ve Excel/CSV toplu içe aktarma |
 | **Faz L** | Dokümantasyon, tarayıcı doğrulaması, push |
+| **3D-10** | PDF kat planından (HDC02 zemin kat) duvar, oda ve ekipman yerleşimi |
 | **3D-9** | Katlı bina (zemin gri / 1. kat beyaz), dış merdiven ve katlı yürüme, jeneratörler dışarıda, ayrıntılı pano ve şalterler |
 | **3D-1…5** | 3D yerleşim görünümü: veri modeli, otomatik yerleşim, sürükle-bırak, renk modları, ısı haritası, simülasyon, kablo güzergâhı ve uzunluk, görünümler, PNG/PDF |
 
@@ -122,6 +123,7 @@ Ayrıntılı istek: [3D-MODEL-ISTEKLERI.md](3D-MODEL-ISTEKLERI.md); kararlar ve 
 - **Şalterler panoda, ayrıntılı modeller, simülasyon şeridi (PLAN 82–84):** şalterler ana ekipmanın ön yüzüne oturur ve onunla taşınır/döner; ayrıntılı ekipman modelleri; simülasyon şeridi sürüklenerek boyutlandırılır, ayrı sayfada açılabilir.
 - **Kablo tavası ve boru hatları (PLAN 85–89):** tava çizimi, kabloların tavaya yönlendirilmesi (gerçek yol uzunluğu hesaplara girer), tava doluluğu, otomatik soğuk su/kondenser boruları (debi, DN, hız, Δp), pompa/chiller arızasında boru durumu, rapor bölümü.
 - **Katlı bina, merdiven, daha ayrıntılı pano/şalter (PLAN 90–93):** zemin kat (gri) elektrik odası, 1. kat (beyaz, 4,5 m) veri salonu; jeneratör ve dış ekipman binanın dışındaki avluda; dış merdivenden yürüme modunda 1. kata çıkılır (kenardan düşülmez); Kat süzgeci (Tümü/Zemin/1. kat); katlar arası kablolar kat şaftından geçer; ACB/MCCB/ayırıcı/ölçü elemanları ve panolar çok daha ayrıntılı (ekran, ON/OFF, butonlar, kollar, kadranlar, kapı/menteşe/etiket), açık kesici modelde açık görünür.
+- **Kat planı içe aktarma (PLAN 94–96):** HDC02 zemin kat PDF'i `scripts/pdf-plan.py` ile plan JSON'a çevrilir (1 159 duvar, 72 etiketli ekipman dikdörtgeni, ölçek 1:100); uygulamada duvarlar, elle belirlenmiş odalar ve etiketi eşleşen ekipman plandaki yerine oturur, planda olmayanlar bölgesine yerleşir, yürürken duvarlar engeldir.
 - **3D'de senaryo:** Senaryo ve bakım paneli ile canlı simülasyon şeridi (PLAN 76).
 - **Sınırlar:** mimari (duvar çarpışması, kapı/pencere), CFD, glTF yükleme yok; yalnız iki katlı otomatik bina ve türetilmiş tek dış merdiven var; ekipman boyutları tipik yer tutucudur.
 

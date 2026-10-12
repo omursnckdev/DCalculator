@@ -206,6 +206,17 @@ await page.getByRole('button', { name: /Boruları otomatik çiz/ }).click()
 await page.waitForTimeout(1000)
 check('otomatik borular üretildi', (await page.locator('text=/boru üretildi/').count()) > 0)
 
+// Kat planı: HDC02 zemin kat planını yükle → ekipman plana oturur, duvarlar çizilir
+{
+  page.once('dialog', (d) => d.accept())
+  await page.getByRole('button', { name: /Kat planı/ }).first().click()
+  await page.getByRole('button', { name: /HDC02 zemin kat planını yükle/ }).click()
+  await page.waitForTimeout(2500)
+  check('kat planı uygulandı (ekipman plana oturdu)', (await page.locator('text=/ekipman plana oturdu/').count()) > 0)
+  const nb = await page.evaluate(() => window.__v3d.boxes().length)
+  check('plan sonrası ekipman sahnede', nb > 0)
+}
+
 // Geri al
 await page.keyboard.press('Control+z')
 await page.waitForTimeout(500)

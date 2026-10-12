@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { autoStairs, floorAt } from '../layout3d/floors'
 import { BODY_RADIUS, EYE_HEIGHT, forwardOf, freeSpot, rightOf, walkStepFloors } from '../layout3d/walk'
+import { useStore } from '../store/useStore'
 import { useScene } from './sceneData'
 import { use3dStore } from './use3dStore'
 
@@ -31,6 +32,10 @@ export function Walk() {
   const boxes = useMemo(() => [...sc.boxById.values()], [sc.boxById])
   const boxesRef = useRef(boxes)
   boxesRef.current = boxes
+  const plan = useStore((s) => s.plan3d)
+  const walls = useMemo(() => (plan ? plan.duvarlar : []), [plan])
+  const wallsRef = useRef(walls)
+  wallsRef.current = walls
   const stairs = useMemo(() => autoStairs(sc.rooms), [sc.rooms])
   const floorsRef = useRef({ rooms: sc.rooms, stairs })
   floorsRef.current = { rooms: sc.rooms, stairs }
@@ -157,7 +162,7 @@ export function Walk() {
       const dx = ((f.x * fwd + r.x * strafe) / len) * v
       const dz = ((f.z * fwd + r.z * strafe) / len) * v
       const fl = floorsRef.current
-      const p = walkStepFloors(boxesRef.current, fl.rooms, fl.stairs, { x: s.x, z: s.z, h: s.h }, dx, dz, BODY_RADIUS)
+      const p = walkStepFloors(boxesRef.current, fl.rooms, fl.stairs, { x: s.x, z: s.z, h: s.h }, dx, dz, BODY_RADIUS, wallsRef.current)
       s.x = p.x
       s.z = p.z
       s.h = p.h

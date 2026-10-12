@@ -6,6 +6,7 @@ import { DOSEME, floorVisible } from '../layout3d/floors'
 import { roomAt } from '../layout3d/geometry'
 import { heatGrid, heatRgb } from '../layout3d/heat'
 import type { Oda3D } from '../model/types'
+import { useStore } from '../store/useStore'
 import { useScene } from './sceneData'
 import { Stairs } from './Stairs'
 import { use3dStore } from './use3dStore'
@@ -92,6 +93,8 @@ export function Rooms() {
   const hideWalls = use3dStore((s) => s.hideWalls)
   const showHeat = use3dStore((s) => s.showHeat)
   const floor = use3dStore((s) => s.floor)
+  // Kat planı varsa duvarlar plandan gelir (PlanWalls); oda kutusu duvarı çizilmez.
+  const hasPlan = useStore((s) => s.plan3d !== null)
   return (
     <>
       {sc.rooms.map((r) => {
@@ -100,7 +103,7 @@ export function Rooms() {
         const hot = r.tur === 'salon' && sc.tempC !== undefined && sc.tempShift >= 1
         const wallColor = hot ? '#ef4444' : '#64748b'
         // Avlu (jeneratör, dış alan) açıktır: duvarsız.
-        const walls = !hideWalls && r.tur !== 'dis' && r.tur !== 'jenerator'
+        const walls = !hideWalls && !hasPlan && r.tur !== 'dis' && r.tur !== 'jenerator'
         const upper = elev > 0.01
         return (
           <group key={r.id}>

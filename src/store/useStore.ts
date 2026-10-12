@@ -31,6 +31,7 @@ import type {
   Gorunum3D,
   Nokta3D,
   Oda3D,
+  Plan3D,
   Tava3D,
   Yerlesim3D,
 } from '../model/types'
@@ -45,6 +46,7 @@ import { autoPipes, dnFor, flowLps } from '../layout3d/pipes'
 import { TrayNet } from '../layout3d/trays'
 import { anchorOf as bboxAnchor } from '../layout3d/route'
 import { boxOf, roomAt } from '../layout3d/geometry'
+import { applyPlan } from '../layout3d/plan'
 import { dimsOf } from '../layout3d/dims'
 import { attachHistory } from './history'
 import { saveProjectToDb } from './persistence'
@@ -132,6 +134,11 @@ interface State {
   setAyarlar: (patch: Partial<ProjectSettings>) => void
   /** 3D yerleşim: odalar (geri alınabilir) ve kayıtlı kamera görünümleri. */
   odalar3d: Oda3D[]
+  /** Kat planı (PDF/DXF'ten): duvarlar, odalar, ekipman dikdörtgenleri. */
+  plan3d: Plan3D | null
+  /** Planı uygular: etiket eşleşen ekipman plana oturur, odalar/duvarlar yazılır. Eşleşen/eşleşmeyen sayısı döner. */
+  importPlan3d: (plan: Plan3D) => { matched: number; unmatched: number; unused: string[] }
+  removePlan3d: () => void
   gorunumler3d: Gorunum3D[]
   /** Kablo tavaları ve boru hatları (geri alınabilir). */
   tavalar3d: Tava3D[]
@@ -313,6 +320,17 @@ export const useStore = create<State>((set, get) => ({
   setAyarlar: (patch) => set((s) => ({ ayarlar: { ...s.ayarlar, ...patch }, dirty: true })),
 
   odalar3d: [],
+  plan3d: null,
+  importPlan3d: (plan) => {
+    const s = get()
+    const r = applyPlan({ nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }, plan)
+    set((st) => {
+      const nodes = st.nodes.map((n) => (r.placements[n.id] ? { ...n, data: { ...n.data, yerlesim3d: r.placements[n.id] } } : n))
+      return { nodes, edges: withLengths(nodes, st.edges), odalar3d: r.rooms, plan3d: plan, dirty: true }
+    })
+    return { matched: r.matched, unmatched: r.unmatched, unused: r.unused }
+  },
+  removePlan3d: () => set({ plan3d: null, dirty: true }),
   gorunumler3d: [],
   tavalar3d: [],
   borular3d: [],
@@ -418,6 +436,11 @@ export const useStore = create<State>((set, get) => ({
   },
   autoLayout3d: () => {
     const s = get()
+    // Kat planı varsa "otomatik yerleşim" planı yeniden uygular (plana oturan ekipman yerinde kalır).
+    if (s.plan3d) {
+      get().importPlan3d(s.plan3d)
+      return
+    }
     const r = autoLayout({ nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }, 'all')
     set((st) => {
       const nodes = st.nodes.map((n) => (r.placements[n.id] ? { ...n, data: { ...n.data, yerlesim3d: r.placements[n.id] } } : n))
@@ -752,6 +775,7 @@ export const useStore = create<State>((set, get) => ({
       scenarios: s.scenarios,
       ayarlar: s.ayarlar,
       ...(s.odalar3d.length ? { odalar3d: s.odalar3d } : {}),
+      ...(s.plan3d ? { plan3d: s.plan3d } : {}),
       ...(s.gorunumler3d.length ? { gorunumler3d: s.gorunumler3d } : {}),
       ...(s.tavalar3d.length ? { tavalar3d: s.tavalar3d } : {}),
       ...(s.borular3d.length ? { borular3d: s.borular3d } : {}),
@@ -769,6 +793,7 @@ export const useStore = create<State>((set, get) => ({
       scenarios: p.scenarios,
       ayarlar: cloneSettings(p.ayarlar),
       odalar3d: p.odalar3d ? p.odalar3d.map((o) => ({ ...o })) : [],
+      plan3d: p.plan3d ?? null,
       gorunumler3d: p.gorunumler3d ? p.gorunumler3d.map((g) => ({ ...g })) : [],
       tavalar3d: p.tavalar3d ? p.tavalar3d.map((t) => ({ ...t, noktalar: t.noktalar.map((q) => ({ ...q })) })) : [],
       borular3d: p.borular3d ? p.borular3d.map((b) => ({ ...b, noktalar: b.noktalar.map((q) => ({ ...q })), uretici: [...b.uretici], pompalar: [...b.pompalar] })) : [],

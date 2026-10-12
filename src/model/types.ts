@@ -89,6 +89,30 @@ export interface Oda3D {
   elev?: number
 }
 
+/** Kat planından (PDF/DXF → plan JSON) alınan ekipman dikdörtgeni: etiket, merkez (x, z), boyut (g × d), isteğe bağlı dönüş. */
+export interface PlanEkipman {
+  etiket: string
+  x: number
+  z: number
+  g: number
+  d: number
+  rot?: number
+}
+
+/**
+ * Kat planı (zemin): duvar çizgileri [x1, z1, x2, z2], elle belirlenmiş odalar ve etiketli ekipman dikdörtgenleri; metre,
+ * bina sol-üst köşesi (0, 0). `g × d` plan sınır kutusudur.
+ */
+export interface Plan3D {
+  ad: string
+  kaynak?: string
+  g: number
+  d: number
+  duvarlar: [number, number, number, number][]
+  odalar: Omit<Oda3D, 'id'>[]
+  ekipman: PlanEkipman[]
+}
+
 export const TAVA_TURLERI = ['guc', 'veri'] as const
 export type TavaTuru = (typeof TAVA_TURLERI)[number]
 
@@ -244,6 +268,7 @@ export interface Project {
   ayarlar: ProjectSettings
   /** 3D yerleşim: odalar ve kayıtlı kamera görünümleri (isteğe bağlı; eski dosyalarda yoktur). */
   odalar3d?: Oda3D[]
+  plan3d?: Plan3D
   gorunumler3d?: Gorunum3D[]
   tavalar3d?: Tava3D[]
   borular3d?: Boru3D[]

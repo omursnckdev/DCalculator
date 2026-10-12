@@ -2,7 +2,7 @@ import type { StoreApi, UseBoundStore } from 'zustand'
 import { cloneSettings } from '../model/settings'
 import type { ProjectSettings } from '../model/settings'
 import { fromProjectEdges, fromProjectNodes, toProjectEdges, toProjectNodes } from '../model/project'
-import type { Boru3D, Oda3D, ProjectEdge, ProjectNode, Scenario, Tava3D } from '../model/types'
+import type { Boru3D, Oda3D, Plan3D, ProjectEdge, ProjectNode, Scenario, Tava3D } from '../model/types'
 
 /**
  * Geri al / yinele: şema içeriği (ekipman, hat, senaryo, ayarlar, ad) değiştikçe anlık görüntü alınır.
@@ -14,6 +14,7 @@ interface Snap {
   scenarios: Scenario[]
   ayarlar: ProjectSettings
   odalar3d: Oda3D[]
+  plan3d: Plan3D | null
   tavalar3d: Tava3D[]
   borular3d: Boru3D[]
   name: string
@@ -32,6 +33,7 @@ interface HistoryState {
   scenarios: Scenario[]
   ayarlar: ProjectSettings
   odalar3d: Oda3D[]
+  plan3d: Plan3D | null
   tavalar3d: Tava3D[]
   borular3d: Boru3D[]
   history: { undo: number; redo: number }
@@ -51,6 +53,7 @@ const snapOf = (s: HistoryState): Snap => ({
   scenarios: s.scenarios,
   ayarlar: s.ayarlar,
   odalar3d: s.odalar3d,
+  plan3d: s.plan3d,
   tavalar3d: s.tavalar3d,
   borular3d: s.borular3d,
   name: s.projectName,
@@ -66,7 +69,7 @@ const js = (o: object): string => {
   }
   return v
 }
-const keyOf = (sn: Snap): string => `${JSON.stringify(sn.nodes)}|${JSON.stringify(sn.edges)}|${js(sn.scenarios)}|${js(sn.ayarlar)}|${js(sn.odalar3d)}|${js(sn.tavalar3d)}|${js(sn.borular3d)}|${sn.name}`
+const keyOf = (sn: Snap): string => `${JSON.stringify(sn.nodes)}|${JSON.stringify(sn.edges)}|${js(sn.scenarios)}|${js(sn.ayarlar)}|${js(sn.odalar3d)}|${sn.plan3d ? js(sn.plan3d) : ''}|${js(sn.tavalar3d)}|${js(sn.borular3d)}|${sn.name}`
 
 function publish(): void {
   api?.setState({ history: { undo: undoStack.length, redo: redoStack.length } })
@@ -91,7 +94,7 @@ export function attachHistory<S extends HistoryState>(store: UseBoundStore<Store
       reset(s)
       return
     }
-    if (s.nodes === prev.nodes && s.edges === prev.edges && s.scenarios === prev.scenarios && s.ayarlar === prev.ayarlar && s.odalar3d === prev.odalar3d && s.tavalar3d === prev.tavalar3d && s.borular3d === prev.borular3d && s.projectName === prev.projectName) return
+    if (s.nodes === prev.nodes && s.edges === prev.edges && s.scenarios === prev.scenarios && s.ayarlar === prev.ayarlar && s.odalar3d === prev.odalar3d && s.plan3d === prev.plan3d && s.tavalar3d === prev.tavalar3d && s.borular3d === prev.borular3d && s.projectName === prev.projectName) return
     const cur = snapOf(s)
     const key = keyOf(cur)
     if (key === lastKey) return // yalnız seçim/boyut gibi içerik dışı değişiklik
@@ -118,6 +121,7 @@ function apply(sn: Snap): void {
       scenarios: sn.scenarios,
       ayarlar: cloneSettings(sn.ayarlar),
       odalar3d: sn.odalar3d.map((o) => ({ ...o })),
+      plan3d: sn.plan3d,
       tavalar3d: sn.tavalar3d.map((t) => ({ ...t, noktalar: t.noktalar.map((p) => ({ ...p })) })),
       borular3d: sn.borular3d.map((b) => ({ ...b, noktalar: b.noktalar.map((p) => ({ ...p })) })),
       projectName: sn.name,

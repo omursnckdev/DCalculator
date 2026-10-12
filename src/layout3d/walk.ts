@@ -46,6 +46,28 @@ export function walkStep(boxes: Box[], x: number, z: number, dx: number, dz: num
   return { x, z }
 }
 
+/** Duvar çizgisi [x1, z1, x2, z2] (m). */
+export type WallSeg = [number, number, number, number]
+/** Duvar çarpışma yarıçapı (m): kapı boşluklarından (≈ 0,9 m) geçilebilsin diye gövdeden küçüktür. */
+export const WALL_RADIUS = 0.25
+const WALL_HEIGHT = 3.4
+
+/** (x, z) noktası bir duvar çizgisine r'den yakınsa ve ayak kotu duvar yüksekliğinin altındaysa true. */
+export function wallBlocked(walls: WallSeg[], x: number, z: number, r = WALL_RADIUS, feet = 0): boolean {
+  if (feet >= WALL_HEIGHT) return false
+  for (const [x1, z1, x2, z2] of walls) {
+    if (x < Math.min(x1, x2) - r || x > Math.max(x1, x2) + r || z < Math.min(z1, z2) - r || z > Math.max(z1, z2) + r) continue
+    const dx = x2 - x1
+    const dz = z2 - z1
+    const l2 = dx * dx + dz * dz
+    const t = l2 === 0 ? 0 : Math.max(0, Math.min(1, ((x - x1) * dx + (z - z1) * dz) / l2))
+    const px = x1 + t * dx - x
+    const pz = z1 + t * dz - z
+    if (px * px + pz * pz < r * r) return true
+  }
+  return false
+}
+
 export interface WalkState {
   x: number
   z: number
@@ -57,7 +79,7 @@ export interface WalkState {
  * Katlı yürüme: hareketi dener (tam, yalnız x, yalnız z). Ekipman engeli ayak kotuna göre denetlenir; yeni konumdaki yüzey
  * (zemin / üst kat döşemesi / merdiven) `surfaceHeight` ile bulunur — kenardan düşme ve erişilemeyen kat engeldir.
  */
-export function walkStepFloors(boxes: Box[], rooms: Oda3D[], stairs: Merdiven[], st: WalkState, dx: number, dz: number, r = BODY_RADIUS): WalkState {
+export function walkStepFloors(boxes: Box[], rooms: Oda3D[], stairs: Merdiven[], st: WalkState, dx: number, dz: number, r = BODY_RADIUS, walls: WallSeg[] = []): WalkState {
   const tries: [number, number][] = [[dx, dz]]
   if (dx !== 0 && dz !== 0) tries.push([dx, 0], [0, dz])
   else if (dx !== 0 || dz !== 0) tries.push(dx !== 0 ? [dx, 0] : [0, dz])
@@ -68,6 +90,7 @@ export function walkStepFloors(boxes: Box[], rooms: Oda3D[], stairs: Merdiven[],
     const h = surfaceHeight(rooms, stairs, nx, nz, st.h)
     if (h === null) continue
     if (blockedAt(boxes, nx, nz, r, h)) continue
+    if (walls.length && wallBlocked(walls, nx, nz, WALL_RADIUS, h)) continue
     return { x: nx, z: nz, h }
   }
   return st

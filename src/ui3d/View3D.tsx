@@ -28,6 +28,7 @@ import type { AlignMode } from '../layout3d/arrange'
 import { capture3d, currentCamera, pickGround } from './capture'
 import { detectGpu } from './gpu'
 import { InfraPanel } from './InfraPanel'
+import { PlanPanel } from './PlanPanel'
 import { trayFillFor } from '../layout3d/infra'
 import type { GpuInfo } from './gpu'
 import type { SceneData } from './sceneData'
@@ -679,6 +680,7 @@ export function View3D() {
           <div className="pointer-events-none absolute bottom-2 left-2 top-2 z-10 flex w-80 max-w-[90%] flex-col gap-2 overflow-y-auto">
             <ScenarioPanel3D />
             <InfraPanel data={data} />
+            <PlanPanel />
             <RoomsPanel />
           </div>
           <EdgeTools data={data} />

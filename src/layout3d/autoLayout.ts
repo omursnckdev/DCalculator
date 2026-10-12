@@ -79,7 +79,7 @@ interface RowItem {
 }
 
 /** Satırlara paketler; öğelerin yerel (x,z) merkezlerini ve toplam boyutu döndürür. */
-function packGroups(groups: RowItem[][], aisle: (groupIndex: number) => number): { pos: Map<string, { x: number; z: number }>; w: number; d: number } {
+function packGroups(groups: RowItem[][], aisle: (groupIndex: number) => number, maxRow = MAX_ROW): { pos: Map<string, { x: number; z: number }>; w: number; d: number } {
   const pos = new Map<string, { x: number; z: number }>()
   let z = 0
   let maxW = 0
@@ -95,7 +95,7 @@ function packGroups(groups: RowItem[][], aisle: (groupIndex: number) => number):
       rowD = 0
     }
     for (const it of items) {
-      if (x > 0 && x + it.g > MAX_ROW) flush()
+      if (x > 0 && x + it.g > maxRow) flush()
       pos.set(it.node.id, { x: x + it.g / 2, z: rowStart + it.d / 2 })
       x += it.g + GAP
       rowD = Math.max(rowD, it.d)
@@ -103,6 +103,26 @@ function packGroups(groups: RowItem[][], aisle: (groupIndex: number) => number):
     if (items.length) flush()
   })
   return { pos, w: maxW, d: Math.max(0, z - aisle(groups.length - 1)) }
+}
+
+/** Bölgedeki ana ekipmanı şema seviyesine göre satırlara paketler (ekipman yoksa undefined). Yerel (x, z) merkezleri döner. */
+export function packZone(major: ProjectNode[], zone: OdaTuru, lv: Map<string, number>, maxRow = MAX_ROW) {
+  const inZone = major.filter((n) => zoneOf(n) === zone)
+  if (!inZone.length) return undefined
+  // Grup anahtarı: soğutma birimleri -1 (salonda ilk satır), diğerleri şema seviyesi.
+  const keyOf = (n: ProjectNode) => (zone === 'salon' && coolingKw(n) > 0 ? -1 : lv.get(n.id) ?? 0)
+  const keys = [...new Set(inZone.map(keyOf))].sort((a, b) => a - b)
+  const groups: RowItem[][] = keys.map((k) =>
+    inZone
+      .filter((n) => keyOf(n) === k)
+      .sort((a, b) => label(a).localeCompare(label(b), 'tr'))
+      .map((n) => ({ node: n, g: dimsOf(n).g, d: dimsOf(n).d })),
+  )
+  const aisleFor = (gi: number) => {
+    const row = groups[Math.max(0, gi)] ?? []
+    return row.some((r) => r.node.type === 'rack' || r.node.type === 'itYuku') ? 2.4 : 2.2
+  }
+  return { inZone, packed: packGroups(groups, aisleFor, maxRow) }
 }
 
 /**
@@ -130,25 +150,7 @@ export function autoLayout(model: Model, mode: 'all' | 'missing', rooms: Oda3D[]
     }
   }
 
-  // Bölge başına satır paketleme (ekipman yok → bölge atlanır).
-  const packOf = (zone: OdaTuru) => {
-    const inZone = major.filter((n) => zoneOf(n) === zone)
-    if (!inZone.length) return undefined
-    // Grup anahtarı: soğutma birimleri -1 (salonda ilk satır), diğerleri şema seviyesi.
-    const keyOf = (n: ProjectNode) => (zone === 'salon' && coolingKw(n) > 0 ? -1 : lv.get(n.id) ?? 0)
-    const keys = [...new Set(inZone.map(keyOf))].sort((a, b) => a - b)
-    const groups: RowItem[][] = keys.map((k) =>
-      inZone
-        .filter((n) => keyOf(n) === k)
-        .sort((a, b) => label(a).localeCompare(label(b), 'tr'))
-        .map((n) => ({ node: n, g: dimsOf(n).g, d: dimsOf(n).d })),
-    )
-    const aisleFor = (gi: number) => {
-      const row = groups[Math.max(0, gi)] ?? []
-      return row.some((r) => r.node.type === 'rack' || r.node.type === 'itYuku') ? 2.4 : 2.2
-    }
-    return { inZone, packed: packGroups(groups, aisleFor) }
-  }
+  const packOf = (zone: OdaTuru) => packZone(major, zone, lv)
   const margin = mode === 'all' ? ROOM_PAD : 0
   const place = (zone: OdaTuru, pk: NonNullable<ReturnType<typeof packOf>>, ox: number, oz: number, w: number, d: number, elev: number) => {
     const room: Oda3D = { id: `oda-${zone}`, ad: ZONE_NAME[zone], tur: zone, x: ox - margin, z: oz - margin, g: w + 2 * margin, d: d + 2 * margin, y: ZONE_HEIGHT[zone], ...(elev > 0 ? { elev } : {}) }
