@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { tr } from '../i18n/tr'
 import { lastProjectId, loadProjectFromDb, saveProjectToDb } from '../store/persistence'
 import { AnalysisProvider } from '../store/useAnalysis'
@@ -18,7 +18,10 @@ import { SummaryView } from './SummaryView'
 import { TableView } from './TableView'
 import { Toolbar } from './Toolbar'
 
-type View = 'diagram' | 'table' | 'summary' | 'scenario' | 'redundancy' | 'reliability' | 'electrical' | 'energy'
+// 3D paketi (three.js) yalnız 3D sekmesi açılınca yüklenir.
+const View3D = lazy(() => import('../ui3d/View3D'))
+
+type View = 'diagram' | 'table' | 'summary' | 'scenario' | 'redundancy' | 'reliability' | 'electrical' | 'energy' | 'view3d'
 
 export function App() {
   const [view, setView] = useState<View>('diagram')
@@ -71,7 +74,7 @@ export function App() {
       <div className="flex h-full flex-col">
         <Toolbar />
         <div className="flex items-center border-b border-slate-200 bg-white">
-          {(['diagram', 'table', 'summary', 'scenario', 'redundancy', 'reliability', 'electrical', 'energy'] as const).map((v) => (
+          {(['diagram', 'table', 'summary', 'scenario', 'redundancy', 'reliability', 'electrical', 'energy', 'view3d'] as const).map((v) => (
             <button
               key={v}
               type="button"
@@ -113,6 +116,10 @@ export function App() {
             <ReliabilityView />
           ) : view === 'energy' ? (
             <EnergyView />
+          ) : view === 'view3d' ? (
+            <Suspense fallback={<div className="p-4 text-sm text-slate-500">{tr.v3d.loading}</div>}>
+              <View3D />
+            </Suspense>
           ) : (
             <ScenarioView />
           )}

@@ -49,6 +49,50 @@ export type EquipmentType = (typeof EQUIPMENT_TYPES)[number]
 export type ParamValue = number | string
 export type Params = Record<string, ParamValue>
 
+/**
+ * 3D yerleşim (metre, derece). x/z zemin düzleminde ekipman merkezidir; `elev` zeminden yükseklik; `rot` Y ekseni etrafında
+ * dönüş. g/d/y boyut geçersiz kılma (genişlik/derinlik/yükseklik); yoksa tür varsayılanı (`layout3d/dims.ts`).
+ */
+export interface Yerlesim3D {
+  x: number
+  z: number
+  elev?: number
+  rot?: number
+  oda?: string
+  g?: number
+  d?: number
+  y?: number
+}
+
+export interface Nokta3D {
+  x: number
+  y: number
+  z: number
+}
+
+export const ODA_TURLERI = ['elektrik', 'salon', 'jenerator', 'dis'] as const
+export type OdaTuru = (typeof ODA_TURLERI)[number]
+
+/** Basit dikdörtgen oda (mimari değil): ekipman bağlamı, ısı haritası ve duvar gösterimi için. x/z köşe (min). */
+export interface Oda3D {
+  id: string
+  ad: string
+  tur: OdaTuru
+  x: number
+  z: number
+  g: number
+  d: number
+  y: number
+}
+
+/** Kayıtlı kamera görünümü. */
+export interface Gorunum3D {
+  ad: string
+  pos: [number, number, number]
+  target: [number, number, number]
+  ortho: boolean
+}
+
 /** Düğüm (ekipman) verisi: plan §5 ortak alanları + tipe özgü parametreler. */
 export interface EquipmentData extends Record<string, unknown> {
   kind: EquipmentType
@@ -57,6 +101,7 @@ export interface EquipmentData extends Record<string, unknown> {
   grup: string
   notlar: string
   params: Params
+  yerlesim3d?: Yerlesim3D
 }
 
 /** Isının bırakıldığı mekân (plan §6.4). */
@@ -97,6 +142,10 @@ export interface LineData extends Record<string, unknown> {
   ad: string
   /** Serbest açıklama (ör. 1600 A BUSBAR (5P), 2x(4x95)+95 mm² N2XH). */
   aciklama: string
+  /** 3D kablo güzergâhı ara noktaları (metre); yoksa otomatik ortogonal güzergâh. */
+  guzergah3d?: Nokta3D[]
+  /** Uzunluğun kaynağı: 'elle' (varsayılan, kullanıcı girdi) veya '3d' (güzergâhtan hesaplanır). */
+  uzunlukKaynak?: 'elle' | '3d'
 }
 
 export type EquipmentNode = Node<EquipmentData, 'equipment'>
@@ -113,6 +162,7 @@ export interface ProjectNode {
   x: number
   y: number
   params: Params
+  yerlesim3d?: Yerlesim3D
 }
 
 export interface ProjectEdge extends LineData {
@@ -151,4 +201,7 @@ export interface Project {
   scenarios: Scenario[]
   /** Yük profili, tarife ve soğutma ayarları. */
   ayarlar: ProjectSettings
+  /** 3D yerleşim: odalar ve kayıtlı kamera görünümleri (isteğe bağlı; eski dosyalarda yoktur). */
+  odalar3d?: Oda3D[]
+  gorunumler3d?: Gorunum3D[]
 }

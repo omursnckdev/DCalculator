@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { analyze } from '../engine'
 import type { Analysis } from '../engine'
 import { toProjectEdges, toProjectNodes } from '../model/project'
+import { modelSignature } from './modelSig'
 import { useStore } from './useStore'
 
 const EMPTY: Analysis = {
@@ -27,6 +28,8 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   const scenarios = useStore((s) => s.scenarios)
   const activeId = useStore((s) => s.activeScenarioId)
   const simAnalysis = useStore((s) => (s.sim ? s.sim.steps[s.sim.index]?.analysis : undefined))
+  // Yalnız hesabı etkileyen değişiklikler (konum, seçim, 3D yerleşim hariç) analizi yeniden çalıştırır.
+  const sig = useMemo(() => modelSignature(nodes, edges), [nodes, edges])
   const computed = useMemo(
     () =>
       analyze(
@@ -34,7 +37,8 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         undefined,
         scenarios.find((x) => x.id === activeId),
       ),
-    [nodes, edges, scenarios, activeId],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sig, scenarios, activeId],
   )
   // Canlı simülasyon açıkken tuval, seçili adımın durumunu gösterir.
   const value = simAnalysis ?? computed

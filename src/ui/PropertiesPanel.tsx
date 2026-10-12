@@ -57,6 +57,48 @@ function NumberInput({
   )
 }
 
+/** 3D yerleşim: konum, yükseklik, dönüş ve (isteğe bağlı) boyut geçersiz kılma. */
+function Pos3D({ node }: { node: EquipmentNode }) {
+  const setLayout = useStore((s) => s.setLayout3d)
+  const l = node.data.yerlesim3d
+  if (!l) return null
+  const field = (label: string, key: 'x' | 'z' | 'elev' | 'rot', step: number, fallback = 0) => (
+    <Row label={label}>
+      <NumberInput value={l[key] ?? fallback} step={step} onChange={(v) => setLayout({ [node.id]: { [key]: v } })} />
+    </Row>
+  )
+  const dim = (label: string, key: 'g' | 'd' | 'y') => (
+    <Row label={label}>
+      <input
+        type="number"
+        className={inputCls}
+        min={0.1}
+        step={0.1}
+        placeholder={tr.v3d.dimDefault}
+        value={l[key] ?? ''}
+        onChange={(e) => {
+          const v = e.target.valueAsNumber
+          setLayout({ [node.id]: { [key]: Number.isFinite(v) && v > 0 ? v : undefined } })
+        }}
+      />
+    </Row>
+  )
+  return (
+    <details className="mb-3 rounded border border-slate-200 p-2">
+      <summary className="cursor-pointer text-xs font-semibold">{tr.v3d.pos3d}</summary>
+      <div className="mt-2 grid grid-cols-2 gap-x-2">
+        {field(tr.v3d.posX, 'x', 0.1)}
+        {field(tr.v3d.posZ, 'z', 0.1)}
+        {field(tr.v3d.elev, 'elev', 0.1)}
+        {field(tr.v3d.rot, 'rot', 90)}
+        {dim(tr.v3d.dimG, 'g')}
+        {dim(tr.v3d.dimD, 'd')}
+        {dim(tr.v3d.dimH, 'y')}
+      </div>
+    </details>
+  )
+}
+
 function Explain({ steps }: { steps: ExplainStep[] }) {
   if (steps.length === 0) return null
   return (
@@ -228,6 +270,7 @@ export function PropertiesPanel() {
   const updateNodeData = useStore((s) => s.updateNodeData)
   const updateNodeParam = useStore((s) => s.updateNodeParam)
   const updateEdgeData = useStore((s) => s.updateEdgeData)
+  const setLengthSource3d = useStore((s) => s.setLengthSource3d)
   const deleteSelection = useStore((s) => s.deleteSelection)
   const activeScenario = useStore((s) => s.scenarios.find((x) => x.id === s.activeScenarioId))
   const setNodeFailed = useStore((s) => s.setNodeFailed)
@@ -391,6 +434,7 @@ export function PropertiesPanel() {
             )
           })}
           <p className="mb-2 text-[11px] text-slate-400">{tr.props.defaultsNote}</p>
+          <Pos3D node={node} />
           {nodeResult && !nodeResult.cyclic && (
             <div className="mb-3 rounded-lg border border-slate-200 p-2">
               <h3 className="mb-1 flex items-center justify-between text-xs font-semibold">
@@ -463,7 +507,17 @@ export function PropertiesPanel() {
             </select>
           </Row>
           <Row label={tr.line.uzunluk} unit="m">
-            <NumberInput value={edge.data.uzunluk} min={0} onChange={(v) => updateEdgeData(edge.id, { uzunluk: v })} />
+            <NumberInput value={edge.data.uzunluk} min={0} onChange={(v) => updateEdgeData(edge.id, { uzunluk: v, uzunlukKaynak: 'elle' })} />
+          </Row>
+          <Row label={tr.v3d.lenSource}>
+            <select
+              className={inputCls}
+              value={edge.data.uzunlukKaynak ?? 'elle'}
+              onChange={(e) => setLengthSource3d([edge.id], e.target.value === '3d' ? '3d' : 'elle')}
+            >
+              <option value="elle">{tr.v3d.lenManual}</option>
+              <option value="3d">{tr.v3d.len3d}</option>
+            </select>
           </Row>
           <Row label={tr.line.akimKapasitesi} unit="A">
             <NumberInput

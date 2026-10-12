@@ -1,16 +1,20 @@
 import { EQUIPMENT } from '../library/equipment'
 import { DEFAULT_SETTINGS, cloneSettings, parseSettings } from './settings'
-import { EDGE_STATES, EQUIPMENT_TYPES, HEAT_LOCATIONS, LINE_TYPES } from './types'
+import { EDGE_STATES, EQUIPMENT_TYPES, HEAT_LOCATIONS, LINE_TYPES, ODA_TURLERI } from './types'
 import type {
   EquipmentNode,
   EquipmentType,
+  Gorunum3D,
   LineEdge,
   LineData,
+  Nokta3D,
+  Oda3D,
   Params,
   Project,
   ProjectEdge,
   ProjectNode,
   Scenario,
+  Yerlesim3D,
 } from './types'
 
 /**
@@ -65,6 +69,7 @@ export function toProjectNodes(nodes: EquipmentNode[]): ProjectNode[] {
     x: Math.round(n.position.x),
     y: Math.round(n.position.y),
     params: { ...n.data.params },
+    ...(n.data.yerlesim3d ? { yerlesim3d: { ...n.data.yerlesim3d } } : {}),
   }))
 }
 
@@ -100,6 +105,7 @@ export function fromProjectNodes(nodes: ProjectNode[]): EquipmentNode[] {
       grup: n.grup,
       notlar: n.notlar,
       params: { ...n.params },
+      ...(n.yerlesim3d ? { yerlesim3d: { ...n.yerlesim3d } } : {}),
     },
   }))
 }
@@ -136,6 +142,77 @@ function parseParams(v: unknown): Params {
   return out
 }
 
+const optNum = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined)
+
+export function parseYerlesim3d(v: unknown): Yerlesim3D | undefined {
+  if (!isObj(v)) return undefined
+  const x = optNum(v.x)
+  const z = optNum(v.z)
+  if (x === undefined || z === undefined) return undefined
+  const pos = (k: string): number | undefined => {
+    const n = optNum(v[k])
+    return n !== undefined && n > 0 ? n : undefined
+  }
+  const out: Yerlesim3D = { x, z }
+  const elev = optNum(v.elev)
+  if (elev !== undefined) out.elev = elev
+  const rot = optNum(v.rot)
+  if (rot !== undefined) out.rot = rot
+  if (typeof v.oda === 'string' && v.oda) out.oda = v.oda
+  for (const k of ['g', 'd', 'y'] as const) {
+    const n = pos(k)
+    if (n !== undefined) out[k] = n
+  }
+  return out
+}
+
+function parseNokta(v: unknown): Nokta3D | undefined {
+  if (!isObj(v)) return undefined
+  const x = optNum(v.x)
+  const y = optNum(v.y)
+  const z = optNum(v.z)
+  return x === undefined || y === undefined || z === undefined ? undefined : { x, y, z }
+}
+
+function parseOdalar(v: unknown): Oda3D[] | undefined {
+  if (!Array.isArray(v)) return undefined
+  const out: Oda3D[] = []
+  for (const r of v) {
+    if (!isObj(r) || typeof r.id !== 'string' || !r.id) continue
+    const x = optNum(r.x)
+    const z = optNum(r.z)
+    const g = optNum(r.g)
+    const d = optNum(r.d)
+    if (x === undefined || z === undefined || g === undefined || d === undefined || g <= 0 || d <= 0) continue
+    out.push({
+      id: r.id,
+      ad: str(r.ad, 'Oda'),
+      tur: ODA_TURLERI.includes(r.tur as never) ? (r.tur as Oda3D['tur']) : 'salon',
+      x,
+      z,
+      g,
+      d,
+      y: Math.max(0.5, optNum(r.y) ?? 3.5),
+    })
+  }
+  return out
+}
+
+function parseGorunumler(v: unknown): Gorunum3D[] | undefined {
+  if (!Array.isArray(v)) return undefined
+  const vec = (a: unknown): [number, number, number] | undefined =>
+    Array.isArray(a) && a.length === 3 && a.every((n) => typeof n === 'number' && Number.isFinite(n)) ? (a as [number, number, number]) : undefined
+  const out: Gorunum3D[] = []
+  for (const r of v) {
+    if (!isObj(r)) continue
+    const pos = vec(r.pos)
+    const target = vec(r.target)
+    if (!pos || !target) continue
+    out.push({ ad: str(r.ad, 'Görünüm'), pos, target, ortho: r.ortho === true })
+  }
+  return out
+}
+
 function parseNode(raw: unknown, i: number): ProjectNode {
   if (!isObj(raw)) throw new ProjectFormatError(`Düğüm ${i + 1} geçersiz.`)
   const type = raw.type as EquipmentType
@@ -154,6 +231,7 @@ function parseNode(raw: unknown, i: number): ProjectNode {
     x: num(raw.x, 0),
     y: num(raw.y, 0),
     params: parseParams(raw.params),
+    ...(parseYerlesim3d(raw.yerlesim3d) ? { yerlesim3d: parseYerlesim3d(raw.yerlesim3d) } : {}),
   }
 }
 
@@ -185,6 +263,8 @@ function parseEdge(raw: unknown, i: number): ProjectEdge {
     kaynakPort: port(raw.kaynakPort),
     hedefPort: port(raw.hedefPort),
     durum: EDGE_STATES.includes(raw.durum as never) ? (raw.durum as ProjectEdge['durum']) : DEFAULT_LINE.durum,
+    ...(Array.isArray(raw.guzergah3d) ? { guzergah3d: raw.guzergah3d.map(parseNokta).filter((p): p is Nokta3D => p !== undefined) } : {}),
+    ...(raw.uzunlukKaynak === '3d' ? { uzunlukKaynak: '3d' as const } : {}),
   }
 }
 
@@ -345,6 +425,8 @@ export function migrate(input: unknown): Project {
     edges,
     scenarios,
     ayarlar: parseSettings(raw.ayarlar),
+    ...(parseOdalar(raw.odalar3d) ? { odalar3d: parseOdalar(raw.odalar3d) } : {}),
+    ...(parseGorunumler(raw.gorunumler3d) ? { gorunumler3d: parseGorunumler(raw.gorunumler3d) } : {}),
   }
 }
 

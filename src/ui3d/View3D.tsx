@@ -1,0 +1,369 @@
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { useAnalysis } from '../store/useAnalysis'
+import { COLOR_MODES, heatKwOf } from '../layout3d/colors'
+import type { ColorMode } from '../layout3d/colors'
+import { boxesOf } from '../layout3d/autoLayout'
+import { findOverlaps } from '../layout3d/geometry'
+import { laneMap, polylineLength, routePoints, defaultRoute } from '../layout3d/route'
+import { tr } from '../i18n/tr'
+import type { CatalogEntry } from '../library/catalog'
+import { toProjectEdges, toProjectNodes } from '../model/project'
+import type { Nokta3D, OdaTuru } from '../model/types'
+import { ODA_TURLERI } from '../model/types'
+import { useStore } from '../store/useStore'
+import { DND_CATALOG, DND_MIME, Palette, findCatalogEntry } from '../ui/Palette'
+import { saveBlob } from '../ui/fileio'
+import { EQUIPMENT_TYPES } from '../model/types'
+import type { EquipmentType } from '../model/types'
+import { snap } from '../layout3d/geometry'
+import { capture3d, currentCamera, pickGround } from './capture'
+import type { SceneData } from './sceneData'
+import { use3dStore } from './use3dStore'
+
+const Scene3D = lazy(() => import('./Scene3D'))
+
+function webglOk(): boolean {
+  try {
+    const c = document.createElement('canvas')
+    return !!(c.getContext('webgl2') || c.getContext('webgl'))
+  } catch {
+    return false
+  }
+}
+
+const btn = 'rounded border border-slate-300 bg-white px-2 py-1 text-xs hover:bg-slate-50'
+const btnOn = 'rounded border border-blue-600 bg-blue-600 px-2 py-1 text-xs text-white'
+
+function Toolbar3D() {
+  const s = use3dStore()
+  const nodes = useStore((st) => st.nodes)
+  const views = useStore((st) => st.gorunumler3d)
+  const saveView = useStore((st) => st.saveGorunum3d)
+  const removeView = useStore((st) => st.removeGorunum3d)
+  const autoLayout3d = useStore((st) => st.autoLayout3d)
+  const [q, setQ] = useState('')
+  const matches = q.trim() ? nodes.filter((n) => `${n.data.ad} ${n.data.etiket} ${n.data.grup}`.toLocaleLowerCase('tr').includes(q.trim().toLocaleLowerCase('tr'))).slice(0, 8) : []
+  const check = (label: string, on: boolean, set: (v: boolean) => void) => (
+    <label className="flex items-center gap-1 text-xs">
+      <input type="checkbox" checked={on} onChange={(e) => set(e.target.checked)} />
+      {label}
+    </label>
+  )
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-200 bg-white px-3 py-1.5">
+      <div className="flex gap-1">
+        {(['fit', 'front', 'side', 'top', 'persp'] as const).map((v) => (
+          <button key={v} type="button" className={btn} onClick={() => s.requestView(v)}>
+            {tr.v3d[v]}
+          </button>
+        ))}
+      </div>
+      <label className="flex items-center gap-1 text-xs">
+        {tr.v3d.color}
+        <select className="rounded border border-slate-300 px-1 py-0.5" value={s.colorMode} onChange={(e) => s.setPrefs({ colorMode: e.target.value as ColorMode })}>
+          {COLOR_MODES.map((m) => (
+            <option key={m} value={m}>
+              {tr.v3d.modes[m]}
+            </option>
+          ))}
+        </select>
+      </label>
+      {check(tr.v3d.walls, !s.hideWalls, (v) => s.setPrefs({ hideWalls: !v }))}
+      {check(tr.v3d.heat, s.showHeat, (v) => s.setPrefs({ showHeat: v }))}
+      {check(tr.v3d.cables, s.showCables, (v) => s.setPrefs({ showCables: v }))}
+      {check(tr.v3d.labels, s.showLabels, (v) => s.setPrefs({ showLabels: v }))}
+      <label className="flex items-center gap-1 text-xs">
+        {tr.v3d.snap}
+        <select className="rounded border border-slate-300 px-1 py-0.5" value={s.snapStep} onChange={(e) => s.setPrefs({ snapStep: Number(e.target.value) })}>
+          <option value={0}>{tr.v3d.free}</option>
+          {[0.1, 0.25, 0.5, 1].map((v) => (
+            <option key={v} value={v}>
+              {v} m
+            </option>
+          ))}
+        </select>
+      </label>
+      <button type="button" className={s.measure ? btnOn : btn} onClick={() => s.setMeasure(!s.measure)} title={tr.v3d.measureHint}>
+        {tr.v3d.measure}
+      </button>
+      <button
+        type="button"
+        className={btn}
+        onClick={() => {
+          if (confirm(tr.v3d.autoConfirm)) autoLayout3d()
+        }}
+      >
+        {tr.v3d.auto}
+      </button>
+      <button
+        type="button"
+        className={btn}
+        onClick={() => {
+          const png = capture3d()
+          if (png) void fetch(png).then((r) => r.blob()).then((b) => saveBlob(b, `${useStore.getState().projectName || 'proje'}-3d.png`))
+        }}
+      >
+        {tr.v3d.png}
+      </button>
+      <div className="relative">
+        <input
+          id="v3d-search"
+          className="w-40 rounded border border-slate-300 px-2 py-1 text-xs"
+          placeholder={tr.v3d.search}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        {matches.length > 0 && (
+          <ul className="absolute left-0 top-full z-30 mt-1 w-56 rounded border border-slate-300 bg-white text-xs shadow-lg">
+            {matches.map((n) => (
+              <li key={n.id}>
+                <button
+                  type="button"
+                  className="block w-full px-2 py-1 text-left hover:bg-slate-100"
+                  onClick={() => {
+                    useStore.getState().selectNode(n.id)
+                    s.focus(n.id)
+                    setQ('')
+                  }}
+                >
+                  {n.data.ad}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div className="flex items-center gap-1">
+        <span className="text-xs text-slate-500">{tr.v3d.views}:</span>
+        {views.map((v, i) => (
+          <span key={v.ad} className="flex items-center rounded border border-slate-300 bg-white text-xs">
+            <button type="button" className="px-1.5 py-0.5 hover:bg-slate-50" onClick={() => s.moveCamera(v.pos, v.target, v.ortho ? 'top' : 'persp')}>
+              {v.ad}
+            </button>
+            <button type="button" className="px-1 text-red-600" aria-label={tr.v3d.remove} onClick={() => removeView(i)}>
+              ×
+            </button>
+          </span>
+        ))}
+        <button
+          type="button"
+          className={btn}
+          onClick={() => {
+            const c = currentCamera()
+            const ad = c && prompt(tr.v3d.viewName, `Görünüm ${views.length + 1}`)
+            if (c && ad?.trim()) saveView({ ad: ad.trim(), pos: c.pos, target: c.target, ortho: c.ortho })
+          }}
+        >
+          {tr.v3d.saveView}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function RoomsPanel() {
+  const rooms = useStore((st) => st.odalar3d)
+  const add = useStore((st) => st.addOda3d)
+  const update = useStore((st) => st.updateOda3d)
+  const remove = useStore((st) => st.removeOda3d)
+  const [open, setOpen] = useState(false)
+  const inp = 'w-14 rounded border border-slate-300 px-1 py-0.5 text-right text-xs'
+  return (
+    <div className="absolute bottom-2 left-2 z-10 max-h-[45%] w-[26rem] max-w-[90%] overflow-y-auto rounded border border-slate-300 bg-white/95 p-2 text-xs shadow">
+      <div className="flex items-center justify-between">
+        <button type="button" className="font-semibold" onClick={() => setOpen(!open)}>
+          {open ? '▾' : '▸'} {tr.v3d.rooms} ({rooms.length})
+        </button>
+        <button type="button" className={btn} onClick={() => add({ ad: `Oda ${rooms.length + 1}`, tur: 'salon', x: 0, z: 0, g: 20, d: 12, y: 3.5 })}>
+          {tr.v3d.addRoom}
+        </button>
+      </div>
+      {open &&
+        rooms.map((r) => (
+          <div key={r.id} className="mt-1 grid grid-cols-[1fr_auto] items-center gap-1 border-t border-slate-100 pt-1">
+            <div className="flex flex-wrap items-center gap-1">
+              <input className="w-28 rounded border border-slate-300 px-1 py-0.5" value={r.ad} title={tr.v3d.roomName} onChange={(e) => update(r.id, { ad: e.target.value })} />
+              <select className="rounded border border-slate-300 px-1 py-0.5" value={r.tur} title={tr.v3d.roomType} onChange={(e) => update(r.id, { tur: e.target.value as OdaTuru })}>
+                {ODA_TURLERI.map((t) => (
+                  <option key={t} value={t}>
+                    {tr.v3d.roomTypes[t]}
+                  </option>
+                ))}
+              </select>
+              <span title={tr.v3d.roomPos}>
+                <input type="number" className={inp} value={r.x} onChange={(e) => update(r.id, { x: Number(e.target.value) || 0 })} />
+                <input type="number" className={inp} value={r.z} onChange={(e) => update(r.id, { z: Number(e.target.value) || 0 })} />
+              </span>
+              <span title={tr.v3d.roomDims}>
+                <input type="number" className={inp} value={r.g} min={1} onChange={(e) => update(r.id, { g: Math.max(1, Number(e.target.value) || 1) })} />
+                <input type="number" className={inp} value={r.d} min={1} onChange={(e) => update(r.id, { d: Math.max(1, Number(e.target.value) || 1) })} />
+                <input type="number" className={inp} value={r.y} min={0.5} step={0.5} onChange={(e) => update(r.id, { y: Math.max(0.5, Number(e.target.value) || 1) })} />
+              </span>
+            </div>
+            <button type="button" className="text-red-600" onClick={() => remove(r.id)}>
+              {tr.v3d.remove}
+            </button>
+          </div>
+        ))}
+    </div>
+  )
+}
+
+/** Seçili hat için 3D güzergâh araçları: uzunluk kaynağı, ara nokta ekleme, sıfırlama. */
+function EdgeTools({ data }: { data: SceneData }) {
+  const id = data.selectedEdge
+  const setRoute = useStore((st) => st.setEdgeRoute3d)
+  const setSource = useStore((st) => st.setLengthSource3d)
+  const e = data.edges.find((x) => x.id === id)
+  const a = e && data.boxById.get(e.source)
+  const b = e && data.boxById.get(e.target)
+  if (!e || !a || !b) return null
+  const lane = data.lanes.get(e.id) ?? 0
+  const mid: Nokta3D[] = e.guzergah3d && e.guzergah3d.length ? e.guzergah3d : defaultRoute(a, b, lane)
+  const len = polylineLength(routePoints(e, a, b, lane))
+  const addPoint = () => {
+    // En uzun parçanın ortasına yeni nokta.
+    const pts = [{ x: a.x, y: a.elev + a.h, z: a.z }, ...mid, { x: b.x, y: b.elev + b.h, z: b.z }]
+    let best = 0
+    let bl = -1
+    for (let i = 1; i < pts.length; i++) {
+      const l = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y, pts[i].z - pts[i - 1].z)
+      if (l > bl) {
+        bl = l
+        best = i
+      }
+    }
+    const p = { x: (pts[best].x + pts[best - 1].x) / 2, y: (pts[best].y + pts[best - 1].y) / 2 + 0.5, z: (pts[best].z + pts[best - 1].z) / 2 }
+    const next = [...mid]
+    next.splice(Math.max(0, best - 1), 0, p)
+    setRoute(e.id, next)
+  }
+  return (
+    <div className="absolute right-2 top-2 z-10 w-72 rounded border border-violet-300 bg-white/95 p-2 text-xs shadow">
+      <div className="font-semibold">
+        {tr.v3d.edge}: {e.ad || e.id}
+      </div>
+      <div className="mt-1">
+        {tr.v3d.length}: {e.uzunluk.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} m · 3D: {len.toFixed(1)} m
+      </div>
+      <label className="mt-1 flex items-center gap-2">
+        {tr.v3d.lenSource}
+        <select className="rounded border border-slate-300 px-1 py-0.5" value={e.uzunlukKaynak ?? 'elle'} onChange={(ev) => setSource([e.id], ev.target.value as 'elle' | '3d')}>
+          <option value="elle">{tr.v3d.lenManual}</option>
+          <option value="3d">{tr.v3d.len3d}</option>
+        </select>
+      </label>
+      <div className="mt-1 flex gap-1">
+        <button type="button" className={btn} onClick={addPoint}>
+          {tr.v3d.addPoint}
+        </button>
+        <button type="button" className={btn} onClick={() => setRoute(e.id, undefined)}>
+          {tr.v3d.resetRoute}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export function View3D() {
+  const nodes = useStore((s) => s.nodes)
+  const edges = useStore((s) => s.edges)
+  const rooms = useStore((s) => s.odalar3d)
+  const ayarlar = useStore((s) => s.ayarlar)
+  const flowAnim = useStore((s) => s.flowAnim)
+  const simStep = useStore((s) => (s.sim ? s.sim.steps[s.sim.index] : undefined))
+  const addNode3d = useStore((s) => s.addNode3d)
+  const ensure = useStore((s) => s.ensureLayout3d)
+  const analysis = useAnalysis()
+  const colorMode = use3dStore((s) => s.colorMode)
+  const [ok] = useState(webglOk)
+
+  // 2D'de eklenen ve henüz yerleşimi olmayan ekipman 3D açılınca yerleştirilir.
+  useEffect(() => {
+    ensure()
+  }, [nodes.length, ensure])
+
+  const pnodes = useMemo(() => toProjectNodes(nodes), [nodes])
+  const pedges = useMemo(() => toProjectEdges(edges), [edges])
+  const boxes = useMemo(() => boxesOf(pnodes), [pnodes])
+  const overlaps = useMemo(() => findOverlaps(boxes), [boxes])
+  const lanes = useMemo(() => laneMap(pedges), [pedges])
+  const data: SceneData = useMemo(() => {
+    const byId = new Map(pnodes.map((n) => [n.id, n]))
+    let maxHeat = 0
+    for (const n of pnodes) maxHeat = Math.max(maxHeat, heatKwOf(n, analysis.nodes[n.id]))
+    const room = simStep?.room
+    return {
+      nodes: pnodes,
+      edges: pedges,
+      boxById: new Map(boxes.map((b) => [b.id, b])),
+      byId,
+      overlaps,
+      analysis,
+      colorCtx: { mode: colorMode, maxHeatKw: maxHeat },
+      selected: new Set(nodes.filter((n) => n.selected).map((n) => n.id)),
+      selectedEdge: edges.find((e) => e.selected)?.id,
+      changed: new Set(simStep?.changedNodes ?? []),
+      lanes,
+      rooms,
+      flowAnim,
+      tempShift: room ? (room.limitReached ? 1 : Math.min(1, Math.max(0, (room.tempC - ayarlar.salonSetpoint) / Math.max(1, ayarlar.izinliArtis)))) : 0,
+      tempC: room?.tempC,
+    }
+  }, [pnodes, pedges, boxes, overlaps, analysis, colorMode, nodes, edges, simStep, lanes, rooms, flowAnim, ayarlar])
+
+  const centerGround = (el: HTMLElement | null) => {
+    const r = el?.getBoundingClientRect()
+    return r ? pickGround(r.left + r.width / 2, r.top + r.height / 2) : null
+  }
+  const place = (g: { x: number; z: number } | null, type: EquipmentType, entry?: CatalogEntry) => {
+    const step = use3dStore.getState().snapStep
+    const x = snap(g?.x ?? 0, step || 0.1)
+    const z = snap(g?.z ?? 0, step || 0.1)
+    addNode3d(type, x, z, entry ? { ad: entry.ad, params: entry.params } : undefined)
+  }
+  const [host, setHost] = useState<HTMLDivElement | null>(null)
+
+  if (!ok) {
+    return <div className="flex flex-1 items-center justify-center p-8 text-sm text-slate-600">{tr.v3d.noWebgl}</div>
+  }
+  const overlapCount = overlaps.size
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1">
+      <Palette onAdd={(t) => place(centerGround(host), t)} onAddCatalog={(c) => place(centerGround(host), c.type, c)} />
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <Toolbar3D />
+        <div
+          ref={setHost}
+          className="relative min-h-0 flex-1"
+          onDragOver={(e) => {
+            e.preventDefault()
+            e.dataTransfer.dropEffect = 'move'
+          }}
+          onDrop={(e) => {
+            e.preventDefault()
+            const g = pickGround(e.clientX, e.clientY)
+            const cat = findCatalogEntry(e.dataTransfer.getData(DND_CATALOG))
+            if (cat) return place(g, cat.type, cat)
+            const type = e.dataTransfer.getData(DND_MIME) as EquipmentType
+            if (EQUIPMENT_TYPES.includes(type)) place(g, type)
+          }}
+        >
+          <Suspense fallback={<div className="p-4 text-sm text-slate-500">{tr.v3d.loading}</div>}>
+            <Scene3D data={data} frameloopAlways={flowAnim || !!simStep} />
+          </Suspense>
+          <RoomsPanel />
+          <EdgeTools data={data} />
+          <div className="pointer-events-none absolute bottom-2 right-2 z-10 max-w-md rounded bg-white/85 px-2 py-1 text-[11px] text-slate-600">
+            {tr.v3d.hint}
+            {use3dStore.getState().measure ? ` · ${tr.v3d.measureHint}` : ''}
+            {overlapCount > 0 && <div className="font-semibold text-red-600">⚠ {tr.v3d.overlap}: {overlapCount}</div>}
+            <div>{tr.v3d.approx}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default View3D

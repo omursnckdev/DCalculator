@@ -27,11 +27,17 @@ import type {
   ProjectNode,
   Scenario,
   EdgeState,
+  Gorunum3D,
+  Nokta3D,
+  Oda3D,
+  Yerlesim3D,
 } from '../model/types'
 import { DEFAULT_SETTINGS, cloneSettings } from '../model/settings'
 import type { ProjectSettings } from '../model/settings'
 import { simulateAdditionalFault, simulateFailure, simulateRecovery } from '../engine'
 import type { SimStep } from '../engine'
+import { autoLayout } from '../layout3d/autoLayout'
+import { lengthPatches } from '../layout3d/lengths'
 import { attachHistory } from './history'
 import { saveProjectToDb } from './persistence'
 
@@ -68,6 +74,14 @@ function loadView(): NodeView {
   } catch {
     return 'icon'
   }
+}
+
+/** `uzunlukKaynak === '3d'` hatların uzunluğunu güncel yerleşimden yeniden hesaplar (değişen yoksa aynı dizi döner). */
+function withLengths(nodes: EquipmentNode[], edges: LineEdge[]): LineEdge[] {
+  const pe = toProjectEdges(edges)
+  const patches = lengthPatches(toProjectNodes(nodes), pe)
+  if (Object.keys(patches).length === 0) return edges
+  return edges.map((e) => (patches[e.id] !== undefined ? { ...e, data: { ...(e.data ?? DEFAULT_LINE), uzunluk: patches[e.id] } } : e))
 }
 
 interface State {
@@ -107,6 +121,26 @@ interface State {
   /** Yük profili, tarife ve soğutma ayarları (projeyle kaydedilir). */
   ayarlar: ProjectSettings
   setAyarlar: (patch: Partial<ProjectSettings>) => void
+  /** 3D yerleşim: odalar (geri alınabilir) ve kayıtlı kamera görünümleri. */
+  odalar3d: Oda3D[]
+  gorunumler3d: Gorunum3D[]
+  /** Ekipmanların 3D yerleşimini günceller (yerleşimi olmayan düğüm için x,z gerekir). */
+  setLayout3d: (patches: Record<string, Partial<Yerlesim3D>>) => void
+  /** Yerleşimi olmayan ekipmanı yerleştirir; hiçbiri yerleşik değilse tümünü diziler ve odaları üretir. */
+  ensureLayout3d: () => void
+  /** Tüm ekipmanı yeniden dizer ve odaları yeniden üretir. */
+  autoLayout3d: () => void
+  /** 3D sahnede ekipman ekler (x,z metre); şemada ayrıca otomatik bir konum alır. */
+  addNode3d: (type: EquipmentType, x: number, z: number, init?: { ad?: string; params?: Params }) => string
+  addOda3d: (oda: Omit<Oda3D, 'id'>) => string
+  updateOda3d: (id: string, patch: Partial<Omit<Oda3D, 'id'>>) => void
+  removeOda3d: (id: string) => void
+  saveGorunum3d: (g: Gorunum3D) => void
+  removeGorunum3d: (index: number) => void
+  /** Hattın 3D ara noktaları (undefined: otomatik güzergâh). */
+  setEdgeRoute3d: (edgeId: string, pts: Nokta3D[] | undefined) => void
+  /** Hat uzunluğunun kaynağı: '3d' ise güzergâhtan hesaplanır ve yerleşim değiştikçe güncellenir. */
+  setLengthSource3d: (edgeIds: string[], source: 'elle' | '3d') => void
   /** Canvas ve tüm sonuçların gösterdiği senaryo; null = temel durum (kaydedilmez). */
   activeScenarioId: string | null
   /** loadProject her çağrıldığında artar; canvas görünümü sığdırmak için dinler. */
@@ -249,6 +283,77 @@ export const useStore = create<State>((set, get) => ({
   history: { undo: 0, redo: 0 },
   ayarlar: cloneSettings(DEFAULT_SETTINGS),
   setAyarlar: (patch) => set((s) => ({ ayarlar: { ...s.ayarlar, ...patch }, dirty: true })),
+
+  odalar3d: [],
+  gorunumler3d: [],
+  setLayout3d: (patches) =>
+    set((s) => {
+      const nodes = s.nodes.map((n) => {
+        const p = patches[n.id]
+        if (!p) return n
+        const cur = n.data.yerlesim3d
+        const next = { ...(cur ?? { x: 0, z: 0 }), ...p } as Yerlesim3D
+        if (!cur && (p.x === undefined || p.z === undefined)) return n
+        return { ...n, data: { ...n.data, yerlesim3d: next } }
+      })
+      return { nodes, edges: withLengths(nodes, s.edges), dirty: true }
+    }),
+  ensureLayout3d: () => {
+    const s = get()
+    const model = { nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }
+    const missing = model.nodes.filter((n) => !n.yerlesim3d)
+    if (missing.length === 0) return
+    const all = missing.length === model.nodes.length
+    const r = autoLayout(model, all ? 'all' : 'missing', s.odalar3d)
+    set((st) => {
+      const nodes = st.nodes.map((n) => (r.placements[n.id] && !n.data.yerlesim3d ? { ...n, data: { ...n.data, yerlesim3d: r.placements[n.id] } } : n))
+      return { nodes, edges: withLengths(nodes, st.edges), odalar3d: all ? r.rooms : st.odalar3d, dirty: true }
+    })
+  },
+  autoLayout3d: () => {
+    const s = get()
+    const r = autoLayout({ nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }, 'all')
+    set((st) => {
+      const nodes = st.nodes.map((n) => (r.placements[n.id] ? { ...n, data: { ...n.data, yerlesim3d: r.placements[n.id] } } : n))
+      return { nodes, edges: withLengths(nodes, st.edges), odalar3d: r.rooms, dirty: true }
+    })
+  },
+  addNode3d: (type, x, z, init) => {
+    const s = get()
+    // Şemada üst üste binmemesi için mevcut ekipmanın altına dizilir.
+    const maxY = s.nodes.reduce((m, n) => Math.max(m, n.position.y), -200)
+    const id = get().addNode(type, (s.nodes.length % 8) * 240, maxY + 200, init)
+    const room = s.odalar3d.find((o) => x >= o.x && x <= o.x + o.g && z >= o.z && z <= o.z + o.d)
+    set((st) => ({
+      nodes: st.nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, yerlesim3d: { x, z, ...(room ? { oda: room.id } : {}) } } } : n)),
+    }))
+    return id
+  },
+  addOda3d: (oda) => {
+    const id = newId('oda')
+    set((s) => ({ odalar3d: [...s.odalar3d, { ...oda, id }], dirty: true }))
+    return id
+  },
+  updateOda3d: (id, patch) => set((s) => ({ odalar3d: s.odalar3d.map((o) => (o.id === id ? { ...o, ...patch } : o)), dirty: true })),
+  removeOda3d: (id) =>
+    set((s) => ({
+      odalar3d: s.odalar3d.filter((o) => o.id !== id),
+      nodes: s.nodes.map((n) => (n.data.yerlesim3d?.oda === id ? { ...n, data: { ...n.data, yerlesim3d: { ...n.data.yerlesim3d, oda: undefined } } } : n)),
+      dirty: true,
+    })),
+  saveGorunum3d: (g) => set((s) => ({ gorunumler3d: [...s.gorunumler3d.filter((x) => x.ad !== g.ad), g], dirty: true })),
+  removeGorunum3d: (index) => set((s) => ({ gorunumler3d: s.gorunumler3d.filter((_, i) => i !== index), dirty: true })),
+  setEdgeRoute3d: (edgeId, pts) =>
+    set((s) => {
+      const edges = s.edges.map((e) => (e.id === edgeId ? { ...e, data: { ...(e.data ?? DEFAULT_LINE), guzergah3d: pts && pts.length ? pts : undefined } } : e))
+      return { edges: withLengths(s.nodes, edges), dirty: true }
+    }),
+  setLengthSource3d: (edgeIds, source) =>
+    set((s) => {
+      const ids = new Set(edgeIds)
+      const edges = s.edges.map((e) => (ids.has(e.id) ? { ...e, data: { ...(e.data ?? DEFAULT_LINE), uzunlukKaynak: source } } : e))
+      return { edges: withLengths(s.nodes, edges), dirty: true }
+    }),
   activeScenarioId: null,
   viewTick: 0,
 
@@ -520,6 +625,8 @@ export const useStore = create<State>((set, get) => ({
       edges: toProjectEdges(s.edges),
       scenarios: s.scenarios,
       ayarlar: s.ayarlar,
+      ...(s.odalar3d.length ? { odalar3d: s.odalar3d } : {}),
+      ...(s.gorunumler3d.length ? { gorunumler3d: s.gorunumler3d } : {}),
     }
   },
 
@@ -533,6 +640,8 @@ export const useStore = create<State>((set, get) => ({
       edges: fromProjectEdges(p.edges),
       scenarios: p.scenarios,
       ayarlar: cloneSettings(p.ayarlar),
+      odalar3d: p.odalar3d ? p.odalar3d.map((o) => ({ ...o })) : [],
+      gorunumler3d: p.gorunumler3d ? p.gorunumler3d.map((g) => ({ ...g })) : [],
       activeScenarioId: null,
       sim: null,
       simPicked: [],

@@ -2,7 +2,7 @@ import type { StoreApi, UseBoundStore } from 'zustand'
 import { cloneSettings } from '../model/settings'
 import type { ProjectSettings } from '../model/settings'
 import { fromProjectEdges, fromProjectNodes, toProjectEdges, toProjectNodes } from '../model/project'
-import type { ProjectEdge, ProjectNode, Scenario } from '../model/types'
+import type { Oda3D, ProjectEdge, ProjectNode, Scenario } from '../model/types'
 
 /**
  * Geri al / yinele: şema içeriği (ekipman, hat, senaryo, ayarlar, ad) değiştikçe anlık görüntü alınır.
@@ -13,6 +13,7 @@ interface Snap {
   edges: ProjectEdge[]
   scenarios: Scenario[]
   ayarlar: ProjectSettings
+  odalar3d: Oda3D[]
   name: string
 }
 
@@ -28,6 +29,7 @@ interface HistoryState {
   edges: Parameters<typeof toProjectEdges>[0]
   scenarios: Scenario[]
   ayarlar: ProjectSettings
+  odalar3d: Oda3D[]
   history: { undo: number; redo: number }
 }
 
@@ -44,10 +46,11 @@ const snapOf = (s: HistoryState): Snap => ({
   edges: toProjectEdges(s.edges),
   scenarios: s.scenarios,
   ayarlar: s.ayarlar,
+  odalar3d: s.odalar3d,
   name: s.projectName,
 })
 
-const keyOf = (sn: Snap): string => JSON.stringify([sn.nodes, sn.edges, sn.scenarios, sn.ayarlar, sn.name])
+const keyOf = (sn: Snap): string => JSON.stringify([sn.nodes, sn.edges, sn.scenarios, sn.ayarlar, sn.odalar3d, sn.name])
 
 function publish(): void {
   api?.setState({ history: { undo: undoStack.length, redo: redoStack.length } })
@@ -72,7 +75,7 @@ export function attachHistory<S extends HistoryState>(store: UseBoundStore<Store
       reset(s)
       return
     }
-    if (s.nodes === prev.nodes && s.edges === prev.edges && s.scenarios === prev.scenarios && s.ayarlar === prev.ayarlar && s.projectName === prev.projectName) return
+    if (s.nodes === prev.nodes && s.edges === prev.edges && s.scenarios === prev.scenarios && s.ayarlar === prev.ayarlar && s.odalar3d === prev.odalar3d && s.projectName === prev.projectName) return
     const cur = snapOf(s)
     const key = keyOf(cur)
     if (key === lastKey) return // yalnız seçim/boyut gibi içerik dışı değişiklik
@@ -98,6 +101,7 @@ function apply(sn: Snap): void {
       edges: fromProjectEdges(sn.edges),
       scenarios: sn.scenarios,
       ayarlar: cloneSettings(sn.ayarlar),
+      odalar3d: sn.odalar3d.map((o) => ({ ...o })),
       projectName: sn.name,
       dirty: true,
     } as Partial<HistoryState>)
