@@ -41,8 +41,12 @@ export function Controllers() {
         const r = gl.domElement.getBoundingClientRect()
         return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height }
       },
+      stats: () => {
+        gl.render(scene, camera)
+        return { calls: gl.info.render.calls, triangles: gl.info.render.triangles, geometries: gl.info.memory.geometries, textures: gl.info.memory.textures }
+      },
     }
-  }, [camera, gl])
+  }, [camera, gl, scene])
 
   // --- yakalama (PNG) ve kamera durumu
   useEffect(() => {
