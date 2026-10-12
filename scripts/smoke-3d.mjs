@@ -158,6 +158,29 @@ check('simülasyon ayrı sayfada açıldı', (await page.locator('text=Arıza an
 await page.getByRole('button', { name: '3D', exact: true }).click()
 await page.waitForTimeout(3000)
 
+// Kablo tavası: çiz (3 tık + Enter), kabloları yönlendir, otomatik boru
+await page.keyboard.press('Escape') // açık araç çubuğu menüleri tuvali örtmesin
+await page.getByRole('button', { name: 'Üst (plan)', exact: true }).click()
+await page.waitForTimeout(1200)
+await page.getByRole('button', { name: /Kablo tavası ve borular/ }).first().click().catch(() => {})
+if ((await page.getByRole('button', { name: /＋ Tava çiz/ }).count()) === 0) await page.getByRole('button', { name: /Kablo tavası ve borular/ }).first().click()
+await page.getByRole('button', { name: /＋ Tava çiz/ }).click()
+const tb = await page.locator('canvas').boundingBox()
+for (const [fx, fy] of [[0.45, 0.3], [0.8, 0.3], [0.8, 0.7]]) {
+  // Kanvasın oranlarına göre (simülasyon şeridi büyütülmüş olabilir)
+  await page.mouse.click(tb.x + tb.width * fx, tb.y + tb.height * fy)
+  await page.waitForTimeout(250)
+}
+await page.keyboard.press('Enter')
+await page.waitForTimeout(600)
+check('tava çizildi', (await page.locator('text=/Tava 1/').count()) > 0)
+await page.getByRole('button', { name: /Kabloları tavalara yönlendir/ }).click()
+await page.waitForTimeout(800)
+check('kablolar tavaya yönlendirildi', (await page.locator('text=/kablo yönlendirildi/').count()) > 0)
+await page.getByRole('button', { name: /Boruları otomatik çiz/ }).click()
+await page.waitForTimeout(1000)
+check('otomatik borular üretildi', (await page.locator('text=/boru üretildi/').count()) > 0)
+
 // Geri al
 await page.keyboard.press('Control+z')
 await page.waitForTimeout(500)

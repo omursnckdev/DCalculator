@@ -3,11 +3,13 @@ import { MONTH_NAMES } from '../engine/climate'
 import type { Analysis, EnergyReport, RedundancyReport, ReliabilityReport, SimStep } from '../engine'
 import { rideThroughMinutes } from '../engine/cooling'
 import type { GeneratorStudy } from '../engine/generator'
+import { boruLength, hydraulicsOf } from '../layout3d/pipes'
+import type { TrayFillRow } from '../layout3d/trays'
 import type { ArcFlashRow, SelectivityRow } from '../engine/protection'
 import { tr } from '../i18n/tr'
 import { EQUIPMENT } from '../library/equipment'
 import type { ProjectSettings } from '../model/settings'
-import type { Project } from '../model/types'
+import type { Boru3D, Project } from '../model/types'
 
 /**
  * Yazdırılabilir rapor (HTML). Tarayıcının "Yazdır → PDF olarak kaydet" özelliğiyle PDF'e çevrilir; sunucu
@@ -24,6 +26,9 @@ export interface ReportInput {
   selectivity?: SelectivityRow[]
   arcFlash?: ArcFlashRow[]
   generator?: GeneratorStudy
+  /** 3D: kablo tavası doluluğu ve boru hatları (varsa "Kablo tavası ve boru" bölümü eklenir). */
+  trays?: TrayFillRow[]
+  pipes?: Boru3D[]
   /** Arıza simülasyonu adımları (varsa "Arıza raporu" bölümü eklenir). */
   steps?: SimStep[]
   /** Şema görüntüsü (PNG data URL). */
@@ -31,7 +36,7 @@ export interface ReportInput {
   /** 3D yerleşim görüntüsü (PNG data URL); 3D sekmesi açılmışsa. */
   view3dPng?: string | null
   /** Hangi bölümler yazılsın (varsayılan: hepsi). */
-  sections?: { electrical?: boolean; reliability?: boolean; summary?: boolean; losses?: boolean; loading?: boolean; issues?: boolean; redundancy?: boolean; energy?: boolean; simulation?: boolean; diagram?: boolean; view3d?: boolean }
+  sections?: { electrical?: boolean; reliability?: boolean; summary?: boolean; losses?: boolean; loading?: boolean; issues?: boolean; redundancy?: boolean; energy?: boolean; simulation?: boolean; diagram?: boolean; view3d?: boolean; infra?: boolean }
 }
 
 export const esc = (v: unknown): string =>
@@ -263,6 +268,35 @@ function electricalSection(sel: SelectivityRow[] | undefined, arc: ArcFlashRow[]
   <p class="small">Açma eğrileri tipik ayarlardır; üretici eğrileri ve IEEE 1584-2018 ile doğrulanmalıdır.</p>`
 }
 
+function infraSection(trays: TrayFillRow[] | undefined, pipes: Boru3D[] | undefined): string {
+  const cls = { ok: 'ok', warn: 'warn', over: 'fail' } as const
+  const lab = { ok: 'Uygun', warn: 'Sınırda', over: 'Aşım' } as const
+  const t =
+    trays && trays.length
+      ? '<h3>Kablo tavaları</h3>' +
+        table(
+          ['Tava', 'Tür', 'Uzunluk (m)', 'G × Y (m)', 'Kablo', 'Doluluk (%)', 'Sınır (%)', 'Durum'],
+          trays.map((r) => [esc(r.tray.ad), r.tray.tur === 'veri' ? 'Veri' : 'Güç', n1(r.lengthM), `${r.tray.g} × ${r.tray.h}`, String(r.cables), n1(r.fillPct), n0(r.tray.sinir), `<span class="${cls[r.status]}">${lab[r.status]}</span>`]),
+          [2, 4, 5, 6],
+        ) +
+        '<p class="small">Doluluk = kablo kesitleri toplamı / tava iç kesiti (tipik 4 damarlı XLPE kablo dış çapı); ön tasarım değeridir.</p>'
+      : ''
+  const p =
+    pipes && pipes.length
+      ? '<h3>Boru hatları</h3>' +
+        table(
+          ['Hat', 'Tür', 'Yön', 'DN', 'Yük (kW)', 'Debi (L/sn)', 'Hız (m/sn)', 'Uzunluk (m)', 'Δp (kPa)'],
+          pipes.map((b) => {
+            const h = hydraulicsOf(b)
+            return [esc(b.ad), b.tur === 'sogukSu' ? 'Soğuk su' : 'Kondenser', b.yon === 'besleme' ? 'Besleme' : 'Dönüş', `DN${h.dn}`, n0(b.kw), n1(h.lps), n1(h.velocity), n1(boruLength(b)), n1(h.dpKpa)]
+          }),
+          [4, 5, 6, 7, 8],
+        ) +
+        '<p class="small">Debi Q = P/(4,186·ΔT) (ΔT = 5 K); DN hız ≤ 2,5 m/sn için; basınç kaybı Darcy–Weisbach (f = 0,02), yerel kayıplar ve vanalar dahil değildir. Ön tasarım.</p>'
+      : ''
+  return `<h2>10. Kablo tavası ve boru hatları</h2>${t}${p}`
+}
+
 function simulationSection(steps: SimStep[], s: ProjectSettings, names: (id: string) => string): string {
   const last = steps[steps.length - 1]
   const failedAll = [...new Set(steps.flatMap((st) => st.failed))]
@@ -291,7 +325,7 @@ function simulationSection(steps: SimStep[], s: ProjectSettings, names: (id: str
 /** Raporun tam HTML belgesini üretir. */
 export function buildReportHtml(inp: ReportInput): string {
   const { project, analysis: a, settings } = inp
-  const sec = { electrical: true, reliability: true, summary: true, losses: true, loading: true, issues: true, redundancy: true, energy: true, simulation: true, diagram: true, view3d: true, ...inp.sections }
+  const sec = { electrical: true, reliability: true, summary: true, losses: true, loading: true, issues: true, redundancy: true, energy: true, simulation: true, diagram: true, view3d: true, infra: true, ...inp.sections }
   const names = (id: string): string => project.nodes.find((n) => n.id === id)?.ad ?? id
   const parts: string[] = []
   parts.push(`<h1>${esc(tr.app.title)} — ${esc(project.name)}</h1>
@@ -307,6 +341,7 @@ export function buildReportHtml(inp: ReportInput): string {
   if (sec.energy && inp.energy) parts.push(energySection(inp.energy, settings))
   if (sec.simulation && inp.steps && inp.steps.length > 1) parts.push(simulationSection(inp.steps, settings, names))
   if (sec.reliability && inp.reliability) parts.push(reliabilitySection(inp.reliability))
+  if (sec.infra && ((inp.trays && inp.trays.length) || (inp.pipes && inp.pipes.length))) parts.push(infraSection(inp.trays, inp.pipes))
   if (sec.electrical && (inp.selectivity || inp.arcFlash || inp.generator)) parts.push(electricalSection(inp.selectivity, inp.arcFlash, inp.generator))
   const cool = a.cooling && a.cooling.deficitKw > 0.5 ? rideThroughMinutes(a.cooling.deficitKw, settings) : undefined
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>${esc(project.name)} — Rapor</title><style>${CSS}</style></head><body>${parts.join('\n')}${cool !== undefined ? `<p class="small">Soğutma açığı sürerse salon sıcaklığı ≈ ${n0(cool)} dk içinde izinli artışa ulaşır.</p>` : ''}</body></html>`

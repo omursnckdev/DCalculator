@@ -7,6 +7,7 @@ import { bounds } from '../layout3d/geometry'
 import { routePoints } from '../layout3d/route'
 import { useStore } from '../store/useStore'
 import { beginNodeDrag, drag, endDrag, groundFromRay, marq, moveDrag, rotateSelected, selectedIds, setSelection } from './drag'
+import { addDrawPoint, finishDraw } from './drawing'
 import { registerCamGetter, registerCapture, registerPicker, rememberCapture } from './capture'
 import { useScene } from './sceneData'
 import { use3dStore } from './use3dStore'
@@ -252,6 +253,16 @@ export function Controllers() {
         st.setWalk(!st.walk)
         return
       }
+      if (k === 'enter' && st.draw) {
+        finishDraw()
+        invalidate()
+        return
+      }
+      if (k === 'escape' && st.draw) {
+        st.cancelDraw()
+        invalidate()
+        return
+      }
       if (st.walk) return // yürürken diğer kısayollar kapalı (Esc ve hareket tuşları Walk'ta)
       if (k === 'r') rotateSelected(e.shiftKey ? -90 : 90)
       else if (k === 'h') st.setPrefs({ hideWalls: !st.hideWalls })
@@ -276,7 +287,12 @@ export function Controllers() {
         st.setMeasure(false)
       } else if (k === 'delete' || k === 'backspace') {
         e.preventDefault()
-        useStore.getState().deleteSelection()
+        const so = st.selObj
+        if (so) {
+          if (so.kind === 'tray') useStore.getState().removeTava3d(so.id)
+          else useStore.getState().removeBoru3d(so.id)
+          st.setSelObj(null)
+        } else useStore.getState().deleteSelection()
       } else return
       invalidate()
     }
@@ -301,7 +317,8 @@ export function Ground() {
     <>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} onClick={onClick} onPointerDown={(e) => {
           if (e.button !== 0) return
-          if (measure) use3dStore.getState().addMeasurePt([e.point.x, e.point.z])
+          if (use3dStore.getState().draw) addDrawPoint(e.point.x, e.point.z)
+          else if (measure) use3dStore.getState().addMeasurePt([e.point.x, e.point.z])
           else if ((e.shiftKey || e.ctrlKey) && !use3dStore.getState().walk) {
             // Zeminde Shift/Ctrl+sürükle: seçim kutusu (kamera dönmesin)
             marq.active = true

@@ -1,6 +1,7 @@
 import { Canvas, invalidate } from '@react-three/fiber'
 import { useEffect } from 'react'
 import { Cables } from './Cables'
+import { Pipes, Trays } from './Infra'
 import { Controllers, Ground, Rig } from './Controllers'
 import { EquipmentLayer } from './Equipment'
 import { LabelLayer } from './LabelLayer'
@@ -39,6 +40,8 @@ export default function Scene3D({ data, dpr }: { data: SceneData; dpr: number })
         <Ground />
         <Rooms />
         <EquipmentLayer />
+        <Trays />
+        <Pipes />
         <Cables />
         <LabelLayer />
       </SceneCtx.Provider>

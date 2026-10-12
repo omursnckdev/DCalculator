@@ -6,6 +6,7 @@ import { renderDiagramPng } from '../export/png'
 import { buildReportHtml, printHtml } from '../export/report'
 import { generatorStudy } from '../engine/generator'
 import { capture3d } from '../ui3d/capture'
+import { trayFillFor } from '../layout3d/infra'
 import { arcFlashStudy, selectivityStudy } from '../engine/protection'
 import { analyze } from '../engine'
 import type { EnergyReport, RedundancyReport, ReliabilityReport } from '../engine'
@@ -75,6 +76,8 @@ export function Toolbar() {
           steps: st.sim?.steps,
           diagramPng,
           view3dPng: capture3d(),
+          trays: trayFillFor(model.nodes, model.edges, st.tavalar3d),
+          pipes: st.borular3d,
         }),
       )
     } catch (err) {

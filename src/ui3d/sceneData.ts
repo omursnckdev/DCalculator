@@ -2,7 +2,8 @@ import { createContext, useContext } from 'react'
 import type { Analysis } from '../engine'
 import type { ColorContext } from '../layout3d/colors'
 import type { Box } from '../layout3d/geometry'
-import type { Oda3D, ProjectEdge, ProjectNode } from '../model/types'
+import type { TrayFillRow } from '../layout3d/trays'
+import type { Boru3D, Oda3D, ProjectEdge, ProjectNode, Tava3D } from '../model/types'
 
 /** Sahne içinde (Canvas ağacında) paylaşılan, ana arayüzden hesaplanmış veri. */
 export interface SceneData {
@@ -19,6 +20,9 @@ export interface SceneData {
   changed: Set<string>
   lanes: Map<string, number>
   rooms: Oda3D[]
+  trays: Tava3D[]
+  pipes: Boru3D[]
+  trayFill: Map<string, TrayFillRow>
   flowAnim: boolean
   /** Salon sıcaklığı ısı haritasını kaydırır: 0..1 (sınıra yaklaşma). */
   tempShift: number

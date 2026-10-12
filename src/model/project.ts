@@ -1,6 +1,6 @@
 import { EQUIPMENT } from '../library/equipment'
 import { DEFAULT_SETTINGS, cloneSettings, parseSettings } from './settings'
-import { EDGE_STATES, EQUIPMENT_TYPES, HEAT_LOCATIONS, LINE_TYPES, ODA_TURLERI } from './types'
+import { BORU_TURLERI, EDGE_STATES, EQUIPMENT_TYPES, HEAT_LOCATIONS, LINE_TYPES, ODA_TURLERI, TAVA_TURLERI } from './types'
 import type {
   EquipmentNode,
   EquipmentType,
@@ -9,11 +9,13 @@ import type {
   LineData,
   Nokta3D,
   Oda3D,
+  Boru3D,
   Params,
   Project,
   ProjectEdge,
   ProjectNode,
   Scenario,
+  Tava3D,
   Yerlesim3D,
 } from './types'
 
@@ -194,6 +196,54 @@ function parseOdalar(v: unknown): Oda3D[] | undefined {
       g,
       d,
       y: Math.max(0.5, optNum(r.y) ?? 3.5),
+    })
+  }
+  return out
+}
+
+function parseTavalar(v: unknown): Tava3D[] | undefined {
+  if (!Array.isArray(v)) return undefined
+  const out: Tava3D[] = []
+  for (const r of v) {
+    if (!isObj(r) || typeof r.id !== 'string' || !r.id || !Array.isArray(r.noktalar)) continue
+    const pts = r.noktalar
+      .map((p) => (isObj(p) && optNum(p.x) !== undefined && optNum(p.z) !== undefined ? { x: p.x as number, z: p.z as number } : undefined))
+      .filter((p): p is { x: number; z: number } => p !== undefined)
+    if (pts.length < 2) continue
+    out.push({
+      id: r.id,
+      ad: str(r.ad, 'Tava'),
+      tur: TAVA_TURLERI.includes(r.tur as never) ? (r.tur as Tava3D['tur']) : 'guc',
+      g: Math.max(0.05, optNum(r.g) ?? 0.4),
+      h: Math.max(0.02, optNum(r.h) ?? 0.1),
+      y: optNum(r.y) ?? 3,
+      sinir: Math.min(100, Math.max(5, optNum(r.sinir) ?? 40)),
+      noktalar: pts,
+    })
+  }
+  return out
+}
+
+function parseBorular(v: unknown): Boru3D[] | undefined {
+  if (!Array.isArray(v)) return undefined
+  const ids = (a: unknown): string[] => (Array.isArray(a) ? a.filter((x): x is string => typeof x === 'string') : [])
+  const out: Boru3D[] = []
+  for (const r of v) {
+    if (!isObj(r) || typeof r.id !== 'string' || !r.id || !Array.isArray(r.noktalar)) continue
+    const pts = r.noktalar.map(parseNokta).filter((p): p is Nokta3D => p !== undefined)
+    if (pts.length < 2) continue
+    out.push({
+      id: r.id,
+      ad: str(r.ad, 'Boru'),
+      tur: BORU_TURLERI.includes(r.tur as never) ? (r.tur as Boru3D['tur']) : 'sogukSu',
+      yon: r.yon === 'donus' ? 'donus' : 'besleme',
+      dn: Math.max(15, optNum(r.dn) ?? 100),
+      ...(r.dnElle === true ? { dnElle: true } : {}),
+      kw: Math.max(0, optNum(r.kw) ?? 0),
+      noktalar: pts,
+      uretici: ids(r.uretici),
+      pompalar: ids(r.pompalar),
+      otomatik: r.otomatik === true,
     })
   }
   return out
@@ -428,6 +478,8 @@ export function migrate(input: unknown): Project {
     ayarlar: parseSettings(raw.ayarlar),
     ...(parseOdalar(raw.odalar3d) ? { odalar3d: parseOdalar(raw.odalar3d) } : {}),
     ...(parseGorunumler(raw.gorunumler3d) ? { gorunumler3d: parseGorunumler(raw.gorunumler3d) } : {}),
+    ...(parseTavalar(raw.tavalar3d) ? { tavalar3d: parseTavalar(raw.tavalar3d) } : {}),
+    ...(parseBorular(raw.borular3d) ? { borular3d: parseBorular(raw.borular3d) } : {}),
   }
 }
 

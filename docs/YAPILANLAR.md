@@ -119,6 +119,7 @@ Ayrıntılı istek: [3D-MODEL-ISTEKLERI.md](3D-MODEL-ISTEKLERI.md); kararlar ve 
 - **Performans ve arayüz:** birleştirilmiş geometri ve toplu hatlarla çizim çağrısı ≈ 3,7× azaldı (HDC02: 611 → 163), memo'lu ekipman, ~30 kare/sn animasyon, kalite seçeneği, GPU tespiti ve "Yazılım render" uyarısı, gruplanmış araç çubuğu, lejant, kısayol kartı (PLAN 77–78).
 - **Yürüme modu ve düzenleme (PLAN 79–81):** gizlenebilir paneller, birinci şahıs yürüme (WASD/oklar, çarpışma), seçim kutusu, hizala/eşit aralık, kopyala, kesicilerin panoyla taşınması.
 - **Şalterler panoda, ayrıntılı modeller, simülasyon şeridi (PLAN 82–84):** şalterler ana ekipmanın ön yüzüne oturur ve onunla taşınır/döner; ayrıntılı ekipman modelleri; simülasyon şeridi sürüklenerek boyutlandırılır, ayrı sayfada açılabilir.
+- **Kablo tavası ve boru hatları (PLAN 85–89):** tava çizimi, kabloların tavaya yönlendirilmesi (gerçek yol uzunluğu hesaplara girer), tava doluluğu, otomatik soğuk su/kondenser boruları (debi, DN, hız, Δp), pompa/chiller arızasında boru durumu, rapor bölümü.
 - **3D'de senaryo:** Senaryo ve bakım paneli ile canlı simülasyon şeridi (PLAN 76).
 - **Sınırlar:** mimari, CFD, kablo tavası doluluğu, glTF yükleme, çok katlı yapı yok; ekipman boyutları tipik yer tutucudur.
 

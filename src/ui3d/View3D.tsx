@@ -26,6 +26,8 @@ import { alignPatches, distributePatches } from '../layout3d/arrange'
 import type { AlignMode } from '../layout3d/arrange'
 import { capture3d, currentCamera, pickGround } from './capture'
 import { detectGpu } from './gpu'
+import { InfraPanel } from './InfraPanel'
+import { trayFillFor } from '../layout3d/infra'
 import type { GpuInfo } from './gpu'
 import type { SceneData } from './sceneData'
 import { use3dStore } from './use3dStore'
@@ -52,8 +54,15 @@ function Menu({ label, children, active = false }: { label: string; children: Re
     const close = (e: MouseEvent) => {
       if (!(e.target as HTMLElement).closest('[data-menu]')) setOpen(false)
     }
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
     window.addEventListener('mousedown', close)
-    return () => window.removeEventListener('mousedown', close)
+    window.addEventListener('keydown', esc)
+    return () => {
+      window.removeEventListener('mousedown', close)
+      window.removeEventListener('keydown', esc)
+    }
   }, [open])
   return (
     <div className="relative" data-menu>
@@ -328,7 +337,7 @@ function RoomsPanel() {
   const [open, setOpen] = useState(false)
   const inp = 'w-14 rounded border border-slate-300 px-1 py-0.5 text-right text-xs'
   return (
-    <div className="absolute bottom-2 left-2 z-10 max-h-[45%] w-[26rem] max-w-[90%] overflow-y-auto rounded border border-slate-300 bg-white/95 p-2 text-xs shadow">
+    <div className="pointer-events-auto w-full overflow-y-auto rounded border border-slate-300 bg-white/95 p-2 text-xs shadow">
       <div className="flex items-center justify-between">
         <button type="button" className="font-semibold" onClick={() => setOpen(!open)}>
           {open ? '▾' : '▸'} {tr.v3d.rooms} ({rooms.length})
@@ -402,7 +411,7 @@ function ScenarioPanel3D() {
   }
   const sc = tr.v3d.scen
   return (
-    <div className="absolute left-2 top-2 z-10 max-h-[70%] w-80 max-w-[90%] overflow-y-auto rounded border border-slate-300 bg-white/95 p-2 text-xs shadow">
+    <div className="pointer-events-auto w-full overflow-y-auto rounded border border-slate-300 bg-white/95 p-2 text-xs shadow">
       <button type="button" className="font-semibold" onClick={() => setOpen(!open)}>
         {open ? '▾' : '▸'} {sc.title}
       </button>
@@ -548,6 +557,8 @@ export function View3D() {
   const nodes = useStore((s) => s.nodes)
   const edges = useStore((s) => s.edges)
   const rooms = useStore((s) => s.odalar3d)
+  const trays = useStore((s) => s.tavalar3d)
+  const pipes = useStore((s) => s.borular3d)
   const ayarlar = useStore((s) => s.ayarlar)
   const flowAnim = useStore((s) => s.flowAnim)
   const simStep = useStore((s) => (s.sim ? s.sim.steps[s.sim.index] : undefined))
@@ -602,11 +613,14 @@ export function View3D() {
       changed: new Set(simStep?.changedNodes ?? []),
       lanes,
       rooms,
+      trays,
+      pipes,
+      trayFill: new Map(trayFillFor(pnodes, pedges, trays).map((r) => [r.tray.id, r])),
       flowAnim,
       tempShift: room ? (room.limitReached ? 1 : Math.min(1, Math.max(0, (room.tempC - ayarlar.salonSetpoint) / Math.max(1, ayarlar.izinliArtis)))) : 0,
       tempC: room?.tempC,
     }
-  }, [pnodes, pedges, boxes, overlaps, analysis, colorMode, nodes, edges, simStep, lanes, rooms, flowAnim, ayarlar])
+  }, [pnodes, pedges, boxes, overlaps, analysis, colorMode, nodes, edges, simStep, lanes, rooms, trays, pipes, flowAnim, ayarlar])
 
   const centerGround = (el: HTMLElement | null) => {
     const r = el?.getBoundingClientRect()
@@ -648,8 +662,11 @@ export function View3D() {
           <Suspense fallback={<div className="p-4 text-sm text-slate-500">{tr.v3d.loading}</div>}>
             <Scene3D data={data} dpr={quality === 'dusuk' ? 1 : quality === 'yuksek' ? Math.min(2, window.devicePixelRatio || 1) : Math.min(1.5, window.devicePixelRatio || 1)} />
           </Suspense>
-          <ScenarioPanel3D />
-          <RoomsPanel />
+          <div className="pointer-events-none absolute bottom-2 left-2 top-2 z-10 flex w-80 max-w-[90%] flex-col gap-2 overflow-y-auto">
+            <ScenarioPanel3D />
+            <InfraPanel data={data} />
+            <RoomsPanel />
+          </div>
           <EdgeTools data={data} />
           <Legend3D data={data} />
           {overlapCount > 0 && <div className="pointer-events-none absolute bottom-16 right-2 z-10 rounded bg-red-600 px-2 py-0.5 text-[11px] font-semibold text-white">⚠ {tr.v3d.overlap}: {overlapCount}</div>}

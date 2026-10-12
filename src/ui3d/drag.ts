@@ -12,6 +12,7 @@ import { use3dStore } from './use3dStore'
 type Drag =
   | { kind: 'nodes'; ids: string[]; start: Record<string, { x: number; z: number }>; startGround: { x: number; z: number }; primary: string; grab: boolean }
   | { kind: 'wp'; edgeId: string; index: number; y: number; pts: Nokta3D[] }
+  | { kind: 'pt'; obj: 'tray' | 'pipe'; id: string; index: number; y: number }
 
 export const drag: { current: Drag | null; last: { x: number; z: number } } = { current: null, last: { x: 0, z: 0 } }
 
@@ -34,6 +35,7 @@ export const selectedIds = (): string[] =>
     .map((n) => n.id)
 
 export function setSelection(ids: string[], edgeId?: string): void {
+  use3dStore.setState({ selObj: null })
   const set = new Set(ids)
   useStore.setState((s) => ({
     nodes: s.nodes.map((n) => (n.selected === set.has(n.id) ? n : { ...n, selected: set.has(n.id) })),
@@ -67,6 +69,11 @@ export function beginNodeDrag(id: string, ground: { x: number; z: number } | nul
   drag.current = { kind: 'nodes', ids: ids.filter((i) => start[i]), start, startGround: ground, primary: id, grab }
 }
 
+/** Tava/boru köşe noktası sürükleme (x, z; kot sabit). */
+export function beginObjectPointDrag(obj: 'tray' | 'pipe', id: string, index: number, y: number): void {
+  drag.current = { kind: 'pt', obj, id, index, y }
+}
+
 export function beginWaypointDrag(edgeId: string, index: number, y: number, pts: Nokta3D[]): void {
   drag.current = { kind: 'wp', edgeId, index, y, pts }
 }
@@ -80,6 +87,19 @@ export function moveDrag(ground: { x: number; z: number }, boxes: Box[], rooms: 
     const step = use3dStore.getState().snapStep
     const next = d.pts.map((p, i) => (i === d.index ? { x: snap(ground.x, step), y: p.y, z: snap(ground.z, step) } : p))
     st.setEdgeRoute3d(d.edgeId, next)
+    return
+  }
+  if (d.kind === 'pt') {
+    const step = use3dStore.getState().snapStep
+    const x = snap(ground.x, step)
+    const z = snap(ground.z, step)
+    if (d.obj === 'tray') {
+      const t = st.tavalar3d.find((q) => q.id === d.id)
+      if (t) st.updateTava3d(d.id, { noktalar: t.noktalar.map((p, i) => (i === d.index ? { x, z } : p)) })
+    } else {
+      const b = st.borular3d.find((q) => q.id === d.id)
+      if (b) st.updateBoru3d(d.id, { noktalar: b.noktalar.map((p, i) => (i === d.index ? { ...p, x, z } : p)) })
+    }
     return
   }
   const step = use3dStore.getState().snapStep

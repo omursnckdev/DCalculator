@@ -66,6 +66,14 @@ interface View3DState extends Prefs {
   /** Seçim kutusu (ekran koordinatları, px). */
   marquee: { x0: number; y0: number; x1: number; y1: number } | null
   setMarquee: (m: { x0: number; y0: number; x1: number; y1: number } | null) => void
+  /** Seçili tava veya boru (düğüm/hat seçimiyle birlikte olmaz). */
+  selObj: { kind: 'tray' | 'pipe'; id: string } | null
+  setSelObj: (o: { kind: 'tray' | 'pipe'; id: string } | null) => void
+  /** Çizim modu: yeni tava/boru noktaları zemine tıklanarak eklenir (Enter: bitir, Esc: vazgeç). */
+  draw: { kind: 'tray' | 'pipe'; pts: { x: number; z: number }[] } | null
+  startDraw: (kind: 'tray' | 'pipe') => void
+  addDrawPt: (p: { x: number; z: number }) => void
+  cancelDraw: () => void
   measure: boolean
   measurePts: [number, number][]
   setMeasure: (on: boolean) => void
@@ -101,6 +109,12 @@ export const use3dStore = create<View3DState>((set, get) => ({
   setWalk: (walk) => set({ walk, measure: false }),
   marquee: null,
   setMarquee: (marquee) => set({ marquee }),
+  selObj: null,
+  setSelObj: (selObj) => set({ selObj }),
+  draw: null,
+  startDraw: (kind) => set({ draw: { kind, pts: [] }, measure: false, walk: false }),
+  addDrawPt: (p) => set((s) => (s.draw ? { draw: { ...s.draw, pts: [...s.draw.pts, p] } } : {})),
+  cancelDraw: () => set({ draw: null }),
   measure: false,
   measurePts: [],
   setMeasure: (on) => set({ measure: on, measurePts: [] }),

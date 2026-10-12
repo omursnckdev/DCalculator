@@ -87,6 +87,43 @@ export interface Oda3D {
   y: number
 }
 
+export const TAVA_TURLERI = ['guc', 'veri'] as const
+export type TavaTuru = (typeof TAVA_TURLERI)[number]
+
+/** Kablo tavası: sabit kotta (`y`, tava tabanı) x-z düzleminde çokgen yol. Genişlik/yan yükseklik metre; `sinir` izin verilen doluluk, %. */
+export interface Tava3D {
+  id: string
+  ad: string
+  tur: TavaTuru
+  g: number
+  h: number
+  y: number
+  sinir: number
+  noktalar: { x: number; z: number }[]
+}
+
+export const BORU_TURLERI = ['sogukSu', 'kondenser'] as const
+export type BoruTuru = (typeof BORU_TURLERI)[number]
+
+/**
+ * Boru hattı (3D çokgen). `kw` hattın taşıdığı soğutma/ısı atım yükü (debi hesabı); `dn` iç çap (mm, standart seri);
+ * `uretici`/`pompalar` hattın çalışması için enerjili olması gereken ekipman (üretici + en az bir pompa).
+ */
+export interface Boru3D {
+  id: string
+  ad: string
+  tur: BoruTuru
+  yon: 'besleme' | 'donus'
+  dn: number
+  /** DN elle verildi (otomatik seçim yapılmaz). */
+  dnElle?: boolean
+  kw: number
+  noktalar: Nokta3D[]
+  uretici: string[]
+  pompalar: string[]
+  otomatik: boolean
+}
+
 /** Kayıtlı kamera görünümü. */
 export interface Gorunum3D {
   ad: string
@@ -206,4 +243,6 @@ export interface Project {
   /** 3D yerleşim: odalar ve kayıtlı kamera görünümleri (isteğe bağlı; eski dosyalarda yoktur). */
   odalar3d?: Oda3D[]
   gorunumler3d?: Gorunum3D[]
+  tavalar3d?: Tava3D[]
+  borular3d?: Boru3D[]
 }

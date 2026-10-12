@@ -27,9 +27,11 @@ import type {
   ProjectNode,
   Scenario,
   EdgeState,
+  Boru3D,
   Gorunum3D,
   Nokta3D,
   Oda3D,
+  Tava3D,
   Yerlesim3D,
 } from '../model/types'
 import { DEFAULT_SETTINGS, cloneSettings } from '../model/settings'
@@ -39,6 +41,11 @@ import type { SimStep } from '../engine'
 import { autoLayout, mountPatches } from '../layout3d/autoLayout'
 import { isMinor } from '../layout3d/dims'
 import { lengthPatches } from '../layout3d/lengths'
+import { autoPipes, dnFor, flowLps } from '../layout3d/pipes'
+import { TrayNet } from '../layout3d/trays'
+import { anchorOf as bboxAnchor } from '../layout3d/route'
+import { boxOf } from '../layout3d/geometry'
+import { dimsOf } from '../layout3d/dims'
 import { attachHistory } from './history'
 import { saveProjectToDb } from './persistence'
 
@@ -126,6 +133,21 @@ interface State {
   /** 3D yerleşim: odalar (geri alınabilir) ve kayıtlı kamera görünümleri. */
   odalar3d: Oda3D[]
   gorunumler3d: Gorunum3D[]
+  /** Kablo tavaları ve boru hatları (geri alınabilir). */
+  tavalar3d: Tava3D[]
+  borular3d: Boru3D[]
+  addTava3d: (t: Omit<Tava3D, 'id'>) => string
+  updateTava3d: (id: string, patch: Partial<Omit<Tava3D, 'id'>>) => void
+  removeTava3d: (id: string) => void
+  addBoru3d: (b: Omit<Boru3D, 'id'>) => string
+  updateBoru3d: (id: string, patch: Partial<Omit<Boru3D, 'id'>>) => void
+  removeBoru3d: (id: string) => void
+  /** Kabloları (tip: kablo) tava ağı üzerinden yönlendirir (`guzergah3d`); yönlendirilemeyenler değişmez. */
+  routeCablesViaTrays3d: () => { routed: number; total: number }
+  /** Tüm kabloların 3D güzergâhını varsayılana (otomatik ortogonal) döndürür. */
+  resetCableRoutes3d: () => void
+  /** Otomatik boruları (soğuk su, kondenser) yerleşimden yeniden üretir; elle çizilenler korunur. Üretilen boru sayısını döndürür. */
+  autoPipes3d: () => number
   /** Ekipmanların 3D yerleşimini günceller (yerleşimi olmayan düğüm için x,z gerekir). */
   setLayout3d: (patches: Record<string, Partial<Yerlesim3D>>) => void
   /** Yerleşimi olmayan ekipmanı yerleştirir; hiçbiri yerleşik değilse tümünü diziler ve odaları üretir. */
@@ -292,6 +314,68 @@ export const useStore = create<State>((set, get) => ({
 
   odalar3d: [],
   gorunumler3d: [],
+  tavalar3d: [],
+  borular3d: [],
+  addTava3d: (t) => {
+    const id = newId('tava')
+    set((s) => ({ tavalar3d: [...s.tavalar3d, { ...t, id }], dirty: true }))
+    return id
+  },
+  updateTava3d: (id, patch) => set((s) => ({ tavalar3d: s.tavalar3d.map((t) => (t.id === id ? { ...t, ...patch } : t)), dirty: true })),
+  removeTava3d: (id) => set((s) => ({ tavalar3d: s.tavalar3d.filter((t) => t.id !== id), dirty: true })),
+  addBoru3d: (b) => {
+    const id = newId('boru')
+    set((s) => ({ borular3d: [...s.borular3d, { ...b, id }], dirty: true }))
+    return id
+  },
+  updateBoru3d: (id, patch) =>
+    set((s) => ({
+      borular3d: s.borular3d.map((b) => {
+        if (b.id !== id) return b
+        const next = { ...b, ...patch }
+        // DN elle verilmediyse yüke göre yeniden seçilir.
+        if (!next.dnElle && (patch.kw !== undefined || patch.noktalar !== undefined)) next.dn = dnFor(flowLps(next.kw))
+        return next
+      }),
+      dirty: true,
+    })),
+  removeBoru3d: (id) => set((s) => ({ borular3d: s.borular3d.filter((b) => b.id !== id), dirty: true })),
+  routeCablesViaTrays3d: () => {
+    const s = get()
+    const pn = toProjectNodes(s.nodes)
+    const byId = new Map(pn.map((n) => [n.id, n]))
+    const net = new TrayNet(s.tavalar3d)
+    const patches = new Map<string, Nokta3D[]>()
+    let total = 0
+    for (const e of s.edges) {
+      if (e.data?.tip !== 'kablo') continue
+      const a = byId.get(e.source)
+      const b = byId.get(e.target)
+      if (!a?.yerlesim3d || !b?.yerlesim3d) continue
+      total++
+      const ba = boxOf(a.id, a.type, a.yerlesim3d, dimsOf(a))
+      const bb = boxOf(b.id, b.type, b.yerlesim3d, dimsOf(b))
+      const r = net.route(bboxAnchor(ba), bboxAnchor(bb))
+      if (r) patches.set(e.id, r.points)
+    }
+    if (patches.size > 0) {
+      const edges = s.edges.map((e) => (patches.has(e.id) ? { ...e, data: { ...(e.data ?? DEFAULT_LINE), guzergah3d: patches.get(e.id) } } : e))
+      set({ edges: withLengths(s.nodes, edges), dirty: true })
+    }
+    return { routed: patches.size, total }
+  },
+  resetCableRoutes3d: () =>
+    set((s) => {
+      const edges = s.edges.map((e) => (e.data?.guzergah3d ? { ...e, data: { ...(e.data ?? DEFAULT_LINE), guzergah3d: undefined } } : e))
+      return { edges: withLengths(s.nodes, edges), dirty: true }
+    }),
+  autoPipes3d: () => {
+    const s = get()
+    let k = 0
+    const made = autoPipes(toProjectNodes(s.nodes), () => `${newId('boru')}${k++}`)
+    set((st) => ({ borular3d: [...st.borular3d.filter((b) => !b.otomatik), ...made], dirty: true }))
+    return made.length
+  },
   setLayout3d: (patches) =>
     set((s) => {
       const nodes = s.nodes.map((n) => {
@@ -667,6 +751,8 @@ export const useStore = create<State>((set, get) => ({
       ayarlar: s.ayarlar,
       ...(s.odalar3d.length ? { odalar3d: s.odalar3d } : {}),
       ...(s.gorunumler3d.length ? { gorunumler3d: s.gorunumler3d } : {}),
+      ...(s.tavalar3d.length ? { tavalar3d: s.tavalar3d } : {}),
+      ...(s.borular3d.length ? { borular3d: s.borular3d } : {}),
     }
   },
 
@@ -682,6 +768,8 @@ export const useStore = create<State>((set, get) => ({
       ayarlar: cloneSettings(p.ayarlar),
       odalar3d: p.odalar3d ? p.odalar3d.map((o) => ({ ...o })) : [],
       gorunumler3d: p.gorunumler3d ? p.gorunumler3d.map((g) => ({ ...g })) : [],
+      tavalar3d: p.tavalar3d ? p.tavalar3d.map((t) => ({ ...t, noktalar: t.noktalar.map((q) => ({ ...q })) })) : [],
+      borular3d: p.borular3d ? p.borular3d.map((b) => ({ ...b, noktalar: b.noktalar.map((q) => ({ ...q })), uretici: [...b.uretici], pompalar: [...b.pompalar] })) : [],
       activeScenarioId: null,
       sim: null,
       simPicked: [],

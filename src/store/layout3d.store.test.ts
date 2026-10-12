@@ -134,3 +134,72 @@ describe('kopyalama ve panel tercihleri', () => {
     vi.unstubAllGlobals()
   })
 })
+
+describe('kablo tavası ve borular', () => {
+  const T = { ad: 'T', tur: 'guc' as const, g: 0.4, h: 0.1, y: 3, sinir: 40 }
+  it('tava ekle/güncelle/sil; geri alınır; kaydedilir ve yüklenir', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+      st().newProject()
+      vi.setSystemTime(Date.now() + 2000)
+      const id = st().addTava3d({ ...T, noktalar: [{ x: 0, z: 0 }, { x: 10, z: 0 }] })
+      st().updateTava3d(id, { g: 0.6 })
+      expect(st().tavalar3d[0].g).toBe(0.6)
+      vi.setSystemTime(Date.now() + 2000)
+      st().removeTava3d(id)
+      expect(st().tavalar3d).toHaveLength(0)
+      undo()
+      expect(st().tavalar3d).toHaveLength(1)
+      const p = st().getProject()
+      expect(p.tavalar3d).toHaveLength(1)
+      st().newProject()
+      st().loadProject(p)
+      expect(st().tavalar3d[0].noktalar).toHaveLength(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('kablolar tavalara yönlendirilir: güzergâh tava kotunda, doluluk hesaplanır; sıfırlama varsayılana döner', async () => {
+    const { trayFillFor } = await import('../layout3d/infra')
+    const { toProjectEdges: tpe, toProjectNodes: tpn } = await import('../model/project')
+    st().loadProject(TEMPLATES[0].build())
+    st().ensureLayout3d()
+    // tüm ekipmanı kapsayan geniş bir tava ağı: bounding box çevresi
+    const ls = st().nodes.map((n) => n.data.yerlesim3d!)
+    const x0 = Math.min(...ls.map((l) => l.x)) - 1
+    const x1 = Math.max(...ls.map((l) => l.x)) + 1
+    const z0 = Math.min(...ls.map((l) => l.z)) - 1
+    const z1 = Math.max(...ls.map((l) => l.z)) + 1
+    st().addTava3d({ ...T, noktalar: [{ x: x0, z: z0 }, { x: x1, z: z0 }, { x: x1, z: z1 }, { x: x0, z: z1 }, { x: x0, z: z0 }] })
+    const r = st().routeCablesViaTrays3d()
+    expect(r.total).toBeGreaterThan(0)
+    expect(r.routed).toBe(r.total)
+    const e = st().edges.find((q) => q.data?.guzergah3d)!
+    expect(e.data!.guzergah3d!.every((p) => Math.abs(p.y - 3.08) < 1e-6)).toBe(true)
+    const rows = trayFillFor(tpn(st().nodes), tpe(st().edges), st().tavalar3d)
+    expect(rows[0].cables).toBeGreaterThan(0)
+    expect(rows[0].fillPct).toBeGreaterThan(0)
+    st().resetCableRoutes3d()
+    expect(st().edges.every((q) => !q.data?.guzergah3d)).toBe(true)
+  })
+
+  it('otomatik borular üretilir, tekrar çağırınca elle çizilen korunur; DN yüke göre güncellenir', () => {
+    st().loadProject(TEMPLATES[1].build())
+    st().ensureLayout3d()
+    const manual = st().addBoru3d({ ad: 'Elle', tur: 'sogukSu', yon: 'besleme', dn: 100, dnElle: true, kw: 0, noktalar: [{ x: 0, y: 3, z: 0 }, { x: 5, y: 3, z: 0 }], uretici: [], pompalar: [], otomatik: false })
+    const n1 = st().autoPipes3d()
+    expect(n1).toBeGreaterThan(4)
+    const n2 = st().autoPipes3d()
+    expect(n2).toBe(n1)
+    expect(st().borular3d.filter((b) => b.otomatik)).toHaveLength(n1)
+    expect(st().borular3d.some((b) => b.id === manual)).toBe(true)
+    // DN: elle olmayan boruda yük değişince yeniden seçilir
+    const auto = st().borular3d.find((b) => b.otomatik)!
+    st().updateBoru3d(auto.id, { kw: 5000 })
+    expect(st().borular3d.find((b) => b.id === auto.id)!.dn).toBeGreaterThanOrEqual(250)
+    st().updateBoru3d(manual, { kw: 5000 })
+    expect(st().borular3d.find((b) => b.id === manual)!.dn).toBe(100) // elle: değişmez
+  })
+})

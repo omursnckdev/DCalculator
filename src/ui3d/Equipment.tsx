@@ -8,6 +8,7 @@ import { clearanceOf, rackCount } from '../layout3d/dims'
 import type { EquipmentType } from '../model/types'
 import { tick } from './anim'
 import { beginNodeDrag, drag, groundFromRay } from './drag'
+import { addDrawPoint } from './drawing'
 import { bodyMaterial, equipGeometry, fixedMaterial } from './geoms'
 import { useScene } from './sceneData'
 import { use3dStore } from './use3dStore'
@@ -79,6 +80,10 @@ const Equipment = memo(function Equipment(p: EqProps) {
     e.stopPropagation()
     if (use3dStore.getState().measure) {
       use3dStore.getState().addMeasurePt([e.point.x, e.point.z])
+      return
+    }
+    if (use3dStore.getState().draw) {
+      addDrawPoint(e.point.x, e.point.z)
       return
     }
     ;(document.activeElement as HTMLElement | null)?.blur?.()
