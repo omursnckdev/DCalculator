@@ -1,7 +1,7 @@
 import { EQUIPMENT } from '../library/equipment'
 import type { EdgeState, Scenario } from '../model/types'
 import { analyze } from './analyze'
-import { coolingKw } from './coolingUnits'
+import { isCoolingSystem } from './coolingUnits'
 import { DEFAULT_THRESHOLDS } from './thresholds'
 import type { Analysis, Model, Thresholds } from './types'
 
@@ -59,7 +59,7 @@ const peakOf = (a: Analysis, model: Model, type: string): number => {
 /** Soğutma birimi olmayan yüklerin kaybedilen gücü (soğutma birimleri ayrıca değerlendirilir). */
 function unservedNoCooling(a: Analysis, model: Model): number {
   let cool = 0
-  for (const n of model.nodes) if (coolingKw(n) > 0) cool += a.nodes[n.id]?.unservedKw ?? 0
+  for (const n of model.nodes) if (isCoolingSystem(n)) cool += a.nodes[n.id]?.unservedKw ?? 0
   return a.unserved.totalKw - cool
 }
 
@@ -85,7 +85,7 @@ export function scanFailures(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, 
   })
   const failed0 = baseScenario?.failedNodes ?? []
   for (const n of model.nodes) {
-    if (!EQUIPMENT[n.type].hasOutput || failed0.includes(n.id)) continue
+    if ((!EQUIPMENT[n.type].hasOutput && !isCoolingSystem(n)) || failed0.includes(n.id)) continue
     const a = run({ id: `r-${n.id}`, ad: n.ad, failedNodes: [...failed0, n.id], edgeStates: { ...(baseScenario?.edgeStates ?? {}) }, nodeStates: { ...(baseScenario?.nodeStates ?? {}) } })
     out.push(mk('node', n.id, n.ad, n.type, a))
   }

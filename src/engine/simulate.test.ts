@@ -294,3 +294,54 @@ describe('sıralı (ek) arıza', () => {
   })
 })
 
+
+describe('veri salonu sıcaklığı', () => {
+  /** IT 400 kW (salon ısısı), iki chiller × 250 kW termal: biri kaybolunca 150 kW açık. */
+  function coolPlant() {
+    const nodes = [
+      grid('g'), node('m', 'mdb'), node('it', 'rack', { kuruluKw: 400, pf: 1, df: 1 }),
+      node('c1', 'chiller', { kuruluKw: 60, pf: 1, df: 1, sogutmaKw: 250 }), node('c2', 'chiller', { kuruluKw: 60, pf: 1, df: 1, sogutmaKw: 250 }),
+    ]
+    return { nodes, edges: [edge('g', 'm'), edge('m', 'it'), edge('m', 'c1'), edge('m', 'c2')] }
+  }
+
+  it('açıkta sıcaklık doğrusal artar; sınır aşılınca "temp" adımı üretilir (V=2000 m³, kütle ×10, +8 K, 150 kW → 1280 sn)', () => {
+    const steps = simulateFailure(coolPlant(), ['c1'])
+    expect(steps[0].room!.tempC).toBe(24)
+    const fault = steps[1]
+    expect(fault.room!.netKw).toBeCloseTo(150, 6)
+    const temp = steps[steps.length - 1]
+    expect(temp.id).toBe('temp')
+    // C = 1,2 × 2000 × 10 = 24 000 kJ/K → 8 K × 24 000 / 150 = 1280 sn
+    expect(temp.seconds).toBeCloseTo(1280, 6)
+    expect(temp.room).toMatchObject({ tempC: 32, limitReached: true })
+    expect(temp.changes[0].text).toMatch(/32 °C sınırına/)
+    expect(fault.room!.tempC).toBe(24) // arıza anında henüz ısınmadı
+  })
+
+  it('soğutma yeterliyse sıcaklık olayı yok; ara adımlarda sıcaklık ilerler', () => {
+    const noDeficit = simulateFailure(coolPlant(), ['g'])
+    expect(noDeficit.some((s) => s.id === 'temp')).toBe(false) // her şey enerjisiz: açık yok (talep 0)
+    // jeneratörlü yapıda trafo arızası: gen 10 sn sonra devreye girer → bu sürede chiller yok, sıcaklık ısınır
+    const m = plant(10, true)
+    m.nodes.push(node('cc', 'chiller', { kuruluKw: 60, pf: 1, df: 1, sogutmaKw: 600 }), node('rk', 'rack', { kuruluKw: 0, pf: 1, df: 1 }))
+    m.edges.push(edge('msb', 'cc'), edge('msb', 'rk'))
+    const steps = simulateFailure(m, ['tx'])
+    const gen = steps.find((s) => s.id === 'gen')!
+    expect(gen.room).toBeDefined()
+    expect(gen.room!.tempC).toBeGreaterThan(24) // ilk 10 sn soğutma yok
+    expect(gen.room!.tempC).toBeLessThan(26)
+  })
+
+  it('arıza giderilince sıcaklık ayar noktasına geri iner (fazla kapasite)', () => {
+    const m = coolPlant()
+    const steps = simulateFailure(m, ['c1'])
+    const temp = steps[steps.length - 1]
+    const rec = simulateRecovery(m, temp, ['c1'])
+    const last = rec[rec.length - 1]
+    // C = 24 000 kJ/K; toplam kapasite 500, talep 400 → 100 kW fazla; 8 K × 24 000 / 100 = 1920 sn
+    expect(last.id).toBe('tempOk')
+    expect(last.seconds).toBeCloseTo(1920, 6)
+    expect(last.room!.tempC).toBe(24)
+  })
+})

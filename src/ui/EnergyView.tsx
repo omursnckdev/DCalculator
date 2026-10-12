@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import type { EnergyReport } from '../engine'
+import { MONTH_NAMES } from '../engine/climate'
 import { tr } from '../i18n/tr'
 import { PROFILE_PRESETS } from '../model/settings'
 import { useBaseModel } from '../store/useModel'
@@ -20,16 +22,40 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 
 export function EnergyView() {
   const model = useBaseModel()
+  const [pickMonth, setPickMonth] = useState(-1) // -1: ortalama gün
+  const [pasteText, setPasteText] = useState('')
+  const [pasteErr, setPasteErr] = useState(false)
   const s = useStore((st) => st.ayarlar)
   const setAyarlar = useStore((st) => st.setAyarlar)
-  const { value: rep } = useWorkerResult<EnergyReport>({ task: 'energy', model, settings: s }, [model, s])
+  const { value: rep } = useWorkerResult<EnergyReport>({ task: 'energy', model, settings: s }, [model, s], 350)
   if (!rep) return <div className="min-w-0 flex-1 bg-slate-50 p-6 text-sm text-slate-500">{tr.red.computing}</div>
-  const labels = rep.hours.map((h) => `${String(h.hour).padStart(2, '0')}`)
+  const shown = pickMonth >= 0 ? rep.monthHours[pickMonth] : rep.hours
+  const labels = shown.map((h) => `${String(h.hour).padStart(2, '0')}`)
   const series: Series[] = [
-    { name: tr.enerji.kwSeries, color: '#2563eb', values: rep.hours.map((h) => h.totalKw), kind: 'bar' },
-    { name: tr.enerji.itSeries, color: '#16a34a', values: rep.hours.map((h) => h.itKw) },
-    { name: tr.enerji.pueSeries, color: '#dc2626', values: rep.hours.map((h) => h.pue ?? null), axis: 'right', dashed: true },
+    { name: tr.enerji.kwSeries, color: '#2563eb', values: shown.map((h) => h.totalKw), kind: 'bar' },
+    { name: tr.enerji.itSeries, color: '#16a34a', values: shown.map((h) => h.itKw) },
+    { name: tr.enerji.pueSeries, color: '#dc2626', values: shown.map((h) => h.pue ?? null), axis: 'right', dashed: true },
   ]
+  const monthSeries: Series[] = [
+    { name: tr.enerji.monthKwh, color: '#2563eb', values: rep.months.map((m) => m.totalKwh / 1000), kind: 'bar' },
+    { name: tr.enerji.monthPue, color: '#dc2626', values: rep.months.map((m) => m.pue ?? null), axis: 'right', dashed: true },
+    { name: tr.enerji.monthTemp, color: '#d97706', values: rep.months.map((m) => m.avgTempC), axis: 'right' },
+  ]
+  const applyHourly = () => {
+    const vals = pasteText.split(/[\s;,]+/).map((x) => Number(x.replace(',', '.'))).filter((x) => Number.isFinite(x))
+    if (vals.length !== 8760 && vals.length !== 8784) {
+      setPasteErr(true)
+      return
+    }
+    setPasteErr(false)
+    setAyarlar({ iklim: { ...s.iklim, saatlik: vals } })
+    setPasteText('')
+  }
+  const setMonth = (key: 'aylikOrt' | 'aylikGenlik', m: number, v: number) => {
+    const next = [...s.iklim[key]]
+    next[m] = v
+    setAyarlar({ iklim: { ...s.iklim, [key]: next } })
+  }
   const setHour = (key: 'profilIt' | 'profilMek', h: number, v: number) => {
     const next = [...s[key]]
     next[h] = Math.max(0, Math.min(200, v))
@@ -59,8 +85,98 @@ export function EnergyView() {
           <p className="text-xs text-slate-500">{tr.enerji.noSaving}</p>
         )}
 
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat label={tr.enerji.co2} value={`${fmtNum(rep.co2Tons, 0)} t`} sub={`${tr.enerji.co2Factor}: ${fmtNum(s.emisyon, 2)}`} />
+          {rep.waterM3 !== undefined && <Stat label={tr.enerji.water} value={`${fmtNum(rep.waterM3, 0)} m³`} sub={rep.wue !== undefined ? `${tr.enerji.wue}: ${rep.wue.toFixed(2).replace('.', ',')}` : undefined} />}
+          {rep.coolingKwh !== undefined && <Stat label={tr.enerji.coolingKwh} value={`${fmtNum(rep.coolingKwh / 1000, 0)} MWh`} sub={`%${fmtNum((rep.coolingKwh / rep.annual.totalKwh) * 100, 1)}`} />}
+        </div>
+
         <section className="rounded-lg border border-slate-200 bg-white p-4">
-          <h3 className="mb-1 text-sm font-semibold">{tr.enerji.chartTitle}</h3>
+          <h3 className="mb-1 text-sm font-semibold">{tr.enerji.climate}</h3>
+          <p className={`mb-2 text-xs ${rep.climateCoupled ? 'text-green-700' : 'text-amber-700'}`}>{rep.climateCoupled ? tr.enerji.climateOn : tr.enerji.climateOff}</p>
+          <Chart labels={MONTH_NAMES} series={monthSeries} unit="MWh" rightUnit="PUE / °C" height={220} />
+          <Legend series={monthSeries} />
+          <div className="mt-2 max-h-64 overflow-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-white text-left text-xs text-slate-500">
+                <tr>
+                  <th className="py-1 pr-2 font-medium">{tr.enerji.month}</th>
+                  <th className="py-1 pr-2 text-right font-medium">{tr.enerji.tempAvg}</th>
+                  <th className="py-1 pr-2 text-right font-medium">{tr.enerji.tempAmp}</th>
+                  <th className="py-1 pr-2 text-right font-medium">MWh</th>
+                  <th className="py-1 pr-2 text-right font-medium">PUE</th>
+                  <th className="py-1 pr-2 text-right font-medium">{tr.enerji.monthFc}</th>
+                  <th className="py-1 text-right font-medium">{tr.enerji.monthWater}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rep.months.map((m) => (
+                  <tr key={m.month} className="border-t border-slate-100">
+                    <td className="py-0.5 pr-2">{MONTH_NAMES[m.month]}</td>
+                    <td className="py-0.5 pr-2 text-right">
+                      {s.iklim.saatlik ? (
+                        <span className="tabular-nums">{fmtNum(m.avgTempC, 1)}</span>
+                      ) : (
+                        <input type="number" step={0.5} className="w-16 rounded border border-slate-300 px-1 py-0.5 text-right" value={s.iklim.aylikOrt[m.month]} aria-label={`${tr.enerji.tempAvg} ${MONTH_NAMES[m.month]}`} onChange={(e) => setMonth('aylikOrt', m.month, Number(e.target.value) || 0)} />
+                      )}
+                    </td>
+                    <td className="py-0.5 pr-2 text-right">
+                      {s.iklim.saatlik ? '—' : <input type="number" step={0.5} min={0} className="w-14 rounded border border-slate-300 px-1 py-0.5 text-right" value={s.iklim.aylikGenlik[m.month]} aria-label={`${tr.enerji.tempAmp} ${MONTH_NAMES[m.month]}`} onChange={(e) => setMonth('aylikGenlik', m.month, Math.max(0, Number(e.target.value) || 0))} />}
+                    </td>
+                    <td className="py-0.5 pr-2 text-right tabular-nums">{fmtNum(m.totalKwh / 1000, 1)}</td>
+                    <td className="py-0.5 pr-2 text-right tabular-nums">{m.pue === undefined ? '—' : m.pue.toFixed(3).replace('.', ',')}</td>
+                    <td className="py-0.5 pr-2 text-right tabular-nums">{m.freeCoolingPct === undefined ? '—' : fmtNum(m.freeCoolingPct, 0)}</td>
+                    <td className="py-0.5 text-right tabular-nums">{m.waterM3 === undefined ? '—' : fmtNum(m.waterM3, 0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <details className="mt-2 text-xs text-slate-600">
+            <summary className="cursor-pointer">{tr.enerji.hourlyPaste}</summary>
+            {s.iklim.saatlik && (
+              <p className="my-1 text-green-700">
+                {tr.enerji.hourlyInfo(s.iklim.saatlik.length)}{' '}
+                <button type="button" className="underline" onClick={() => setAyarlar({ iklim: { ...s.iklim, saatlik: null } })}>
+                  {tr.enerji.hourlyClear}
+                </button>
+              </p>
+            )}
+            <textarea className="mt-1 h-20 w-full rounded border border-slate-300 p-1 font-mono" value={pasteText} onChange={(e) => setPasteText(e.target.value)} aria-label={tr.enerji.hourlyPaste} />
+            <div className="flex items-center gap-2">
+              <button type="button" className="rounded border border-slate-300 px-2 py-0.5 hover:bg-slate-50" onClick={applyHourly}>
+                {tr.enerji.hourlyApply}
+              </button>
+              {pasteErr && <span className="text-red-600">{tr.enerji.hourlyBad}</span>}
+            </div>
+          </details>
+          <div className="mt-2 flex flex-wrap gap-4 text-sm">
+            <label className="flex items-center gap-2">
+              {tr.enerji.co2Factor}
+              <input type="number" step={0.01} min={0} className="w-20 rounded border border-slate-300 px-1.5 py-0.5 text-right" value={s.emisyon} onChange={(e) => setAyarlar({ emisyon: Math.max(0, Number(e.target.value) || 0) })} />
+            </label>
+            <label className="flex items-center gap-2">
+              {tr.enerji.setpoint}
+              <input type="number" step={0.5} className="w-20 rounded border border-slate-300 px-1.5 py-0.5 text-right" value={s.salonSetpoint} onChange={(e) => setAyarlar({ salonSetpoint: Math.min(40, Math.max(10, Number(e.target.value) || 24)) })} />
+            </label>
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-slate-200 bg-white p-4">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold">{tr.enerji.chartTitle}</h3>
+            <label className="ml-auto flex items-center gap-1 text-xs text-slate-600">
+              {tr.enerji.pickMonth}
+              <select className="rounded border border-slate-300 px-1 py-0.5" value={pickMonth} onChange={(e) => setPickMonth(Number(e.target.value))}>
+                <option value={-1}>{tr.enerji.avgDay}</option>
+                {MONTH_NAMES.map((n, i) => (
+                  <option key={n} value={i}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
           <Chart labels={labels} series={series} unit="kW" rightUnit="PUE" height={240} xTitle={tr.enerji.hour} />
           <Legend series={series} />
         </section>

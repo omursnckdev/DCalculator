@@ -322,6 +322,11 @@ export function SimulationPanel() {
                 ))}
               </ul>
             )}
+            {step.room && (
+              <p className={`mt-2 text-xs ${step.room.tempC >= step.room.limitC ? 'font-semibold text-red-600' : step.room.netKw > 0.5 ? 'text-amber-700' : 'text-slate-600'}`}>
+                🌡 {tr.sim.roomTitle}: {step.room.netKw > 0.5 ? tr.sim.roomTemp(fmtNum(step.room.tempC, 1), fmtNum(step.room.netKw, 0)) : tr.sim.roomOk(fmtNum(step.room.tempC, 1))}
+              </p>
+            )}
             {step.battery.length > 0 && (
               <>
                 <h4 className="mb-1 mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{tr.sim.batteryTitle}</h4>
@@ -360,10 +365,20 @@ function StepChart({ steps, index }: { steps: SimStep[]; index: number }) {
     { name: tr.sim.chartTotal, color: '#2563eb', values: steps.map((st) => st.analysis.totals.totalKw), dots: true },
     { name: tr.sim.chartBattery, color: '#16a34a', values: steps.map((st) => (st.battery.length ? Math.min(...st.battery.map((b) => b.socPct)) : null)), axis: 'right', dashed: true, dots: true },
   ]
+  const roomSeries: Series[] = [
+    { name: tr.sim.chartRoom, color: '#dc2626', values: steps.map((st) => st.room?.tempC ?? null), dots: true },
+    { name: tr.sim.chartRoomLimit, color: '#94a3b8', values: steps.map((st) => st.room?.limitC ?? null), dashed: true },
+  ]
   return (
     <div>
       <Chart labels={labels} series={series} height={150} unit="kW" rightUnit="%" />
       <Legend series={series} />
+      {steps.some((st) => st.room) && (
+        <>
+          <Chart labels={labels} series={roomSeries} height={110} unit="°C" />
+          <Legend series={roomSeries} />
+        </>
+      )}
       <p className="text-[10px] text-slate-400">
         {tr.sim.chartNote} {tr.sim.step(index + 1, steps.length)}
       </p>

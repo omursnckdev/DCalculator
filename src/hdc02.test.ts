@@ -186,7 +186,7 @@ describe('HDC02 PL1: adım adım simülasyon', () => {
 
   it('TX.PL1 arızası: UPS\'ler bataryada, jeneratörler devreye girer ve yükü paylaşır', () => {
     const steps = simulateFailure(p, ['tx'])
-    expect(steps.map((s) => s.id)).toEqual(['normal', 'fault', 'gen'])
+    expect(steps.map((s) => s.id)).toEqual(['normal', 'fault', 'gen', 'tempOk']) // jeneratör gelene kadar soğutma yok: salon ısınır, sonra normale döner
     const [, fault, gen] = steps
     expect(fault.analysis.nodes.ups1.onBattery).toBe(true)
     expect(fault.analysis.nodes.ups3.onBattery).toBe(true)

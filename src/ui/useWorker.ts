@@ -32,13 +32,14 @@ export function runInWorker<R extends WorkerResult>(req: Req): Promise<R> {
 }
 
 /** Worker sonucu hook'u: `deps` değişince yeniden hesaplanır; eski sonuç yenisi gelene kadar görünür kalır. */
-export function useWorkerResult<R extends WorkerResult>(req: Req, deps: unknown[]): { value: R | null; busy: boolean; error: string | null } {
+export function useWorkerResult<R extends WorkerResult>(req: Req, deps: unknown[], delayMs = 0): { value: R | null; busy: boolean; error: string | null } {
   const [value, setValue] = useState<R | null>(null)
   const [busy, setBusy] = useState(true)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     let alive = true
     setBusy(true)
+    const timer = setTimeout(() => {
     runInWorker<R>(req)
       .then((r) => {
         if (!alive) return
@@ -51,8 +52,10 @@ export function useWorkerResult<R extends WorkerResult>(req: Req, deps: unknown[
         setError(e.message)
         setBusy(false)
       })
+    }, delayMs)
     return () => {
       alive = false
+      clearTimeout(timer)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps)

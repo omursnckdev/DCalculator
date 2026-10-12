@@ -1,7 +1,7 @@
 import { EQUIPMENT } from '../library/equipment'
 import type { ProjectEdge, ProjectNode, Scenario } from '../model/types'
 import { tr } from '../i18n/tr'
-import { coolingKw, coolingRole } from './coolingUnits'
+import { chainGroup, coolingKw, coolingRole, isDuty } from './coolingUnits'
 import { switchState } from './switches'
 import type { Analysis, Issue, Model, Thresholds } from './types'
 
@@ -245,8 +245,18 @@ function coolingBlock(model: Model, a: Analysis, issues: Issue[]): void {
   const sum = (role: 'produce' | 'air' | 'direct', onlyLive: boolean) => units.filter((u) => u.role === role && (!onlyLive || u.energized)).reduce((s, u) => s + u.kw, 0)
   const hasProduce = units.some((u) => u.role === 'produce')
   const hasAir = units.some((u) => u.role === 'air')
-  const produceKw = sum('produce', true)
-  const airKw = sum('air', true)
+  // Hidrolik zincir: her grupta (soğuk su pompası, kondenser pompası, ısı atım) enerjili ekipman sayısı asıl görevli sayısından
+  // azsa kapasite oranında düşer. Grupta ekipman yoksa kısıt yoktur.
+  const groupFactor = (g: 'sogukSu' | 'kondenser' | 'atim'): number => {
+    const members = model.nodes.filter((n) => chainGroup(n) === g)
+    const duty = members.filter(isDuty).length
+    if (members.length === 0 || duty === 0) return 1
+    const live = members.filter((n) => a.nodes[n.id]?.energized && !a.nodes[n.id]?.failed).length
+    return Math.min(1, live / duty)
+  }
+  const chain = { sogukSu: groupFactor('sogukSu'), kondenser: groupFactor('kondenser'), atim: groupFactor('atim') }
+  const produceKw = sum('produce', true) * chain.sogukSu * chain.kondenser * chain.atim
+  const airKw = sum('air', true) * chain.sogukSu
   const directKw = sum('direct', true)
   const chainKw = hasProduce && hasAir ? Math.min(produceKw, airKw) : hasProduce ? produceKw : airKw
   const capacityKw = chainKw + directKw
@@ -257,6 +267,7 @@ function coolingBlock(model: Model, a: Analysis, issues: Issue[]): void {
     demandKw,
     deficitKw,
     reservePct: demandKw > 0 ? ((capacityKw - demandKw) / demandKw) * 100 : undefined,
+    chain: chain.sogukSu < 1 || chain.kondenser < 1 || chain.atim < 1 || model.nodes.some((n) => chainGroup(n)) ? chain : undefined,
     produceKw: hasProduce ? produceKw : undefined,
     airKw: hasAir ? airKw : undefined,
     directKw: units.some((u) => u.role === 'direct') ? directKw : undefined,

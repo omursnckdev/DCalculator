@@ -1,4 +1,5 @@
 import { kwToTr } from '../engine'
+import { MONTH_NAMES } from '../engine/climate'
 import type { Analysis, EnergyReport, RedundancyReport, SimStep } from '../engine'
 import { rideThroughMinutes } from '../engine/cooling'
 import { tr } from '../i18n/tr'
@@ -182,6 +183,14 @@ function energySection(e: EnergyReport, s: ProjectSettings): string {
   </div>
   <p>Birim fiyat ${n2(s.tarife)} ${esc(s.para)}/kWh. Kayıpların yıllık maliyeti <b>${money(e.annual.lossCost)}</b>.
   ${e.saving ? `PUE ${s.hedefPue.toFixed(2).replace('.', ',')} hedefinde yıllık tasarruf: <b class="ok">${n0(e.saving.kwh / 1000)} MWh · ${money(e.saving.cost)}</b>.` : 'Hedef PUE mevcut ortalamadan düşük değil.'}</p>
+  <p>Yıllık CO₂ <b>${n0(e.co2Tons)} t</b> (${n2(s.emisyon)} kg/kWh)${e.waterM3 !== undefined ? `; yıllık su tüketimi <b>${n0(e.waterM3)} m³</b>${e.wue !== undefined ? ` (WUE ${e.wue.toFixed(2).replace('.', ',')} L/kWh)` : ''}` : ''}${e.climateCoupled ? '; soğutma birimleri dış sıcaklığa bağlı (COP/free-cooling) modellendi' : ''}.</p>
+  <h3>Aylık</h3>
+  ${table(
+    ['Ay', 'Ort. sıcaklık (°C)', 'Enerji (MWh)', 'PUE', 'Free-cooling (%)'],
+    e.months.map((m) => [esc(MONTH_NAMES[m.month]), n1(m.avgTempC), n1(m.totalKwh / 1000), m.pue === undefined ? '—' : m.pue.toFixed(3).replace('.', ','), m.freeCoolingPct === undefined ? '—' : n0(m.freeCoolingPct)]),
+    [1, 2, 3, 4],
+  )}
+  <h3>Ortalama gün (saatlik)</h3>
   ${table(
     ['Saat', 'IT %', 'Mek. %', 'IT (kW)', 'Mekanik (kW)', 'Kayıp (kW)', 'Toplam (kW)', 'PUE'],
     e.hours.map((h) => [`${String(h.hour).padStart(2, '0')}:00`, n0(h.itFactor * 100), n0(h.mechFactor * 100), n0(h.itKw), n0(h.mechKw), n1(h.lossKw), n0(h.totalKw), h.pue === undefined ? '—' : h.pue.toFixed(3).replace('.', ',')]),

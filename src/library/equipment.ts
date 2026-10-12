@@ -423,6 +423,17 @@ const coolingField = n('sogutmaKw', A.sogutmaKw, 'kW', { min: 0, step: 10 })
 const coolingSummary = (p: Params): string =>
   `${fmt(num(p, 'kuruluKw'))} kW · ${num(p, 'sogutmaKw') > 0 ? `${fmt(num(p, 'sogutmaKw'))} kW soğutma` : `DF ${fmt(num(p, 'df'))}`}`
 
+const gorevField: SelectField = {
+  kind: 'select',
+  key: 'gorev',
+  label: A.gorev,
+  options: [
+    { value: 'asil', label: A.gorevAsil },
+    { value: 'yedek', label: A.gorevYedek },
+  ],
+}
+const copExtra = { defaults: { cop: 0, copEgim: 2.5, copTnom: 35 } as Params, fields: [n('cop', A.cop, undefined, { min: 0, step: 0.1 }), n('copEgim', A.copEgim, '%/K', { min: 0, max: 10, step: 0.1 }), n('copTnom', A.copTnom, '°C', { min: -20, max: 60, step: 1 })] as FieldDef[] }
+
 interface LoadSpec {
   type: EquipmentType
   group: PaletteGroup
@@ -440,14 +451,41 @@ interface LoadSpec {
 
 /** Soğutma, mekanik ve yardımcı yük ekipmanı: ortak yük alanları + (varsa) soğutma kapasitesi. */
 const LOAD_SPECS: LoadSpec[] = [
-  { type: 'chiller', group: 'sogutma', color: '#0284c7', kw: 250, pf: 0.87, isi: 'dis', cool: 1000, role: 'produce' },
+  {
+    type: 'chiller',
+    group: 'sogutma',
+    color: '#0284c7',
+    kw: 250,
+    pf: 0.87,
+    isi: 'dis',
+    cool: 1000,
+    role: 'produce',
+    extra: {
+      defaults: { ...copExtra.defaults, freeCooling: 'yok', fcAlt: 2, fcUst: 10, fcOran: 12 },
+      fields: [
+        ...copExtra.fields,
+        { kind: 'select', key: 'freeCooling', label: A.freeCooling, options: [{ value: 'yok', label: A.freeCoolingYok }, { value: 'var', label: A.freeCoolingVar }] },
+        n('fcAlt', A.fcAlt, '°C', { min: -30, max: 40, step: 1 }),
+        n('fcUst', A.fcUst, '°C', { min: -30, max: 40, step: 1 }),
+        n('fcOran', A.fcOran, '%', { min: 0, max: 100, step: 1 }),
+      ],
+    },
+  },
   { type: 'crah', group: 'sogutma', color: '#0891b2', kw: 12, pf: 0.9, isi: 'salon', cool: 80, role: 'air' },
-  { type: 'crac', group: 'sogutma', color: '#0e7490', kw: 30, pf: 0.85, isi: 'dis', cool: 90, role: 'direct' },
+  { type: 'crac', group: 'sogutma', color: '#0e7490', kw: 30, pf: 0.85, isi: 'dis', cool: 90, role: 'direct', extra: copExtra },
   { type: 'fanwall', group: 'sogutma', color: '#06b6d4', kw: 25, pf: 0.95, isi: 'salon', cool: 250, role: 'air' },
   { type: 'inrow', group: 'sogutma', color: '#22d3ee', kw: 6, pf: 0.95, isi: 'salon', cool: 35, role: 'air' },
   { type: 'rdhx', group: 'sogutma', color: '#38bdf8', kw: 1.5, pf: 0.95, isi: 'salon', cool: 30, role: 'air' },
-  { type: 'kuruSogutucu', group: 'sogutma', color: '#64748b', kw: 18, pf: 0.85, isi: 'dis' },
-  { type: 'sogutmaKulesi', group: 'sogutma', color: '#475569', kw: 22, pf: 0.85, isi: 'dis' },
+  { type: 'kuruSogutucu', group: 'sogutma', color: '#64748b', kw: 18, pf: 0.85, isi: 'dis', extra: { defaults: { gorev: 'asil' }, fields: [gorevField] } },
+  {
+    type: 'sogutmaKulesi',
+    group: 'sogutma',
+    color: '#475569',
+    kw: 22,
+    pf: 0.85,
+    isi: 'dis',
+    extra: { defaults: { gorev: 'asil', isiPayi: 100, suTuketimi: 1.8 }, fields: [gorevField, n('isiPayi', A.isiPayi, '%', { min: 0, max: 100, step: 5 }), n('suTuketimi', A.suTuketimi, 'L/kWh', { min: 0, step: 0.1 })] },
+  },
   {
     type: 'pompa',
     group: 'sogutma',
@@ -456,8 +494,9 @@ const LOAD_SPECS: LoadSpec[] = [
     pf: 0.85,
     isi: 'dis',
     extra: {
-      defaults: { pompaTip: 'sogukSu' },
+      defaults: { pompaTip: 'sogukSu', gorev: 'asil' },
       fields: [
+        gorevField,
         {
           kind: 'select',
           key: 'pompaTip',

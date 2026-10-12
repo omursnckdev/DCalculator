@@ -6,7 +6,7 @@ import type { SimOptions } from './automation'
 import type { ProjectSettings } from '../model/settings'
 import { DEFAULT_SETTINGS } from '../model/settings'
 import { analyze } from './analyze'
-import { rideThroughMinutes } from './cooling'
+import { AIR_RHO_CP, rideThroughMinutes } from './cooling'
 import { DEFAULT_THRESHOLDS } from './thresholds'
 import type { Analysis, Model, Thresholds } from './types'
 
@@ -44,7 +44,7 @@ export interface SimChange {
   nodeId?: string
 }
 
-export type SimStageId = 'normal' | 'fault' | 'sts' | 'bypass' | 'gen' | 'staging' | 'battery' | 'clear' | 'retransfer' | 'genStop'
+export type SimStageId = 'normal' | 'fault' | 'sts' | 'bypass' | 'gen' | 'staging' | 'battery' | 'clear' | 'retransfer' | 'genStop' | 'temp' | 'tempOk'
 
 export interface SimStep {
   id: SimStageId
@@ -67,6 +67,17 @@ export interface SimStep {
   failed: string[]
   /** Batarya durumu: bataryaya geçmiş veya şarjı azalmış UPS'ler. */
   battery: BatteryInfo[]
+  /** Veri salonu sıcaklığı (soğutma kapasitesi tanımlıysa). */
+  room?: RoomInfo
+}
+
+export interface RoomInfo {
+  tempC: number
+  /** İzin verilen üst sıcaklık (ayar noktası + izinli artış), °C. */
+  limitC: number
+  /** O adımdaki soğutma açığı, kW (negatif: fazla kapasite). */
+  netKw: number
+  limitReached: boolean
 }
 
 export interface BatteryInfo {
@@ -329,6 +340,88 @@ interface PlayCtx {
   steps: SimStep[]
   prev: Analysis
   prevSeconds: number
+  /** Veri salonu sıcaklığı (°C) ve sınırın aşılıp aşılmadığı. */
+  temp: number
+  tempFlag: boolean
+}
+
+// --- veri salonu sıcaklığı ----------------------------------------------------------
+
+const roomCapacity = (s: ProjectSettings): number => AIR_RHO_CP * s.salonHacmi * s.isilKutle // kJ/K
+
+/**
+ * Önceki adımın soğutma dengesiyle `dt` saniye ilerler: açık (talep − kapasite) sıcaklığı yükseltir, fazla kapasite
+ * ayar noktasına doğru düşürür. Sınır aşılırsa kesişme zamanını (sn, mutlak) döndürür.
+ */
+function advanceTemp(ctx: PlayCtx, toSeconds: number): number | undefined {
+  const cool = ctx.prev.cooling
+  if (!cool) return undefined
+  const dt = toSeconds - ctx.prevSeconds
+  if (dt <= 0) return undefined
+  const C = roomCapacity(ctx.settings)
+  const net = cool.demandKw - cool.capacityKw
+  const limit = ctx.settings.salonSetpoint + ctx.settings.izinliArtis
+  if (net > 0.5) {
+    const next = ctx.temp + (net * dt) / C
+    let cross: number | undefined
+    if (!ctx.tempFlag && next >= limit && ctx.temp < limit) {
+      cross = ctx.prevSeconds + ((limit - ctx.temp) * C) / net
+      ctx.tempFlag = true
+    }
+    ctx.temp = next
+    return cross
+  }
+  if (net < -0.5) ctx.temp = Math.max(ctx.settings.salonSetpoint, ctx.temp + (net * dt) / C)
+  return undefined
+}
+
+const roomOf = (ctx: PlayCtx, a: Analysis): RoomInfo | undefined =>
+  a.cooling
+    ? { tempC: ctx.temp, limitC: ctx.settings.salonSetpoint + ctx.settings.izinliArtis, netKw: a.cooling.demandKw - a.cooling.capacityKw, limitReached: ctx.tempFlag }
+    : undefined
+
+/** Sıcaklık sınırı aşıldı adımı: durum aynı (önceki analiz), yalnızca sıcaklık olayı. */
+function pushTempStep(ctx: PlayCtx, seconds: number, recovered = false): void {
+  const a = ctx.prev
+  const limit = ctx.settings.salonSetpoint + ctx.settings.izinliArtis
+  const id = recovered ? 'tempOk' : 'temp'
+  ctx.steps.push({
+    id,
+    title: tr.sim.stages[id],
+    description: tr.sim.stageDesc[id],
+    seconds,
+    timeLabel: timeLabel(seconds),
+    analysis: a,
+    changes: [{ kind: 'cooling', text: recovered ? tr.sim.tempNormal(fmt(ctx.settings.salonSetpoint, 1)) : tr.sim.tempLimit(fmt(limit, 1), fmt(ctx.settings.salonSetpoint, 1)) }],
+    changedNodes: [],
+    lostKw: Math.max(0, a.unserved.totalKw - ctx.base.unserved.totalKw),
+    phase: ctx.phase,
+    opts: ctx.steps[ctx.steps.length - 1]?.opts ?? { ...FULL_AUTOMATION },
+    running: runningGens(a),
+    failed: ctx.failed,
+    battery: batteryList(ctx.model, ctx.soc, a),
+    room: { tempC: recovered ? ctx.settings.salonSetpoint : limit, limitC: limit, netKw: a.cooling ? a.cooling.demandKw - a.cooling.capacityKw : 0, limitReached: ctx.tempFlag },
+  })
+  if (recovered) ctx.temp = ctx.settings.salonSetpoint
+}
+
+/** Son adımdan sonra soğutma açığı sürüyorsa ve sınır henüz aşılmadıysa, aşılma anını adım olarak ekler. */
+function finishTemp(ctx: PlayCtx): void {
+  const cool = ctx.prev.cooling
+  if (!cool) return
+  const net = cool.demandKw - cool.capacityKw
+  // Fazla kapasite varsa ve salon henüz soğumadıysa: ayar noktasına dönüş anı
+  if (net < -0.5 && ctx.temp > ctx.settings.salonSetpoint + 0.05) {
+    const back = ctx.prevSeconds + ((ctx.temp - ctx.settings.salonSetpoint) * roomCapacity(ctx.settings)) / -net
+    if (back - ctx.prevSeconds <= 24 * 3600) pushTempStep(ctx, back, true)
+    return
+  }
+  if (ctx.tempFlag || net <= 0.5) return
+  const limit = ctx.settings.salonSetpoint + ctx.settings.izinliArtis
+  const at = ctx.prevSeconds + ((limit - ctx.temp) * roomCapacity(ctx.settings)) / net
+  if (at - ctx.prevSeconds > 24 * 3600) return
+  ctx.tempFlag = true
+  pushTempStep(ctx, at)
 }
 
 function pushStep(
@@ -339,6 +432,8 @@ function pushStep(
 ): void {
   const { model, base, settings } = ctx
   advanceSoc(model, ctx.soc, ctx.prev, def.seconds - ctx.prevSeconds)
+  const crossAt = advanceTemp(ctx, def.seconds)
+  if (crossAt !== undefined) pushTempStep(ctx, crossAt)
   const { changes, changedNodes } = diffAnalyses(model, ctx.prev, a, extra.faultNames ?? [], base, settings)
   for (const c of (extra.clearedNames ?? []).slice().reverse()) changes.unshift({ kind: 'cleared', text: tr.sim.changeCleared(c) })
   if (extra.changesPrefix) changes.splice((extra.faultNames ?? []).length, 0, ...extra.changesPrefix)
@@ -357,6 +452,7 @@ function pushStep(
     running: runningGens(a),
     failed: ctx.failed,
     battery: batteryList(model, ctx.soc, a),
+    room: roomOf(ctx, a),
   })
   ctx.prev = a
   ctx.prevSeconds = def.seconds
@@ -421,6 +517,9 @@ function playFault(ctx: PlayCtx, t0: number, first: Partial<SimOptions>, opts0: 
     markRunning(a, model.nodes.filter((n) => n.type === 'jenerator' && a.nodes[n.id]?.totalKw > 0.5).map((n) => n.id))
     // Bu UPS'in şarjı tükendi: izleyici bu anda sıfırlanır.
     advanceSoc(model, ctx.soc, cur.a, T - cur.seconds)
+    ctx.prev = cur.a
+    const crossAt = advanceTemp(ctx, T)
+    if (crossAt !== undefined) pushTempStep(ctx, crossAt)
     for (const u of batch) ctx.soc.set(u.id, 0)
     ctx.prevSeconds = T // advanceSoc pushStep içinde tekrar uygulanmasın
     ctx.prev = cur.a
@@ -450,13 +549,16 @@ function pushStepNoAdvance(ctx: PlayCtx, def: StageDef, a: Analysis, names: stri
     running: runningGens(a),
     failed: ctx.failed,
     battery: batteryList(ctx.model, ctx.soc, a),
+    room: roomOf(ctx, a),
   })
   ctx.prev = a
   ctx.prevSeconds = Math.max(prevSeconds, def.seconds)
 }
 
-const emptyCtx = (model: Model, th: Thresholds, settings: ProjectSettings, base: Analysis, scenario: Scenario | undefined, soc: Soc, phase: 'fault' | 'recovery', failed: string[], prev: Analysis, prevSeconds: number): PlayCtx => ({
+const emptyCtx = (model: Model, th: Thresholds, settings: ProjectSettings, base: Analysis, scenario: Scenario | undefined, soc: Soc, phase: 'fault' | 'recovery', failed: string[], prev: Analysis, prevSeconds: number, from?: SimStep): PlayCtx => ({
   model, th, settings, base, scenario, soc, phase, failed, mark: [], steps: [], prev, prevSeconds,
+  temp: from?.room?.tempC ?? settings.salonSetpoint,
+  tempFlag: from?.room?.limitReached ?? false,
 })
 
 /**
@@ -498,6 +600,7 @@ export function simulateFailure(
     running: [],
     failed: [],
     battery: [],
+    room: roomOf(ctx, base),
   })
   const hold = holdFrom(base, model)
   playFault(
@@ -508,6 +611,7 @@ export function simulateFailure(
     faultNames,
     failedIds,
   )
+  finishTemp(ctx)
   return ctx.steps
 }
 
@@ -537,11 +641,12 @@ export function simulateAdditionalFault(
   }
   const base = analyze(model, th, baseScenario)
   const t0 = Math.max(0, from.seconds)
-  const ctx = emptyCtx(model, th, settings, base, scenario, initialSoc(model, from), 'fault', failedAll, from.analysis, t0)
+  const ctx = emptyCtx(model, th, settings, base, scenario, initialSoc(model, from), 'fault', failedAll, from.analysis, t0, from)
   const keepClosed = model.nodes.filter((n) => from.analysis.nodes[n.id]?.autoClosed).map((n) => n.id)
   const o = from.opts
   const carry: Partial<SimOptions> = { autoBypass: o.autoBypass ?? true, staging: o.staging ?? false, genOnline: o.genOnline ?? false, depleted: o.depleted }
   playFault(ctx, t0, { ...carry, hold: holdFrom(from.analysis, model, true), keepClosed }, carry, add.map((id) => byId.get(id)?.ad ?? id), add)
+  finishTemp(ctx)
   return ctx.steps
 }
 
@@ -597,7 +702,7 @@ export function simulateRecovery(
     },
     { id: 'genStop', seconds: SIM_TIMING.retransfer + SIM_TIMING.cooldown, opts: { ...FULL_AUTOMATION, depleted }, gens: false, running: carrying },
   ]
-  const ctx = emptyCtx(model, th, settings, base, scenario, initialSoc(model, from), 'recovery', remaining, from.analysis, 0)
+  const ctx = emptyCtx(model, th, settings, base, scenario, initialSoc(model, from), 'recovery', remaining, from.analysis, 0, from)
   let prevSig = signature(from.analysis, model)
   for (const st of stages) {
     const a = analyze(model, th, scenario, base, st.opts)
@@ -607,5 +712,6 @@ export function simulateRecovery(
     pushStep(ctx, st, a, st.id === 'clear' ? { clearedNames: cleared.map((id) => byId.get(id)?.ad ?? id), markIds: cleared } : {})
     prevSig = sig
   }
+  finishTemp(ctx)
   return ctx.steps
 }

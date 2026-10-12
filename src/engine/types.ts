@@ -149,6 +149,8 @@ export interface CoolingSummary {
   deficitKw: number
   /** (kapasite − ihtiyaç) / ihtiyaç, %. İhtiyaç 0 ise tanımsız. */
   reservePct?: number
+  /** Soğutma zinciri kısıtı (0..1): her grupta enerjili ekipman / asıl görevli sayısı (≤1), grup yoksa 1. */
+  chain?: { sogukSu: number; kondenser: number; atim: number }
   /** Enerjili chiller (soğuk su üretimi) kapasitesi; chiller yoksa tanımsız. */
   produceKw?: number
   /** Enerjili hava tarafı (CRAH, fan wall, in-row, RDHx) kapasitesi. */

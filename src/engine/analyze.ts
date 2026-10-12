@@ -323,7 +323,8 @@ function analyzeCore(
   const weight = new Map<string, number>()
   for (const id of order) {
     const n = nodeById.get(id)!
-    if (!EQUIPMENT[n.type].hasInput) {
+    // Bataryadaki UPS fiilen bir kaynak gibi davranır: aşağısındaki yükler ısı üretmeye devam eder.
+    if (!EQUIPMENT[n.type].hasInput || onBattery.has(id)) {
       weight.set(id, 1)
       continue
     }

@@ -210,6 +210,9 @@ function CoolingCard() {
             </tbody>
           </table>
           {cooling.deficitKw <= 0.5 && <p className="mt-1 text-xs text-green-700">{tr.isi.coolOk}</p>}
+          {cooling.chain && (cooling.chain.sogukSu < 1 || cooling.chain.kondenser < 1 || cooling.chain.atim < 1) && (
+            <p className="mt-1 text-xs font-semibold text-red-600">{tr.isi.coolChainLimited(Math.round(cooling.chain.sogukSu * 100), Math.round(cooling.chain.kondenser * 100), Math.round(cooling.chain.atim * 100))}</p>
+          )}
           {cooling.produceKw !== undefined && cooling.airKw !== undefined && <p className="mt-1 text-xs text-slate-500">{tr.isi.coolChainNote}</p>}
           <p className="mt-1 text-xs text-slate-500">{tr.isi.coolRideNote(String(s.izinliArtis))}</p>
         </>
