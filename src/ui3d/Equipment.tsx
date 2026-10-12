@@ -3,6 +3,7 @@ import type { ThreeEvent } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { nodeColor } from '../layout3d/colors'
+import { isCoolingSystem } from '../engine/coolingUnits'
 import { clearanceOf, rackCount } from '../layout3d/dims'
 import { partsOf } from '../layout3d/shapes'
 import type { Part } from '../layout3d/shapes'
@@ -40,7 +41,7 @@ function Beacon({ y, color }: { y: number; color: string }) {
 }
 
 /** Simülasyon adımında durumu değişen ekipmanın etrafında nabız atan çerçeve. */
-function Pulse({ g, h, d }: { g: number; h: number; d: number }) {
+function Pulse({ g, h, d, color = '#f59e0b' }: { g: number; h: number; d: number; color?: string }) {
   const ref = useRef<THREE.LineBasicMaterial>(null)
   const geo = useMemo(() => new THREE.EdgesGeometry(new THREE.BoxGeometry(g + 0.3, h + 0.3, d + 0.3)), [g, h, d])
   useFrame(({ clock }) => {
@@ -49,7 +50,7 @@ function Pulse({ g, h, d }: { g: number; h: number; d: number }) {
   })
   return (
     <lineSegments geometry={geo} position={[0, h / 2, 0]}>
-      <lineBasicMaterial ref={ref} color="#f59e0b" transparent />
+      <lineBasicMaterial ref={ref} color={color} transparent />
     </lineSegments>
   )
 }
@@ -79,6 +80,8 @@ export function Equipment({ n }: { n: ProjectNode }) {
   useEffect(() => () => Object.values(mats).forEach((m) => m.dispose()), [mats])
   const outline = useMemo(() => new THREE.EdgesGeometry(new THREE.BoxGeometry(g + 0.06, h + 0.06, d + 0.06)), [g, d, h])
   const clearance = useMemo(() => clearanceOf(n.type), [n.type])
+  // Soğutma açığı varken soğutma zincirinin (chiller, CRAH, pompa, kule...) enerjili ekipmanı mavi çerçeveyle vurgulanır.
+  const coolAffected = !!sc.analysis.cooling && sc.analysis.cooling.deficitKw > 0.5 && !!r?.energized && !r.failed && isCoolingSystem(n)
   if (!box) return null
 
   const onDown = (e: ThreeEvent<PointerEvent>) => {
@@ -116,6 +119,7 @@ export function Equipment({ n }: { n: ProjectNode }) {
         </mesh>
       )}
       {sc.changed.has(n.id) && <Pulse g={g} h={h} d={d} />}
+      {!sc.changed.has(n.id) && coolAffected && <Pulse g={g} h={h} d={d} color="#0ea5e9" />}
       {r?.running && <Beacon y={h + 0.35} color="#22c55e" />}
       {r?.onBattery && !r.failed && <Beacon y={h + 0.35} color="#facc15" />}
     </group>

@@ -22,18 +22,21 @@ const SIGMA_COOL = 4.5
 
 /**
  * Basit yakınlık tabanlı ısı yoğunluğu (CFD DEĞİL): hücrede skor = H / (H + C); H = Σ q·exp(−d²/2σh²), C = Σ c·exp(−d²/2σc²).
- * Soğutma yoksa (veya tümü enerjisizse) ısı olan her yer sıcak (1), ısı yoksa serin (0) görünür.
+ * Soğutma yoksa (veya tümü enerjisizse) ısı olan her yer sıcak (1), ısı yoksa serin (0) görünür. `uniformCoolKw`: odada
+ * konumlanmamış soğutma kapasitesi (odaya düzgün dağılır).
  */
-export function heatGrid(room: Pick<Oda3D, 'x' | 'z' | 'g' | 'd'>, heat: Source[], cool: Source[], cell = 0.5): HeatGrid {
+export function heatGrid(room: Pick<Oda3D, 'x' | 'z' | 'g' | 'd'>, heat: Source[], cool: Source[], cell = 0.5, uniformCoolKw = 0): HeatGrid {
   const nx = Math.max(1, Math.ceil(room.g / cell))
   const nz = Math.max(1, Math.ceil(room.d / cell))
   const values = new Float32Array(nx * nz)
+  // Odanın içinde olmayan soğutma kapasitesi (ör. dış chiller) odaya düzgün dağılmış kabul edilir (Gauss kapsama alanıyla aynı ölçek).
+  const uniform = room.g * room.d > 0 ? (uniformCoolKw * 2 * Math.PI * SIGMA_COOL ** 2) / (room.g * room.d) : 0
   for (let iz = 0; iz < nz; iz++) {
     for (let ix = 0; ix < nx; ix++) {
       const px = room.x + (ix + 0.5) * cell
       const pz = room.z + (iz + 0.5) * cell
       let h = 0
-      let c = 0
+      let c = uniform
       for (const s of heat) h += s.kw * Math.exp(-((px - s.x) ** 2 + (pz - s.z) ** 2) / (2 * SIGMA_HEAT ** 2))
       for (const s of cool) c += s.kw * Math.exp(-((px - s.x) ** 2 + (pz - s.z) ** 2) / (2 * SIGMA_COOL ** 2))
       values[iz * nx + ix] = h + c <= 1e-9 ? 0 : h / (h + c)

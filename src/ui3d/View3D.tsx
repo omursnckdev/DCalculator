@@ -278,6 +278,18 @@ export function View3D() {
   const colorMode = use3dStore((s) => s.colorMode)
   const [ok] = useState(webglOk)
 
+  // Ctrl+K: ekipman aramasına odaklan.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        document.getElementById('v3d-search')?.focus()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   // 2D'de eklenen ve henüz yerleşimi olmayan ekipman 3D açılınca yerleştirilir.
   useEffect(() => {
     ensure()

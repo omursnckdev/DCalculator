@@ -1,5 +1,7 @@
 # DCalculator — 3D Model Özelliği (İstek Belgesi)
 
+> **Durum: uygulandı** (3D-1…3D-5). Uygulamada alınan kararlar ve istek belgesinden sapmalar için bkz. [PLAN.md](PLAN.md) madde 67–75 ve [YAPILANLAR.md](YAPILANLAR.md) §4.12. Bu belge özgün istek olarak korunmuştur.
+
 Bu belge Claude Code ile paylaşılmak üzere yazıldı. Mevcut uygulamanın ne yaptığı için bkz. [YAPILANLAR.md](YAPILANLAR.md) ve [PLAN.md](PLAN.md).
 Kod yazmadan önce bu belgeyi ve o iki dosyayı oku; "Açık sorular" bölümündeki maddeleri varsayımla ilerleyip PLAN.md'ye ekle (projenin mevcut çalışma kuralı bu).
 

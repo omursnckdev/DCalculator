@@ -1,0 +1,74 @@
+// Elle çalıştırılan 3D duman testi (tarayıcıda gerçek WebGL): uygulama `npm run dev` ile açık olmalı.
+// Kullanım: PLAYWRIGHT_NODE_MODULES=/opt/node-tools/ node scripts/smoke-3d.mjs
+// Yazılım (GPU'suz) render için SwiftShader bayrakları kullanılır; ilk 3D açılışı birkaç saniye sürebilir.
+import { createRequire } from 'node:module'
+
+const require = createRequire(process.env.PLAYWRIGHT_NODE_MODULES ?? '/opt/node-tools/')
+const { chromium } = require('playwright')
+const URL_ = process.env.APP_URL ?? 'http://localhost:5173/'
+
+const browser = await chromium.launch({
+  executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium',
+  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
+})
+const page = await (await browser.newContext({ viewport: { width: 1500, height: 900 } })).newPage()
+const errors = []
+page.on('pageerror', (e) => errors.push(String(e)))
+const check = (name, ok) => {
+  console.log(`${ok ? 'OK  ' : 'FAIL'} ${name}`)
+  if (!ok) process.exitCode = 1
+}
+
+await page.goto(URL_)
+await page.waitForTimeout(2500)
+await page.getByRole('button', { name: /Şablon/ }).click()
+await page.getByText(/jeneratörlü/i).first().click()
+await page.waitForTimeout(1500)
+const before2d = await page.locator('.react-flow__node').count()
+
+await page.getByRole('button', { name: '3D', exact: true }).click()
+await page.waitForSelector('canvas', { timeout: 120000 })
+await page.waitForTimeout(5000)
+check('3D sahne açıldı', (await page.locator('canvas').count()) === 1)
+
+// Palet → sahne sürükle-bırak: 2D'de de görünür
+await page.locator('aside').first().getByRole('button', { name: 'Pompa', exact: true }).dragTo(page.locator('canvas'), { targetPosition: { x: 600, y: 300 } })
+await page.waitForTimeout(1000)
+await page.getByRole('button', { name: 'Şema', exact: true }).click()
+await page.waitForTimeout(1500)
+check('3D\'de eklenen ekipman 2D şemada var', (await page.locator('.react-flow__node').count()) === before2d + 1)
+
+// Arama + odaklan + sürükle + döndür
+await page.getByRole('button', { name: '3D', exact: true }).click()
+await page.waitForTimeout(3000)
+await page.locator('#v3d-search').fill('MDB')
+await page.locator('ul button').first().click()
+await page.waitForTimeout(1500)
+const pos = async () => {
+  const det = page.locator('aside').last().locator('details').first()
+  if (!(await det.getAttribute('open'))) await det.locator('summary').click()
+  return det.locator('input').evaluateAll((els) => els.map((e) => e.value))
+}
+const p0 = await pos()
+const box = await page.locator('canvas').boundingBox()
+const cx = box.x + box.width / 2
+const cy = box.y + box.height / 2
+await page.mouse.move(cx, cy)
+await page.mouse.down()
+await page.mouse.move(cx + 60, cy, { steps: 5 })
+await page.mouse.move(cx + 120, cy, { steps: 5 })
+await page.mouse.up()
+await page.waitForTimeout(800)
+const p1 = await pos()
+check('sürükleme konumu değiştirdi', p0[0] !== p1[0] || p0[1] !== p1[1])
+await page.keyboard.press('r')
+await page.waitForTimeout(400)
+check('R ile 90° döndü', (await pos())[3] === '90')
+
+// Geri al
+await page.keyboard.press('Control+z')
+await page.waitForTimeout(500)
+
+check('sayfa hatası yok', errors.length === 0)
+if (errors.length) console.log(errors)
+await browser.close()

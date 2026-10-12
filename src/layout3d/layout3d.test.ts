@@ -1,6 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { analyze } from '../engine'
+import { buildReportHtml } from '../export/report'
 import { TEMPLATES } from '../library/templates'
+import { DEFAULT_SETTINGS } from '../model/settings'
+import { STATUS_COLOR } from '../ui/status'
+import { DEAD_HEX, FAILED_HEX, SHED_HEX, STATUS_HEX, groupHex, heatKwOf, nodeColor } from './colors'
+import { partsOf } from './shapes'
 import { migrate, parseProject, serializeProject } from '../model/project'
 import type { Oda3D, Project } from '../model/types'
 import { autoLayout, boxesOf, levels } from './autoLayout'
@@ -153,6 +159,12 @@ describe('ısı haritası', () => {
     expect(at(cooled, 10, 5)).toBeLessThan(at(hot, 10, 5))
     expect(at(cooled, 10, 5)).toBeGreaterThan(at(cooled, 19, 9))
   })
+  it('odada olmayan soğutma kapasitesi odaya düzgün dağılır: tüm hücreler serinler', () => {
+    const none = heatGrid(room, [{ x: 10, z: 5, kw: 100 }], [])
+    const uni = heatGrid(room, [{ x: 10, z: 5, kw: 100 }], [], 0.5, 500)
+    expect(at(uni, 10, 5)).toBeLessThan(at(none, 10, 5))
+    expect(at(uni, 10, 5)).toBeGreaterThan(at(uni, 19, 9))
+  })
   it('renk skalası uçlarda mavi ve kırmızı', () => {
     expect(heatRgb(0)).toEqual([37, 99, 235])
     expect(heatRgb(1)).toEqual([220, 38, 38])
@@ -184,5 +196,58 @@ describe('dosya biçimi', () => {
     expect(p.nodes[0].yerlesim3d).toBeUndefined()
     expect(p.odalar3d).toEqual([])
     expect(p.edges[0].guzergah3d).toEqual([{ x: 1, y: 2, z: 3 }])
+  })
+})
+
+describe('renkler (2D ile tutarlı)', () => {
+  it('doluluk renkleri 2D şemadaki durum renkleriyle aynı', () => {
+    expect(STATUS_HEX).toEqual(STATUS_COLOR)
+  })
+  const p = TEMPLATES[1].build()
+  const a = analyze(p)
+  const trafo = p.nodes.find((n) => n.type === 'trafo')!
+  const ctx = (mode: 'tur' | 'doluluk' | 'isi' | 'enerji' | 'grup') => ({ mode, maxHeatKw: 500 })
+  it('doluluk modu motorun durumunu kullanır; arıza/atılan/enerjisiz her modda önceliklidir', () => {
+    const r = a.nodes[trafo.id]
+    expect(nodeColor(trafo, r, ctx('doluluk'))).toBe(STATUS_HEX[r.status])
+    expect(nodeColor(trafo, { ...r, failed: true }, ctx('doluluk'))).toBe(FAILED_HEX)
+    expect(nodeColor(trafo, { ...r, shed: true }, ctx('tur'))).toBe(SHED_HEX)
+    expect(nodeColor(trafo, { ...r, energized: false }, ctx('enerji'))).toBe(DEAD_HEX)
+    expect(nodeColor(trafo, r, ctx('enerji'))).toBe('#16a34a')
+    expect(nodeColor({ ...trafo, grup: 'A' }, r, ctx('grup'))).toBe(groupHex('A'))
+  })
+  it('ısı modu: yükte kendi gücü, diğerlerinde kayıp; enerjisiz 0', () => {
+    const load = p.nodes.find((n) => n.type === 'itYuku')!
+    expect(heatKwOf(load, a.nodes[load.id])).toBeCloseTo(a.nodes[load.id].totalKw, 6)
+    expect(heatKwOf(trafo, a.nodes[trafo.id])).toBeCloseTo(a.nodes[trafo.id].ownLossKw, 6)
+    expect(heatKwOf(load, { ...a.nodes[load.id], energized: false })).toBe(0)
+  })
+})
+
+describe('ekipman şekilleri', () => {
+  it('her tür için en az bir parça ve parçalar ekipman kutusunun içinde kalır', () => {
+    for (const n of TEMPLATES[1].build().nodes.concat(hdc.nodes)) {
+      const dm = dimsOf(n)
+      const parts = partsOf(n.type, dm, rackCount(n))
+      expect(parts.length, n.type).toBeGreaterThan(0)
+      for (const q of parts) {
+        expect(Math.abs(q.pos[0]) - q.size[0] / 2, `${n.type} x`).toBeLessThanOrEqual(dm.g / 2 + 0.5)
+        expect(Math.abs(q.pos[2]) - q.size[2] / 2, `${n.type} z`).toBeLessThanOrEqual(dm.d / 2 + 0.5)
+        expect(q.pos[1] - q.size[1] / 2, `${n.type} y`).toBeGreaterThanOrEqual(-1e-6)
+      }
+    }
+  })
+  it('rack sırasında kabin sayısı kadar gövde', () => {
+    expect(partsOf('rack', { g: 6, d: 1.2, y: 2.2 }, 10).filter((q) => q.tone === 'dark')).toHaveLength(10)
+  })
+})
+
+describe('rapor', () => {
+  it('3D görüntü verilirse bölüm yazılır, verilmezse yazılmaz', () => {
+    const p = TEMPLATES[0].build()
+    const base = { project: p, analysis: analyze(p), settings: DEFAULT_SETTINGS }
+    expect(buildReportHtml({ ...base, view3dPng: 'data:image/png;base64,AAAA' })).toContain('3D yerleşim')
+    expect(buildReportHtml(base)).not.toContain('3D yerleşim')
+    expect(buildReportHtml({ ...base, view3dPng: 'data:image/png;base64,AAAA', sections: { view3d: false } })).not.toContain('3D yerleşim')
   })
 })

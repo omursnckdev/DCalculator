@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import { coolingKw } from '../engine/coolingUnits'
+import { coolingKw, coolingRole } from '../engine/coolingUnits'
 import { heatKwOf } from '../layout3d/colors'
 import { roomAt } from '../layout3d/geometry'
 import { heatGrid, heatRgb } from '../layout3d/heat'
@@ -16,6 +16,7 @@ function Heat({ room }: { room: Oda3D }) {
     const heat: { x: number; z: number; kw: number }[] = []
     const cool: { x: number; z: number; kw: number }[] = []
     let unitSum = 0
+    let inRoomAir = 0
     for (const n of sc.nodes) {
       const l = n.yerlesim3d
       if (!l) continue
@@ -25,7 +26,11 @@ function Heat({ room }: { room: Oda3D }) {
       const c = coolingKw(n)
       if (c > 0) {
         if (r?.energized) {
-          cool.push({ x: l.x, z: l.z, kw: c })
+          // Chiller gibi soğuk su üreticileri odada hava soğutmaz; yalnız hava/doğrudan birimler odada konumlanır.
+          if (coolingRole(n) !== 'produce') {
+            cool.push({ x: l.x, z: l.z, kw: c })
+            inRoomAir += c
+          }
           unitSum += c
         }
       } else {
@@ -36,7 +41,8 @@ function Heat({ room }: { room: Oda3D }) {
     // Zincir/yetersizlik nedeniyle etkin soğutma kapasitesi birim toplamından düşükse soğutma payı orantılı azalır.
     const cap = sc.analysis.cooling?.capacityKw
     const scale = cap !== undefined && unitSum > 0 ? Math.min(1.2, Math.max(0, cap / unitSum)) : 1
-    const grid = heatGrid(room, heat, cool.map((c) => ({ ...c, kw: c.kw * scale })), 0.5)
+    const uniform = cap !== undefined ? Math.max(0, cap - inRoomAir * scale) : 0
+    const grid = heatGrid(room, heat, cool.map((c) => ({ ...c, kw: c.kw * scale })), 0.5, uniform)
     const data = new Uint8Array(grid.nx * grid.nz * 4)
     const shift = sc.tempShift
     for (let iz = 0; iz < grid.nz; iz++) {

@@ -38,6 +38,7 @@ Hesap motoru (`src/engine`) saf TypeScript'tir; React'tan bağımsız ve testlid
 | **Faz K** | Jeneratör yakıt özerkliği, yük atma, sıralı yük alma ve gerilim çökmesi |
 | **Faz M** | Ekipman kataloğu ve Excel/CSV toplu içe aktarma |
 | **Faz L** | Dokümantasyon, tarayıcı doğrulaması, push |
+| **3D-1…5** | 3D yerleşim görünümü: veri modeli, otomatik yerleşim, sürükle-bırak, renk modları, ısı haritası, simülasyon, kablo güzergâhı ve uzunluk, görünümler, PNG/PDF |
 
 ---
 
@@ -107,6 +108,16 @@ tank bitince jeneratör durur, yük kalan kaynaklara kalır (varsayılan kapalı
 - **Liste içe aktar (Excel/CSV):** başlıklar Türkçe/İngilizce tanınır (Ad, Tip, kVA, kW, Soğutma kW, Gerilim, Grup, Adet, Besleyen, Öncelik ve tipin tüm alan adları);
   önizleme ve uyarılar; "Besleyen" sütunu hatları oluşturur; şablon CSV indirilebilir.
 
+### 4.12 3D yerleşim görünümü
+Ayrıntılı istek: [3D-MODEL-ISTEKLERI.md](3D-MODEL-ISTEKLERI.md); kararlar ve varsayımlar: PLAN.md madde 67–75.
+- **Sekme:** "3D" (three.js, yalnız bu sekme açılınca yüklenir). Sürükle-bırak (palet ve katalog), taşı/döndür/sil, ızgara ve hizalama kılavuzları, çakışma uyarısı, servis boşluğu, arama (Ctrl+K), çoklu seçim, ölçüm, kayıtlı görünümler.
+- **Tek veri modeli:** ekipman 2D ve 3D'de aynı düğümdür; konum `yerlesim3d` alanında saklanır; geri al/yinele ve JSON/IndexedDB kaydı kapsar; eski dosyalar otomatik yerleşimle açılır.
+- **Analiz görselleştirme:** renk modları, ısı haritası (yaklaşık), hat kalınlığı/rengi/akış noktaları, üzerine gelince ad-kW-doluluk-Isc-yakıt, soğutma açığında zincir vurgusu.
+- **Simülasyon 3D'de:** adım değiştikçe arıza, enerjisiz, atılan yük, çalışan jeneratör, batarya ve salon sıcaklığı güncellenir.
+- **Kablo güzergâhı:** ortogonal otomatik güzergâh, sürüklenebilir ara noktalar, "uzunluk 3D'den" seçeneği (kayıp ve gerilim düşümü gerçek mesafeyle).
+- **Çıktı:** 3D PNG ve PDF raporunda "3D yerleşim" bölümü.
+- **Sınırlar:** mimari, CFD, kablo tavası doluluğu, glTF yükleme, çok katlı yapı yok; ekipman boyutları tipik yer tutucudur.
+
 ### 4.11 Raporlama
 Yazdırılabilir **PDF raporu** (özet, şema görüntüsü, kayıplar, doluluk, doğrulama, yedeklilik, enerji, simülasyon, güvenilirlik, elektrik çalışmaları + jeneratör).
 **Excel**: Ekipman, Hatlar, Özet, Kayıplar, Simülasyon sayfaları. **PNG** şema görüntüsü. **JSON** proje dosyası.
@@ -120,6 +131,8 @@ Yazdırılabilir **PDF raporu** (özet, şema görüntüsü, kayıplar, doluluk,
 | `src/model` | Tipler, proje şeması (`schemaVersion` 7), ayarlar (`settings.ts`) |
 | `src/library` | Ekipman kütüphanesi (`equipment.ts`), şablonlar, güvenilirlik verileri, **katalog** (`catalog.ts`) |
 | `src/engine` | `analyze` (çekirdek), `networkStudies` (Isc, gerilim düşümü, soğutma, yakıt), `simulate`, `automation`, `energize`, `energy`, `climate`, `cooling*`, `redundancy`, `reliability*`, `protection`, `cableSizing`, `harmonics`, **`generator`**, `worker` |
+| `src/layout3d` | 3D saf mantık (testli): boyutlar, geometri/çakışma, otomatik yerleşim, güzergâh/uzunluk, ısı haritası, renkler, şekiller |
+| `src/ui3d` | 3D sahne (R3F): ekipman, kablolar, odalar/ısı haritası, sürükleme, kamera, etiket katmanı, 3D sekmesi |
 | `src/import` | **`equipmentImport.ts`** (CSV/Excel ayrıştırma, tip/başlık eşleme, hat ve yerleşim üretimi) |
 | `src/store` | Zustand durumu, geri al/yinele, IndexedDB kalıcılığı |
 | `src/ui` | Canvas, Palette (katalog dahil), PropertiesPanel, sekme görünümleri, SimulationPanel, ImportDialog, Toolbar |
@@ -128,7 +141,7 @@ Yazdırılabilir **PDF raporu** (özet, şema görüntüsü, kayıplar, doluluk,
 
 **Veri modeli:** şema v7; ayarlar `Project.ayarlar` içinde, eksik/bozuk alanlar varsayılana düşer; ekipman tipleri eklemelidir, eski dosyalar aynen açılır.
 
-**Test:** 20+ test dosyası, 339 test (motor, kütüphane, şablonlar, HDC02 örneği, rapor, Excel, içe aktarma, depo). Yeni tipler için testler her alanın varsayılanını ve anahtar benzersizliğini zorunlu kılar.
+**Test:** 24 test dosyası, 373 test (motor, kütüphane, şablonlar, HDC02 örneği, rapor, Excel, içe aktarma, depo). Yeni tipler için testler her alanın varsayılanını ve anahtar benzersizliğini zorunlu kılar.
 
 ---
 

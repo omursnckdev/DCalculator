@@ -28,8 +28,10 @@ export interface ReportInput {
   steps?: SimStep[]
   /** Şema görüntüsü (PNG data URL). */
   diagramPng?: string | null
+  /** 3D yerleşim görüntüsü (PNG data URL); 3D sekmesi açılmışsa. */
+  view3dPng?: string | null
   /** Hangi bölümler yazılsın (varsayılan: hepsi). */
-  sections?: { electrical?: boolean; reliability?: boolean; summary?: boolean; losses?: boolean; loading?: boolean; issues?: boolean; redundancy?: boolean; energy?: boolean; simulation?: boolean; diagram?: boolean }
+  sections?: { electrical?: boolean; reliability?: boolean; summary?: boolean; losses?: boolean; loading?: boolean; issues?: boolean; redundancy?: boolean; energy?: boolean; simulation?: boolean; diagram?: boolean; view3d?: boolean }
 }
 
 export const esc = (v: unknown): string =>
@@ -289,7 +291,7 @@ function simulationSection(steps: SimStep[], s: ProjectSettings, names: (id: str
 /** Raporun tam HTML belgesini üretir. */
 export function buildReportHtml(inp: ReportInput): string {
   const { project, analysis: a, settings } = inp
-  const sec = { electrical: true, reliability: true, summary: true, losses: true, loading: true, issues: true, redundancy: true, energy: true, simulation: true, diagram: true, ...inp.sections }
+  const sec = { electrical: true, reliability: true, summary: true, losses: true, loading: true, issues: true, redundancy: true, energy: true, simulation: true, diagram: true, view3d: true, ...inp.sections }
   const names = (id: string): string => project.nodes.find((n) => n.id === id)?.ad ?? id
   const parts: string[] = []
   parts.push(`<h1>${esc(tr.app.title)} — ${esc(project.name)}</h1>
@@ -297,6 +299,7 @@ export function buildReportHtml(inp: ReportInput): string {
   <div class="disc">${esc(tr.disclaimer)}</div>`)
   if (sec.summary) parts.push(summarySection(a))
   if (sec.diagram && inp.diagramPng) parts.push(`<h2 class="pb">Şema</h2><img class="diagram" src="${esc(inp.diagramPng)}" alt="Şema">`)
+  if (sec.view3d && inp.view3dPng) parts.push(`<h2 class="pb">3D yerleşim</h2><img class="diagram" src="${esc(inp.view3dPng)}" alt="3D yerleşim"><p class="small">3D görünüm ekipman yerleşimini gösterir; ısı haritası yaklaşık bir görselleştirmedir (CFD değildir) ve ekipman boyutları tipik yer tutucudur.</p>`)
   if (sec.losses) parts.push(lossSection(a))
   if (sec.loading) parts.push(loadingSection(project, a))
   if (sec.issues) parts.push(issuesSection(a))
