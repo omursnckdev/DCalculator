@@ -4,7 +4,9 @@ import { useStore } from '../store/useStore'
 import { buildWorkbook, workbookToBlob } from '../export/excel'
 import { renderDiagramPng } from '../export/png'
 import { useAnalysis } from '../store/useAnalysis'
+import { redo, undo } from '../store/history'
 import { downloadProject, readProjectFile, safeName, saveBlob } from './fileio'
+import { TEMPLATES } from '../library/templates'
 import { OpenDialog } from './OpenDialog'
 
 const btn = 'rounded border border-slate-300 bg-white px-3 py-1 text-sm hover:bg-slate-50'
@@ -18,6 +20,8 @@ export function Toolbar() {
   const getProject = useStore((s) => s.getProject)
   const loadProject = useStore((s) => s.loadProject)
   const [showOpen, setShowOpen] = useState(false)
+  const hist = useStore((s) => s.history)
+  const [showTpl, setShowTpl] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const analysis = useAnalysis()
 
@@ -56,6 +60,14 @@ export function Toolbar() {
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
+      <div className="flex gap-1">
+        <button type="button" className={btn} onClick={undo} disabled={hist.undo === 0} title={`${tr.toolbar.undo} (Ctrl+Z)`} aria-label={tr.toolbar.undo}>
+          ↶
+        </button>
+        <button type="button" className={btn} onClick={redo} disabled={hist.redo === 0} title={`${tr.toolbar.redo} (Ctrl+Y)`} aria-label={tr.toolbar.redo}>
+          ↷
+        </button>
+      </div>
       <span className={`text-xs ${dirty ? 'text-amber-600' : 'text-green-600'}`}>
         {dirty ? tr.toolbar.unsaved : tr.toolbar.saved}
       </span>
@@ -69,6 +81,31 @@ export function Toolbar() {
         >
           {tr.toolbar.newProject}
         </button>
+        <div className="relative">
+          <button type="button" className={btn} onClick={() => setShowTpl(!showTpl)} aria-expanded={showTpl}>
+            {tr.toolbar.template} ▾
+          </button>
+          {showTpl && (
+            <ul className="absolute right-0 z-20 mt-1 w-80 rounded border border-slate-300 bg-white text-sm shadow-lg">
+              {TEMPLATES.map((t) => (
+                <li key={t.id}>
+                  <button
+                    type="button"
+                    className="block w-full px-3 py-2 text-left hover:bg-slate-100"
+                    onClick={() => {
+                      setShowTpl(false)
+                      if (useStore.getState().nodes.length > 0 && !confirm(tr.toolbar.confirmTemplate)) return
+                      loadProject(t.build())
+                    }}
+                  >
+                    <div className="font-medium">{t.ad}</div>
+                    <div className="text-xs text-slate-500">{t.aciklama}</div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <button type="button" className={btn} onClick={() => void saveToDb()}>
           {tr.toolbar.save}
         </button>

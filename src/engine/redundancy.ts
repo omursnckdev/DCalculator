@@ -19,7 +19,7 @@ export interface FailureScan {
   id: string
   label: string
   type?: string
-  /** Temel duruma göre kaybedilen yük, kW. */
+  /** Temel duruma göre kaybedilen yük, kW (soğutma birimleri hariç; soğutma ayrıca değerlendirilir). */
   lostKw: number
   /** Arıza anında trafo/jeneratör/UPS en yüksek doluluğu, %. */
   trafoPeak: number
@@ -55,6 +55,13 @@ const peakOf = (a: Analysis, model: Model, type: string): number => {
   return m
 }
 
+/** Soğutma birimi olmayan yüklerin kaybedilen gücü (soğutma birimleri ayrıca değerlendirilir). */
+function unservedNoCooling(a: Analysis, model: Model): number {
+  let cool = 0
+  for (const n of model.nodes) if (n.type === 'mekanikYuk' && num(n, 'sogutmaKw') > 0) cool += a.nodes[n.id]?.unservedKw ?? 0
+  return a.unserved.totalKw - cool
+}
+
 const fmt0 = (v: number): string => Math.round(v).toLocaleString('tr-TR')
 
 /** Her yük-dışı ekipman ve her kapalı hat için tek arıza taraması (operatör müdahalesi yok). */
@@ -63,12 +70,13 @@ export function scanFailures(model: Model, th: Thresholds = DEFAULT_THRESHOLDS, 
   const nameOf = new Map(model.nodes.map((n) => [n.id, n.ad]))
   const out: FailureScan[] = []
   const run = (scenario: Scenario): Analysis => analyze(model, th, scenario, b, { studies: false })
+  // Soğutma birimleri (chiller/CRAH) kaybı yük kaybı sayılmaz; soğutma yeterliliği ayrıca değerlendirilir.
   const mk = (kind: 'node' | 'edge', id: string, label: string, type: string | undefined, a: Analysis): FailureScan => ({
     kind,
     id,
     label,
     type,
-    lostKw: Math.max(0, a.unserved.totalKw - b.unserved.totalKw),
+    lostKw: Math.max(0, unservedNoCooling(a, model) - unservedNoCooling(b, model)),
     trafoPeak: peakOf(a, model, 'trafo'),
     genPeak: peakOf(a, model, 'jenerator'),
     upsPeak: peakOf(a, model, 'ups'),
@@ -117,13 +125,13 @@ export function redundancyReport(model: Model, th: Thresholds = DEFAULT_THRESHOL
     const noGrid = analyze(model, th, { id: 'r-grid', ad: 'Şebeke kaybı', failedNodes: grids, edgeStates: {}, nodeStates: {} }, base, { studies: false })
     const capKw = gens.reduce((s, g) => s + num(g, 'nominalKva') * num(g, 'pf'), 0)
     const loadKw = gens.reduce((s, g) => s + (noGrid.nodes[g.id]?.totalKw ?? 0), 0)
-    const lostGrid = Math.max(0, noGrid.unserved.totalKw - base.unserved.totalKw)
+    const lostGrid = Math.max(0, unservedNoCooling(noGrid, model) - unservedNoCooling(base, model))
     let worstOneGen = 0
     let worstLost = 0
     let worstName = ''
     for (const g of gens) {
       const a = analyze(model, th, { id: 'r-g', ad: g.ad, failedNodes: [...grids, g.id], edgeStates: {}, nodeStates: {} }, base, { studies: false })
-      const lost = Math.max(0, a.unserved.totalKw - noGrid.unserved.totalKw)
+      const lost = Math.max(0, unservedNoCooling(a, model) - unservedNoCooling(noGrid, model))
       if (lost > worstLost) {
         worstLost = lost
         worstName = g.ad
@@ -182,7 +190,9 @@ export function redundancyReport(model: Model, th: Thresholds = DEFAULT_THRESHOL
 
   // 5) Soğutma
   if (base.cooling) {
-    const worst = scans.reduce<FailureScan | undefined>((m, s) => (!m || s.coolingDeficitKw > m.coolingDeficitKw ? s : m), undefined)
+    // Yük kaybettiren (tekil nokta) arızalar soğutma ihtiyacını da yok ettiğinden, ihtiyacın %2'sinden küçük açıklar yok sayılır.
+    const minDeficit = Math.max(0.5, base.cooling.demandKw * 0.02)
+    const worst = scans.reduce<FailureScan | undefined>((m, s) => (s.coolingDeficitKw > minDeficit && (!m || s.coolingDeficitKw > m.coolingDeficitKw) ? s : m), undefined)
     const deficit = worst?.coolingDeficitKw ?? 0
     const status: CheckStatus = base.cooling.deficitKw > 0.5 ? 'fail' : deficit > 0.5 ? 'warn' : 'ok'
     checks.push({

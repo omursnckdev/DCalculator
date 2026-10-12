@@ -291,3 +291,76 @@ describe('arıza listesi ve şema genişliği', () => {
     expect(st().nodes.find((n) => n.id === id)!.width).toBeUndefined()
   })
 })
+
+describe('geri al / yinele', () => {
+  it('değişiklikler adım adım geri alınır ve yinelenir; kısa aralıklı değişiklikler birleşir', async () => {
+    const { vi } = await import('vitest')
+    const { undo, redo } = await import('./history')
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+      const st = useStore.getState
+      st().newProject()
+      expect(st().history).toEqual({ undo: 0, redo: 0 })
+      const id = st().addNode('mdb', 0, 0)
+      expect(st().history.undo).toBe(1)
+      // 600 ms içindeki değişiklik aynı adımda birleşir
+      vi.setSystemTime(Date.now() + 200)
+      st().updateNodeData(id, { ad: 'A' })
+      expect(st().history.undo).toBe(1)
+      vi.setSystemTime(Date.now() + 2000)
+      st().updateNodeData(id, { ad: 'B' })
+      expect(st().history.undo).toBe(2)
+
+      undo()
+      expect(st().nodes[0].data.ad).toBe('A')
+      expect(st().history).toEqual({ undo: 1, redo: 1 })
+      undo()
+      expect(st().nodes).toHaveLength(0)
+      redo()
+      expect(st().nodes).toHaveLength(1)
+      expect(st().nodes[0].data.ad).toBe('A')
+      redo()
+      expect(st().nodes[0].data.ad).toBe('B')
+      expect(st().history.redo).toBe(0)
+
+      // yeni değişiklik yinele yığınını temizler
+      undo()
+      vi.setSystemTime(Date.now() + 2000)
+      st().updateNodeData(id, { ad: 'C' })
+      expect(st().history.redo).toBe(0)
+      redo()
+      expect(st().nodes[0].data.ad).toBe('C')
+      // seçim değişikliği geçmişe girmez
+      const before = st().history.undo
+      st().selectNode(id)
+      expect(st().history.undo).toBe(before)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('yeni proje geçmişi sıfırlar; ayarlar ve senaryolar da geri alınır', async () => {
+    const { vi } = await import('vitest')
+    const { undo } = await import('./history')
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+      const st = useStore.getState
+      st().newProject()
+      st().setAyarlar({ tarife: 9 })
+      expect(st().history.undo).toBe(1)
+      undo()
+      expect(st().ayarlar.tarife).toBe(3.5)
+      vi.setSystemTime(Date.now() + 2000)
+      st().addScenario()
+      expect(st().scenarios).toHaveLength(1)
+      undo()
+      expect(st().scenarios).toHaveLength(0)
+      st().newProject()
+      expect(st().history).toEqual({ undo: 0, redo: 0 })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})

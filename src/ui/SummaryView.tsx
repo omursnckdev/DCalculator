@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { kwToTr, rideThroughMinutes } from '../engine'
+import { EQUIPMENT } from '../library/equipment'
 import type { LossItem } from '../engine'
 import { tr } from '../i18n/tr'
 import { useAnalysis } from '../store/useAnalysis'
@@ -94,6 +95,58 @@ function LossItems({ items }: { items: LossItem[] }) {
         </div>
       )}
       <p className="mt-2 text-xs text-slate-500">{tr.isi.itemsNote}</p>
+    </section>
+  )
+}
+
+/** Grup bazında güç: gruptaki yüklerin IT/mekanik gücü ve gruptaki ekipmanın kendi kayıpları. */
+function GroupCard() {
+  const nodes = useStore((s) => s.nodes)
+  const a = useAnalysis()
+  const rows = useMemo(() => {
+    const m = new Map<string, { count: number; it: number; mech: number; loss: number }>()
+    for (const n of nodes) {
+      const g = n.data.grup?.trim() || ''
+      const r = a.nodes[n.id]
+      if (!r) continue
+      const row = m.get(g) ?? { count: 0, it: 0, mech: 0, loss: 0 }
+      row.count++
+      if (!EQUIPMENT[n.data.kind].hasOutput && r.energized) {
+        const isIt = (n.data.params.kategori ?? EQUIPMENT[n.data.kind].defaults.kategori) === 'IT'
+        if (isIt) row.it += r.totalKw
+        else row.mech += r.totalKw
+      }
+      row.loss += r.ownLossKw
+      m.set(g, row)
+    }
+    return [...m.entries()].sort((x, y) => y[1].it + y[1].mech - (x[1].it + x[1].mech))
+  }, [nodes, a])
+  if (rows.length < 2 && !rows.some(([g]) => g)) return null
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-4 md:col-span-2">
+      <h3 className="mb-2 text-sm font-semibold">{tr.canvas.groupSummary}</h3>
+      <table className="w-full text-sm">
+        <thead className="text-left text-xs text-slate-500">
+          <tr>
+            <th className="py-1 pr-4 font-medium">{tr.canvas.colGroup}</th>
+            <th className="py-1 pr-4 text-right font-medium">{tr.canvas.colCount}</th>
+            <th className="py-1 pr-4 text-right font-medium">{tr.canvas.colIt}</th>
+            <th className="py-1 pr-4 text-right font-medium">{tr.canvas.colMech}</th>
+            <th className="py-1 text-right font-medium">{tr.canvas.colLoss}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([g, r]) => (
+            <tr key={g} className="border-t border-slate-100">
+              <td className="py-0.5 pr-4">{g || tr.canvas.groupNone}</td>
+              <td className="py-0.5 pr-4 text-right tabular-nums">{r.count}</td>
+              <td className="py-0.5 pr-4 text-right tabular-nums">{fmtNum(r.it, 1)}</td>
+              <td className="py-0.5 pr-4 text-right tabular-nums">{fmtNum(r.mech, 1)}</td>
+              <td className="py-0.5 text-right tabular-nums">{fmtNum(r.loss, 2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </section>
   )
 }
@@ -223,6 +276,8 @@ export function SummaryView() {
         <CoolingCard />
 
         <LossItems items={lossItems} />
+
+        <GroupCard />
       </div>
     </div>
   )

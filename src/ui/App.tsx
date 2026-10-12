@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { tr } from '../i18n/tr'
 import { lastProjectId, loadProjectFromDb, saveProjectToDb } from '../store/persistence'
 import { AnalysisProvider } from '../store/useAnalysis'
+import { redo, undo } from '../store/history'
 import { useStore } from '../store/useStore'
 import { Canvas } from './Canvas'
 import { IssuesPanel } from './IssuesPanel'
@@ -29,6 +30,25 @@ export function App() {
     void loadProjectFromDb(id)
       .then((p) => p && useStore.getState().loadProject(p))
       .catch(() => undefined)
+  }, [])
+
+  // Geri al / yinele kısayolları (metin kutularında tarayıcının kendi geri alması geçerli).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return
+      const el = e.target as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return
+      const k = e.key.toLowerCase()
+      if (k === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        undo()
+      } else if (k === 'y' || (k === 'z' && e.shiftKey)) {
+        e.preventDefault()
+        redo()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   // Otomatik kayıt: değişiklikten 1 sn sonra IndexedDB'ye yaz.

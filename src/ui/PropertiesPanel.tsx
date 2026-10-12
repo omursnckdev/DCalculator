@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { EQUIPMENT } from '../library/equipment'
 import type { FieldDef } from '../library/equipment'
 import { HEAT_LOCATIONS, LINE_TYPES } from '../model/types'
@@ -235,12 +235,19 @@ export function PropertiesPanel() {
   const setNodeSwitch = useStore((s) => s.setNodeSwitch)
   const simPicked = useStore((s) => s.simPicked)
   const toggleSimPick = useStore((s) => s.toggleSimPick)
+  const simPickedNow = useStore((s) => s.simPicked)
   const simRunning = useStore((s) => s.sim !== null)
   const addSimFault = useStore((s) => s.addSimFault)
   const simStepFailed = useStore((s) => (s.sim ? s.sim.steps[s.sim.index]?.failed ?? NO_IDS : NO_IDS))
 
-  const node = useMemo(() => nodes.find((n) => n.selected), [nodes])
-  const edge = useMemo(() => (node ? undefined : edges.find((e) => e.selected)), [node, edges])
+  const selectedNodes = useMemo(() => nodes.filter((n) => n.selected), [nodes])
+  const multi = selectedNodes.length > 1
+  const setPicked = useStore((s) => s.setSimPicked)
+  const setGroupForSelected = useStore((s) => s.setGroupForSelected)
+  const [groupName, setGroupName] = useState('')
+  const toggleSimPickMany = (ids: string[]) => setPicked([...new Set([...simPickedNow, ...ids])])
+  const node = useMemo(() => (multi ? undefined : selectedNodes[0]), [multi, selectedNodes])
+  const edge = useMemo(() => (node || multi ? undefined : edges.find((e) => e.selected)), [node, multi, edges])
   const nodeResult = node ? analysis.nodes[node.id] : undefined
   const edgeResult = edge ? analysis.edges[edge.id] : undefined
 
@@ -248,7 +255,50 @@ export function PropertiesPanel() {
     <aside className="bg-white p-3">
       <h2 className="mb-2 text-sm font-semibold">{tr.props.title}</h2>
 
-      {!node && !edge && <p className="text-xs text-slate-500">{tr.props.empty}</p>}
+      {!node && !edge && !multi && <p className="text-xs text-slate-500">{tr.props.empty}</p>}
+
+      {multi && (
+        <div className="space-y-3">
+          <p className="text-sm font-medium">{tr.canvas.multiTitle(selectedNodes.length)}</p>
+          <ul className="max-h-32 overflow-y-auto text-xs text-slate-600">
+            {selectedNodes.map((n) => (
+              <li key={n.id} className="truncate">
+                {n.data.ad}
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            disabled={simRunning}
+            title={simRunning ? tr.sim.listBusy : tr.sim.listHint}
+            className="w-full rounded border border-red-300 px-2 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-40"
+            onClick={() => {
+              const ids = selectedNodes.filter((n) => EQUIPMENT[n.data.kind].hasOutput).map((n) => n.id)
+              toggleSimPickMany(ids)
+              useStore.getState().setSimOpen(true)
+            }}
+          >
+            ⚡ {tr.canvas.multiAddFaults}
+          </button>
+          <div className="space-y-1.5 rounded border border-slate-200 p-2">
+            <input
+              className={inputCls}
+              placeholder={tr.canvas.groupName}
+              aria-label={tr.canvas.groupName}
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <button type="button" disabled={!groupName.trim()} className="flex-1 rounded border border-slate-300 px-2 py-1 text-sm hover:bg-slate-50 disabled:opacity-40" onClick={() => setGroupForSelected(groupName)}>
+                {tr.canvas.groupApply}
+              </button>
+              <button type="button" className="rounded border border-slate-300 px-2 py-1 text-sm hover:bg-slate-50" onClick={() => setGroupForSelected('')}>
+                {tr.canvas.groupClear}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {node && (
         <>
@@ -507,13 +557,13 @@ export function PropertiesPanel() {
         </>
       )}
 
-      {(node || edge) && (
+      {(node || edge || multi) && (
         <button
           type="button"
           onClick={deleteSelection}
           className="mt-2 w-full rounded border border-red-300 px-2 py-1.5 text-sm text-red-700 hover:bg-red-50"
         >
-          {tr.props.delete}
+          {multi ? tr.canvas.multiDelete : tr.props.delete}
         </button>
       )}
     </aside>

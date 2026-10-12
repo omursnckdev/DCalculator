@@ -29,6 +29,7 @@ import { DEFAULT_SETTINGS, cloneSettings } from '../model/settings'
 import type { ProjectSettings } from '../model/settings'
 import { simulateAdditionalFault, simulateFailure, simulateRecovery } from '../engine'
 import type { SimStep } from '../engine'
+import { attachHistory } from './history'
 import { saveProjectToDb } from './persistence'
 
 /**
@@ -98,6 +99,8 @@ interface State {
   edges: LineEdge[]
   dirty: boolean
   scenarios: Scenario[]
+  /** Geri al / yinele yığın boyutları (arayüz düğmeleri için). */
+  history: { undo: number; redo: number }
   /** Yük profili, tarife ve soğutma ayarları (projeyle kaydedilir). */
   ayarlar: ProjectSettings
   setAyarlar: (patch: Partial<ProjectSettings>) => void
@@ -119,6 +122,8 @@ interface State {
   setEdgePort: (edgeId: string, side: 'source' | 'target', port: number) => boolean
   setPreferredInput: (nodeId: string, edgeId: string) => void
   deleteSelection: () => void
+  /** Seçili ekipmanın grup adını ayarlar (boş = gruptan çıkar). */
+  setGroupForSelected: (name: string) => void
   selectNode: (id: string) => void
   selectEdge: (id: string) => void
   setProjectName: (name: string) => void
@@ -234,6 +239,7 @@ export const useStore = create<State>((set, get) => ({
   },
   dirty: false,
   scenarios: [],
+  history: { undo: 0, redo: 0 },
   ayarlar: cloneSettings(DEFAULT_SETTINGS),
   setAyarlar: (patch) => set((s) => ({ ayarlar: { ...s.ayarlar, ...patch }, dirty: true })),
   activeScenarioId: null,
@@ -385,6 +391,12 @@ export const useStore = create<State>((set, get) => ({
       dirty: true,
     })),
 
+  setGroupForSelected: (name) =>
+    set((s) => ({
+      nodes: s.nodes.map((n) => (n.selected ? { ...n, data: { ...n.data, grup: name.trim() } } : n)),
+      dirty: true,
+    })),
+
   deleteSelection: () =>
     set((s) => {
       const removed = new Set(s.nodes.filter((n) => n.selected).map((n) => n.id))
@@ -506,3 +518,5 @@ export const useStore = create<State>((set, get) => ({
     set({ dirty: false })
   },
 }))
+
+attachHistory(useStore)
