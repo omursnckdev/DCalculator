@@ -128,6 +128,17 @@ export const tr = {
       invalid: 'Plan dosyası okunamadı (geçerli plan JSON değil).',
       info: (w: number, r: number, e: number, g: number, d: number) => `${w} duvar · ${r} oda · ${e} ekipman etiketi · ${g.toFixed(0)}×${d.toFixed(0)} m`,
     },
+    hat: {
+      title: 'Hat çizelgesi (kablo · bara · şalter)',
+      hint: 'LV Cable Schedule\'dan üretilen hat dosyası (scripts/build-hdc02-c1c2.py): C1/C2 ekipmanını çizelgedeki kablo ve baralarla bağlar, koruma şalterlerini (ACB/MCCB, anma akımı, kesme kapasitesi) hat başlarına ekler. Eşleşmeyen ekipman oluşturulur; tekrar uygulamak çoğaltmaz.',
+      example: 'HDC02 C1/C2 hat çizelgesini uygula',
+      open: 'Hat çizelgesi aç…',
+      confirm: (ad: string) => `"${ad}" uygulanacak: C1/C2 ekipmanı kablo ve baralarla bağlanacak, şalterler eklenecek; CRP.PL1.1/CRP.PL2.1 şema dışı yer tutucuları catcher bağlantısıyla değişecek. Geri alınabilir (Ctrl+Z). Devam edilsin mi?`,
+      done: (r: { hatSayisi: number; kesiciSayisi: number; olusturulan: string[]; eslesen: unknown[]; silinenDugum: string[]; atlanan: unknown[] }) =>
+        `${r.hatSayisi} hat ve ${r.kesiciSayisi} şalter eklendi; ${r.eslesen.length} mevcut ekipman eşleşti, ${r.olusturulan.length} yeni ekipman oluşturuldu${r.silinenDugum.length ? `, ${r.silinenDugum.length} şema dışı yer tutucu kaldırıldı` : ''}${r.atlanan.length ? `; ${r.atlanan.length} hat atlandı` : ''}.`,
+      nochange: 'Hat çizelgesi zaten uygulanmış (yeni hat yok).',
+      invalid: 'Hat çizelgesi okunamadı (geçerli hat JSON değil).',
+    },
     roomElev: 'Oda kotu (m): 0 = zemin kat, 4,5 = 1. kat',
     roomElevShort: 'Kot',
     floor: 'Kat',

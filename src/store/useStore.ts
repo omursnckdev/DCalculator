@@ -48,6 +48,8 @@ import { anchorOf as bboxAnchor } from '../layout3d/route'
 import { boxOf, roomAt } from '../layout3d/geometry'
 import { applyPlan } from '../layout3d/plan'
 import { canClonePl1, clonePl1ToPl2 } from '../model/clonePlan'
+import { planHatCizelgesi } from '../model/hatCizelgesi'
+import type { HatCizelgesi, HatRapor } from '../model/hatCizelgesi'
 import { dimsOf } from '../layout3d/dims'
 import { attachHistory } from './history'
 import { saveProjectToDb } from './persistence'
@@ -139,6 +141,8 @@ interface State {
   plan3d: Plan3D | null
   /** Planı uygular: etiket eşleşen ekipman plana oturur, odalar/duvarlar yazılır. Eşleşen/eşleşmeyen sayısı döner. */
   importPlan3d: (plan: Plan3D, opts?: { ekle?: boolean; kopyaPl2?: boolean }) => { matched: number; unmatched: number; unused: string[]; eklenen: number; klonlanan: number }
+  /** Hat çizelgesindeki kablo/bara/şalter bağlantılarını ekler (eşleşmeyen ekipman oluşturulur); tekrar uygulamak değişiklik üretmez. */
+  applyHatCizelgesi: (spec: HatCizelgesi) => HatRapor
   removePlan3d: () => void
   gorunumler3d: Gorunum3D[]
   /** Kablo tavaları ve boru hatları (geri alınabilir). */
@@ -359,6 +363,33 @@ export const useStore = create<State>((set, get) => ({
       return { nodes, edges: withLengths(nodes, edges), odalar3d: r.rooms, plan3d: plan, dirty: true }
     })
     return { matched: r.matched, unmatched: r.unmatched, unused: r.unused, eklenen: eklenen.length, klonlanan }
+  },
+  applyHatCizelgesi: (spec) => {
+    const s = get()
+    const model = { nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }
+    const d = planHatCizelgesi(model, spec, newId)
+    const degisti = d.addNodes.length + d.addEdges.length + d.removeNodeIds.length + d.removeEdgeIds.length + Object.keys(d.paramPatches).length
+    if (degisti === 0) return d.rapor
+    set((st) => {
+      const rn = new Set(d.removeNodeIds)
+      const re = new Set(d.removeEdgeIds)
+      const kept = st.nodes
+        .filter((n) => !rn.has(n.id))
+        .map((n) => {
+          const p = d.paramPatches[n.id]
+          const pos = d.posPatches[n.id]
+          if (!p && !pos) return n
+          return { ...n, ...(pos ? { position: { x: pos.x, y: pos.y } } : {}), data: p ? { ...n.data, params: { ...n.data.params, ...p } } : n.data }
+        })
+      const nodes = [...kept, ...fromProjectNodes(d.addNodes.map((n) => ({ ...n, ...(d.posPatches[n.id] ?? {}) })))]
+      const edges = [...st.edges.filter((e) => !re.has(e.id)), ...fromProjectEdges(d.addEdges)]
+      return { nodes, edges: withLengths(nodes, edges), dirty: true }
+    })
+    // 3B: yeni ekipman ve şalterler yerleşsin (plan varsa plana göre, yoksa otomatik).
+    const cur = get()
+    if (cur.plan3d) cur.importPlan3d(cur.plan3d)
+    else cur.ensureLayout3d()
+    return d.rapor
   },
   removePlan3d: () => set({ plan3d: null, dirty: true }),
   gorunumler3d: [],

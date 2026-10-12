@@ -50,9 +50,13 @@ export function levels(model: Model): Map<string, number> {
 
 const label = (n: ProjectNode) => n.ad || n.id
 
-/** Küçük elemanın bağlı olduğu ana ekipman: önce yukarı akış, yoksa aşağı akış (küçük elemanlar atlanır). */
+/**
+ * Küçük elemanın bağlı olduğu ana ekipman: önce yukarı akış, yoksa aşağı akış (küçük elemanlar atlanır). `montaj: 'alt'` olan
+ * şalter (hat sonundaki giriş şalteri) tersine, önce beslediği ekipmana oturur.
+ */
 export function anchorOf(model: Model, id: string, byId: Map<string, ProjectNode>): string | undefined {
-  for (const dir of ['up', 'down'] as const) {
+  const dirs = byId.get(id)?.params.montaj === 'alt' ? (['down', 'up'] as const) : (['up', 'down'] as const)
+  for (const dir of dirs) {
     const seen = new Set<string>([id])
     let frontier = [id]
     for (let depth = 0; depth < 12 && frontier.length; depth++) {

@@ -1,0 +1,2924 @@
+{
+ "surum": 1,
+ "ad": "HDC02 C1/C2 — LV Cable Schedule (HDC02-ARP-RP-E-DD-ZZ-ZZ-POWR-7002 R00)",
+ "kaynak": "HDC02-ARP-RP-E-DD-ZZ-ZZ-POWR-7002 - LV Cable Schedule, R00 08 May 2026",
+ "dugumler": [
+  {
+   "ref": "C1:grid",
+   "tur": "sebeke",
+   "ad": "Şebeke 34,5 kV (C1)",
+   "olustur": true,
+   "params": {
+    "gerilim": 34500,
+    "kisaDevreMva": 1240,
+    "cikisSayisi": 1
+   },
+   "not": "Çizelge s.26: TX.C1 primer kısa devre gücü 1240 MVA (34,5 kV). Şebeke bağlantı noktası ve OG kablo çizelgede yok (varsayım: tek besleme)."
+  },
+  {
+   "ref": "C1:rmu",
+   "tur": "rmu",
+   "ad": "RMU.C1",
+   "olustur": true,
+   "alias": [
+    "RMU.C1"
+   ],
+   "params": {
+    "gerilim": 34500
+   }
+  },
+  {
+   "ref": "C1:tx",
+   "tur": "trafo",
+   "ad": "TX.C1",
+   "olustur": true,
+   "alias": [
+    "TX.C1"
+   ],
+   "params": {
+    "primerGerilim": 34500,
+    "sekonderGerilim": 415
+   },
+   "varsayilan": {
+    "nominalKva": 3150,
+    "uk": 7,
+    "bostaKayip": 3.6,
+    "yukKayip": 27
+   },
+   "not": "Çizelge s.26: 3150 kVA, 34,5 kV/415 V, empedans %7, sekonder 5000 A ACB (LSIG, 70 kA). Varsayım: boşta/yük kaybı tipik değerlerdir (TX.PL1 ile aynı)."
+  },
+  {
+   "ref": "C1:gen1",
+   "tur": "jenerator",
+   "ad": "GEN.C1.1",
+   "olustur": true,
+   "alias": [
+    "GEN.C1.1"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "nominalKva": 1800,
+    "pf": 0.8
+   },
+   "not": "Varsayım: jeneratör gücü çizelgede yok (yalnızca BB/GEN.C1 5000 A ve GEN.C1.1 Aux. beslemesi var); GEN.PL1.1 gibi 1800 kVA alındı."
+  },
+  {
+   "ref": "C1:gen2",
+   "tur": "jenerator",
+   "ad": "GEN.C1.2",
+   "olustur": true,
+   "alias": [
+    "GEN.C1.2"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "nominalKva": 1800,
+    "pf": 0.8
+   },
+   "not": "Varsayım: GEN.C1.1 ile aynı (1800 kVA)."
+  },
+  {
+   "ref": "C1:sync",
+   "tur": "senkron",
+   "ad": "GEN.C1 Senkronizasyon panosu (PMS)",
+   "olustur": true,
+   "alias": [
+    "GEN.C1 Senkronizasyon panosu (PMS)"
+   ],
+   "params": {
+    "gerilim": 415,
+    "nominalAkim": 5000,
+    "mod": "sirali",
+    "esik": 70,
+    "girisSayisi": 2,
+    "cikisSayisi": 1
+   },
+   "not": "Varsayım: GEN.C1 jeneratör senkron/PMS panosu çizelgede gösterilmiyor; GEN.PL1 düzeni örnek alındı (sıralı yük paylaşımı, eşik %70)."
+  },
+  {
+   "ref": "C1:msb",
+   "tur": "mdb",
+   "ad": "MSB.C1",
+   "olustur": true,
+   "alias": [
+    "MSB.C1"
+   ],
+   "params": {
+    "gerilim": 415,
+    "nominalAkim": 5000
+   },
+   "not": "Çizelge s.28: MSB.C1 415 V, ACB 5000 A, Icu 70 kA."
+  },
+  {
+   "ref": "C1:ups1",
+   "tur": "ups",
+   "ad": "UPS.C1.1",
+   "olustur": true,
+   "alias": [
+    "UPS.C1.1"
+   ],
+   "params": {
+    "girisGerilim": 415,
+    "cikisGerilim": 415
+   },
+   "varsayilan": {
+    "nominalKw": 850,
+    "nominalKva": 944
+   }
+  },
+  {
+   "ref": "C1:ups2",
+   "tur": "ups",
+   "ad": "UPS.C1.2",
+   "olustur": true,
+   "alias": [
+    "UPS.C1.2"
+   ],
+   "params": {
+    "girisGerilim": 415,
+    "cikisGerilim": 415
+   },
+   "varsayilan": {
+    "nominalKw": 850,
+    "nominalKva": 944
+   }
+  },
+  {
+   "ref": "C1:ups3",
+   "tur": "ups",
+   "ad": "UPS.C1.3",
+   "olustur": true,
+   "alias": [
+    "UPS.C1.3"
+   ],
+   "params": {
+    "girisGerilim": 415,
+    "cikisGerilim": 415
+   },
+   "varsayilan": {
+    "nominalKw": 200,
+    "nominalKva": 222
+   }
+  },
+  {
+   "ref": "C1:udp1",
+   "tur": "mdb",
+   "ad": "UDP.C1.1",
+   "olustur": true,
+   "alias": [
+    "UDP.C1.1"
+   ],
+   "params": {
+    "gerilim": 415,
+    "nominalAkim": 2500
+   },
+   "not": "Çizelge s.28: UDP.C1.1 415 V, ACB 2500 A, Icu 70 kA."
+  },
+  {
+   "ref": "C1:udp2",
+   "tur": "mdb",
+   "ad": "UDP.C1.2",
+   "olustur": true,
+   "alias": [
+    "UDP.C1.2"
+   ],
+   "params": {
+    "gerilim": 415,
+    "nominalAkim": 400
+   },
+   "not": "Çizelge s.28: UDP.C1.2 415 V, MCCB 400 A, Icu 70 kA."
+  },
+  {
+   "ref": "C1:udb1",
+   "tur": "dagitimPanosu",
+   "ad": "UDB.C1.1",
+   "olustur": true,
+   "alias": [
+    "UDB.C1.1"
+   ],
+   "params": {
+    "gerilim": 415,
+    "nominalAkim": 160
+   }
+  },
+  {
+   "ref": "C1:udb2",
+   "tur": "dagitimPanosu",
+   "ad": "UDB.C1.2",
+   "olustur": true,
+   "alias": [
+    "UDB.C1.2"
+   ],
+   "params": {
+    "gerilim": 415,
+    "nominalAkim": 63
+   }
+  },
+  {
+   "ref": "C1:udb4",
+   "tur": "dagitimPanosu",
+   "ad": "UDB.C1.4",
+   "olustur": true,
+   "alias": [
+    "UDB.C1.4"
+   ],
+   "params": {
+    "gerilim": 415,
+    "nominalAkim": 63
+   }
+  },
+  {
+   "ref": "C1:gaux1",
+   "tur": "mekanikYuk",
+   "ad": "GEN.C1.1 Aux. Loads",
+   "olustur": true,
+   "cizelge": {
+    "sayfa": 29,
+    "satir": "GEN.C1.1 Aux.",
+    "kw": 15,
+    "kvar": 4.93,
+    "kva": 15.79
+   },
+   "alias": [
+    "GEN.C1.1 Aux. Loads"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "kuruluKw": 15,
+    "pf": 0.95,
+    "df": 1,
+    "kategori": "Mekanik",
+    "isiKonum": "dis"
+   },
+   "not": "Çizelge s.29: 15 kW / 4.93 kVAr / 15.79 kVA (diversity 1)."
+  },
+  {
+   "ref": "C1:gaux2",
+   "tur": "mekanikYuk",
+   "ad": "GEN.C1.2 Aux. Loads",
+   "olustur": true,
+   "cizelge": {
+    "sayfa": 29,
+    "satir": "GEN.C1.2 Aux.",
+    "kw": 15,
+    "kvar": 4.93,
+    "kva": 15.79
+   },
+   "alias": [
+    "GEN.C1.2 Aux. Loads"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "kuruluKw": 15,
+    "pf": 0.95,
+    "df": 1,
+    "kategori": "Mekanik",
+    "isiKonum": "dis"
+   },
+   "not": "Çizelge s.29: 15 kW / 4.93 kVAr / 15.79 kVA (diversity 1)."
+  },
+  {
+   "ref": "C1:mmr",
+   "tur": "itYuku",
+   "ad": "MMR-1 DC Supply (C1 ikincil besleme)",
+   "olustur": true,
+   "cizelge": {
+    "sayfa": 29,
+    "satir": "MMR-1 DC Supply",
+    "kw": 100,
+    "kvar": 0,
+    "kva": 100
+   },
+   "alias": [
+    "MMR-1 DC Supply (C1 ikincil besleme)"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "kuruluKw": 100,
+    "pf": 1.0,
+    "df": 1,
+    "kategori": "IT",
+    "isiKonum": "elektrik"
+   },
+   "not": "Çizelge s.29: 100 kW / 0 kVAr / 100 kVA (diversity 1). DC güç santrali (MMR-1) ikincil beslemesi; BT/telekom yükü olarak IT sayıldı."
+  },
+  {
+   "ref": "C1:chiller",
+   "tur": "mekanikYuk",
+   "ad": "Chiller Redundant Supply (C1)",
+   "olustur": true,
+   "cizelge": {
+    "sayfa": 29,
+    "satir": "Chiller Redundant Supply",
+    "kw": 430.2,
+    "kvar": 141.4,
+    "kva": 452.84
+   },
+   "alias": [
+    "Chiller Redundant Supply (C1)"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "kuruluKw": 430.2,
+    "pf": 0.95,
+    "df": 1,
+    "kategori": "Mekanik",
+    "isiKonum": "dis"
+   },
+   "not": "Çizelge s.29: 430.2 kW / 141.4 kVAr / 452.84 kVA (diversity 1). Çizelgede BB/MSB.C1/04 (1250 A bara) ucundaki DB; soğutma kapasitesi eklenmedi (yalnızca elektrik yükü)."
+  },
+  {
+   "ref": "C1:udb3",
+   "tur": "mekanikYuk",
+   "ad": "UDB.C1.3 (FWU DB - Module-1)",
+   "olustur": true,
+   "cizelge": {
+    "sayfa": 29,
+    "satir": "UDB.C1.3 (FWU DB - Module-",
+    "kw": 54.05,
+    "kvar": 19.62,
+    "kva": 57.5
+   },
+   "alias": [
+    "UDB.C1.3 (FWU DB - Module-1)"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "kuruluKw": 54.05,
+    "pf": 0.94,
+    "df": 1,
+    "kategori": "Mekanik",
+    "isiKonum": "dis"
+   },
+   "not": "Çizelge s.29: 54.05 kW / 19.62 kVAr / 57.5 kVA (diversity 1)."
+  },
+  {
+   "ref": "C1:udb1_yuk",
+   "tur": "genelYuk",
+   "ad": "UDB.C1.1 yükleri (Equipment UDB)",
+   "olustur": true,
+   "cizelge": {
+    "sayfa": 29,
+    "satir": "UDB.C1.1 (Equipment UDB)",
+    "kw": 94.16,
+    "kvar": 0,
+    "kva": 94.16
+   },
+   "alias": [
+    "UDB.C1.1 yükleri (Equipment UDB)"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "kuruluKw": 42.24,
+    "pf": 1.0,
+    "df": 1,
+    "kategori": "Mekanik",
+    "isiKonum": "elektrik"
+   },
+   "not": "Çizelge s.29: 94.16 kW / 0 kVAr / 94.16 kVA. Varsayım: çizelgedeki 94,16 kW (131 A, 160 A giriş) UDB.C1.1'in alt DB'leri dahil toplam yüküdür; alt DB'ler (UDB.C1.4: 28,32 kW, ACD.MMR1.2: 23,6 kW) ayrıca modellendiği için burada kalan 42,24 kW alındı. Ayrı toplansaydı 160 A MCCB ve UPS.C1.3 (200 kW) aşırı yüklenirdi."
+  },
+  {
+   "ref": "C1:udb2_yuk",
+   "tur": "genelYuk",
+   "ad": "UDB.C1.2 yükleri (Mechanical UDB)",
+   "olustur": true,
+   "cizelge": {
+    "sayfa": 29,
+    "satir": "UDB.C1.2 (Mechanical UDB)",
+    "kw": 39.36,
+    "kvar": 13.76,
+    "kva": 41.69
+   },
+   "alias": [
+    "UDB.C1.2 yükleri (Mechanical UDB)"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "kuruluKw": 39.36,
+    "pf": 0.944,
+    "df": 1,
+    "kategori": "Mekanik",
+    "isiKonum": "elektrik"
+   },
+   "not": "Çizelge s.29: 39.36 kW / 13.76 kVAr / 41.69 kVA (diversity 1)."
+  },
+  {
+   "ref": "C1:udb4_yuk",
+   "tur": "genelYuk",
+   "ad": "UDB.C1.4 yükleri (MDA DB)",
+   "olustur": true,
+   "cizelge": {
+    "sayfa": 29,
+    "satir": "UDB.C1.4 (MDA DB)",
+    "kw": 28.32,
+    "kvar": 9.9,
+    "kva": 30
+   },
+   "alias": [
+    "UDB.C1.4 yükleri (MDA DB)"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "kuruluKw": 28.32,
+    "pf": 0.944,
+    "df": 1,
+    "kategori": "Mekanik",
+    "isiKonum": "elektrik"
+   },
+   "not": "Çizelge s.29: 28.32 kW / 9.9 kVAr / 30 kVA (diversity 1)."
+  },
+  {
+   "ref": "C1:tf",
+   "tur": "bara",
+   "ad": "TF-1 (C1 tee besleme)",
+   "olustur": true,
+   "params": {
+    "gerilim": 415,
+    "nominalAkim": 2500,
+    "girisSayisi": 1,
+    "cikisSayisi": 2
+   },
+   "not": "Çizelge s.32: TF-1 (BB/C1 → BB/C1-Sec2). Catcher barasının iki kola ayrıldığı nokta."
+  },
+  {
+   "ref": "C1:to1",
+   "tur": "kesici",
+   "ad": "TO-1 (C1) ACB tap-off → CRP.PL1.1",
+   "olustur": true,
+   "params": {
+    "tip": "ACB",
+    "nominalAkim": 2500,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "gerilim": 415,
+    "kesmeKa": 70,
+    "montaj": "ust"
+   },
+   "not": "Çizelge s.31: TO-1, ACB 2500 A, 70 kA; Cbl_SM-5 ile CRP.PL1.1 beslenir."
+  },
+  {
+   "ref": "C1:to2",
+   "tur": "kesici",
+   "ad": "TO-2 (C1) ACB tap-off → CRP.PL2.1",
+   "olustur": true,
+   "params": {
+    "tip": "ACB",
+    "nominalAkim": 2500,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "gerilim": 415,
+    "kesmeKa": 70,
+    "montaj": "ust"
+   },
+   "not": "Çizelge s.31: TO-2, ACB 2500 A, 70 kA; Cbl_SM-6 ile CRP.PL2.1 beslenir."
+  },
+  {
+   "ref": "C2:grid",
+   "tur": "sebeke",
+   "ad": "Şebeke 34,5 kV (C2)",
+   "olustur": true,
+   "params": {
+    "gerilim": 34500,
+    "kisaDevreMva": 1240,
+    "cikisSayisi": 1
+   },
+   "not": "Çizelge s.33: TX.C2 primer kısa devre gücü 1240 MVA (34,5 kV). Şebeke bağlantı noktası ve OG kablo çizelgede yok (varsayım: tek besleme)."
+  },
+  {
+   "ref": "C2:rmu",
+   "tur": "rmu",
+   "ad": "RMU.C2",
+   "olustur": true,
+   "alias": [
+    "RMU.C2"
+   ],
+   "params": {
+    "gerilim": 34500
+   }
+  },
+  {
+   "ref": "C2:tx",
+   "tur": "trafo",
+   "ad": "TX.C2",
+   "olustur": true,
+   "alias": [
+    "TX.C2"
+   ],
+   "params": {
+    "primerGerilim": 34500,
+    "sekonderGerilim": 415
+   },
+   "varsayilan": {
+    "nominalKva": 3150,
+    "uk": 7,
+    "bostaKayip": 3.6,
+    "yukKayip": 27
+   },
+   "not": "Çizelge s.33: 3150 kVA, 34,5 kV/415 V, empedans %7, sekonder 5000 A ACB (LSIG, 70 kA). Varsayım: boşta/yük kaybı tipik değerlerdir (TX.PL1 ile aynı)."
+  },
+  {
+   "ref": "C2:gen1",
+   "tur": "jenerator",
+   "ad": "GEN.C2.1",
+   "olustur": true,
+   "alias": [
+    "GEN.C2.1"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "nominalKva": 1800,
+    "pf": 0.8
+   },
+   "not": "Varsayım: jeneratör gücü çizelgede yok (yalnızca BB/GEN.C2 5000 A ve GEN.C2.1 Aux. beslemesi var); GEN.PL1.1 gibi 1800 kVA alındı."
+  },
+  {
+   "ref": "C2:gen2",
+   "tur": "jenerator",
+   "ad": "GEN.C2.2",
+   "olustur": true,
+   "alias": [
+    "GEN.C2.2"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "nominalKva": 1800,
+    "pf": 0.8
+   },
+   "not": "Varsayım: GEN.C2.1 ile aynı (1800 kVA)."
+  },
+  {
+   "ref": "C2:sync",
+   "tur": "senkron",
+   "ad": "GEN.C2 Senkronizasyon panosu (PMS)",
+   "olustur": true,
+   "alias": [
+    "GEN.C2 Senkronizasyon panosu (PMS)"
+   ],
+   "params": {
+    "gerilim": 415,
+    "nominalAkim": 5000,
+    "mod": "sirali",
+    "esik": 70,
+    "girisSayisi": 2,
+    "cikisSayisi": 1
+   },
+   "not": "Varsayım: GEN.C2 jeneratör senkron/PMS panosu çizelgede gösterilmiyor; GEN.PL1 düzeni örnek alındı (sıralı yük paylaşımı, eşik %70)."
+  },
+  {
+   "ref": "C2:msb",
+   "tur": "mdb",
+   "ad": "MSB.C2",
+   "olustur": true,
+   "alias": [
+    "MSB.C2"
+   ],
+   "params": {
+    "gerilim": 415,
+    "nominalAkim": 5000
+   },
+   "not": "Çizelge s.35: MSB.C2 415 V, ACB 5000 A, Icu 70 kA."
+  },
+  {
+   "ref": "C2:ups1",
+   "tur": "ups",
+   "ad": "UPS.C2.1",
+   "olustur": true,
+   "alias": [
+    "UPS.C2.1"
+   ],
+   "params": {
+    "girisGerilim": 415,
+    "cikisGerilim": 415
+   },
+   "varsayilan": {
+    "nominalKw": 850,
+    "nominalKva": 944
+   }
+  },
+  {
+   "ref": "C2:ups2",
+   "tur": "ups",
+   "ad": "UPS.C2.2",
+   "olustur": true,
+   "alias": [
+    "UPS.C2.2"
+   ],
+   "params": {
+    "girisGerilim": 415,
+    "cikisGerilim": 415
+   },
+   "varsayilan": {
+    "nominalKw": 850,
+    "nominalKva": 944
+   }
+  },
+  {
+   "ref": "C2:ups3",
+   "tur": "ups",
+   "ad": "UPS.C2.3",
+   "olustur": true,
+   "alias": [
+    "UPS.C2.3"
+   ],
+   "params": {
+    "girisGerilim": 415,
+    "cikisGerilim": 415
+   },
+   "varsayilan": {
+    "nominalKw": 200,
+    "nominalKva": 222
+   }
+  },
+  {
+   "ref": "C2:udp1",
+   "tur": "mdb",
+   "ad": "UDP.C2.1",
+   "olustur": true,
+   "alias": [
+    "UDP.C2.1"
+   ],
+   "params": {
+    "gerilim": 415,
+    "nominalAkim": 2500
+   },
+   "not": "Çizelge s.35: UDP.C2.1 415 V, ACB 2500 A, Icu 70 kA."
+  },
+  {
+   "ref": "C2:udp2",
+   "tur": "mdb",
+   "ad": "UDP.C2.2",
+   "olustur": true,
+   "alias": [
+    "UDP.C2.2"
+   ],
+   "params": {
+    "gerilim": 415,
+    "nominalAkim": 400
+   },
+   "not": "Çizelge s.35: UDP.C2.2 415 V, MCCB 400 A, Icu 70 kA."
+  },
+  {
+   "ref": "C2:udb1",
+   "tur": "dagitimPanosu",
+   "ad": "UDB.C2.1",
+   "olustur": true,
+   "alias": [
+    "UDB.C2.1"
+   ],
+   "params": {
+    "gerilim": 415,
+    "nominalAkim": 160
+   }
+  },
+  {
+   "ref": "C2:udb2",
+   "tur": "dagitimPanosu",
+   "ad": "UDB.C2.2",
+   "olustur": true,
+   "alias": [
+    "UDB.C2.2"
+   ],
+   "params": {
+    "gerilim": 415,
+    "nominalAkim": 63
+   }
+  },
+  {
+   "ref": "C2:udb4",
+   "tur": "dagitimPanosu",
+   "ad": "UDB.C2.4",
+   "olustur": true,
+   "alias": [
+    "UDB.C2.4"
+   ],
+   "params": {
+    "gerilim": 415,
+    "nominalAkim": 63
+   }
+  },
+  {
+   "ref": "C2:gaux1",
+   "tur": "mekanikYuk",
+   "ad": "GEN.C2.1 Aux. Loads",
+   "olustur": true,
+   "cizelge": {
+    "sayfa": 36,
+    "satir": "GEN.C2.1 Aux.",
+    "kw": 15,
+    "kvar": 4.93,
+    "kva": 15.79
+   },
+   "alias": [
+    "GEN.C2.1 Aux. Loads"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "kuruluKw": 15,
+    "pf": 0.95,
+    "df": 1,
+    "kategori": "Mekanik",
+    "isiKonum": "dis"
+   },
+   "not": "Çizelge s.36: 15 kW / 4.93 kVAr / 15.79 kVA (diversity 1)."
+  },
+  {
+   "ref": "C2:gaux2",
+   "tur": "mekanikYuk",
+   "ad": "GEN.C2.2 Aux. Loads",
+   "olustur": true,
+   "cizelge": {
+    "sayfa": 36,
+    "satir": "GEN.C2.2 Aux.",
+    "kw": 15,
+    "kvar": 4.93,
+    "kva": 15.79
+   },
+   "alias": [
+    "GEN.C2.2 Aux. Loads"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "kuruluKw": 15,
+    "pf": 0.95,
+    "df": 1,
+    "kategori": "Mekanik",
+    "isiKonum": "dis"
+   },
+   "not": "Çizelge s.36: 15 kW / 4.93 kVAr / 15.79 kVA (diversity 1)."
+  },
+  {
+   "ref": "C2:mmr",
+   "tur": "itYuku",
+   "ad": "MMR-1 DC Supply (C2 ikincil besleme)",
+   "olustur": true,
+   "cizelge": {
+    "sayfa": 36,
+    "satir": "MMR-1 DC Supply",
+    "kw": 100,
+    "kvar": 0,
+    "kva": 100
+   },
+   "alias": [
+    "MMR-1 DC Supply (C2 ikincil besleme)"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "kuruluKw": 100,
+    "pf": 1.0,
+    "df": 1,
+    "kategori": "IT",
+    "isiKonum": "elektrik"
+   },
+   "not": "Çizelge s.36: 100 kW / 0 kVAr / 100 kVA (diversity 1). DC güç santrali (MMR-1) ikincil beslemesi; BT/telekom yükü olarak IT sayıldı."
+  },
+  {
+   "ref": "C2:chiller",
+   "tur": "mekanikYuk",
+   "ad": "Chiller Redundant Supply (C2)",
+   "olustur": true,
+   "cizelge": {
+    "sayfa": 36,
+    "satir": "Chiller Redundant Supply",
+    "kw": 430.2,
+    "kvar": 141.4,
+    "kva": 452.84
+   },
+   "alias": [
+    "Chiller Redundant Supply (C2)"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "kuruluKw": 430.2,
+    "pf": 0.95,
+    "df": 1,
+    "kategori": "Mekanik",
+    "isiKonum": "dis"
+   },
+   "not": "Çizelge s.36: 430.2 kW / 141.4 kVAr / 452.84 kVA (diversity 1). Çizelgede BB/MSB.C2/04 (1250 A bara) ucundaki DB; soğutma kapasitesi eklenmedi (yalnızca elektrik yükü)."
+  },
+  {
+   "ref": "C2:udb3",
+   "tur": "mekanikYuk",
+   "ad": "UDB.C2.3 (FWU DB - Module-1)",
+   "olustur": true,
+   "cizelge": {
+    "sayfa": 36,
+    "satir": "UDB.C2.3 (FWU DB - Module-",
+    "kw": 54.05,
+    "kvar": 19.62,
+    "kva": 57.5
+   },
+   "alias": [
+    "UDB.C2.3 (FWU DB - Module-1)"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "kuruluKw": 54.05,
+    "pf": 0.94,
+    "df": 1,
+    "kategori": "Mekanik",
+    "isiKonum": "dis"
+   },
+   "not": "Çizelge s.36: 54.05 kW / 19.62 kVAr / 57.5 kVA (diversity 1)."
+  },
+  {
+   "ref": "C2:udb1_yuk",
+   "tur": "genelYuk",
+   "ad": "UDB.C2.1 yükleri (Equipment UDB)",
+   "olustur": true,
+   "cizelge": {
+    "sayfa": 36,
+    "satir": "UDB.C2.1 (Equipment UDB)",
+    "kw": 94.16,
+    "kvar": 0,
+    "kva": 94.16
+   },
+   "alias": [
+    "UDB.C2.1 yükleri (Equipment UDB)"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "kuruluKw": 42.24,
+    "pf": 1.0,
+    "df": 1,
+    "kategori": "Mekanik",
+    "isiKonum": "elektrik"
+   },
+   "not": "Çizelge s.36: 94.16 kW / 0 kVAr / 94.16 kVA. Varsayım: çizelgedeki 94,16 kW (131 A, 160 A giriş) UDB.C2.1'in alt DB'leri dahil toplam yüküdür; alt DB'ler (UDB.C2.4: 28,32 kW, ACD.MMR1.2: 23,6 kW) ayrıca modellendiği için burada kalan 42,24 kW alındı. Ayrı toplansaydı 160 A MCCB ve UPS.C2.3 (200 kW) aşırı yüklenirdi."
+  },
+  {
+   "ref": "C2:udb2_yuk",
+   "tur": "genelYuk",
+   "ad": "UDB.C2.2 yükleri (Mechanical UDB)",
+   "olustur": true,
+   "cizelge": {
+    "sayfa": 36,
+    "satir": "UDB.C2.2 (Mechanical UDB)",
+    "kw": 39.36,
+    "kvar": 13.76,
+    "kva": 41.69
+   },
+   "alias": [
+    "UDB.C2.2 yükleri (Mechanical UDB)"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "kuruluKw": 39.36,
+    "pf": 0.944,
+    "df": 1,
+    "kategori": "Mekanik",
+    "isiKonum": "elektrik"
+   },
+   "not": "Çizelge s.36: 39.36 kW / 13.76 kVAr / 41.69 kVA (diversity 1)."
+  },
+  {
+   "ref": "C2:udb4_yuk",
+   "tur": "genelYuk",
+   "ad": "UDB.C2.4 yükleri (MDA DB)",
+   "olustur": true,
+   "cizelge": {
+    "sayfa": 36,
+    "satir": "UDB.C2.4 (MDA DB)",
+    "kw": 28.32,
+    "kvar": 9.9,
+    "kva": 30
+   },
+   "alias": [
+    "UDB.C2.4 yükleri (MDA DB)"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "kuruluKw": 28.32,
+    "pf": 0.944,
+    "df": 1,
+    "kategori": "Mekanik",
+    "isiKonum": "elektrik"
+   },
+   "not": "Çizelge s.36: 28.32 kW / 9.9 kVAr / 30 kVA (diversity 1)."
+  },
+  {
+   "ref": "C2:tf",
+   "tur": "bara",
+   "ad": "TF-1 (C2 tee besleme)",
+   "olustur": true,
+   "params": {
+    "gerilim": 415,
+    "nominalAkim": 2500,
+    "girisSayisi": 1,
+    "cikisSayisi": 2
+   },
+   "not": "Çizelge s.39: TF-1 (BB/C2 → BB/C2-Sec2). Catcher barasının iki kola ayrıldığı nokta."
+  },
+  {
+   "ref": "C2:to1",
+   "tur": "kesici",
+   "ad": "TO-1 (C2) ACB tap-off → CRP.PL1.1",
+   "olustur": true,
+   "params": {
+    "tip": "ACB",
+    "nominalAkim": 2500,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "gerilim": 415,
+    "kesmeKa": 70,
+    "montaj": "ust"
+   },
+   "not": "Çizelge s.38: TO-1, ACB 2500 A, 70 kA; Cbl_SM-5 ile CRP.PL1.1 beslenir."
+  },
+  {
+   "ref": "C2:to2",
+   "tur": "kesici",
+   "ad": "TO-2 (C2) ACB tap-off → CRP.PL2.1",
+   "olustur": true,
+   "params": {
+    "tip": "ACB",
+    "nominalAkim": 2500,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "gerilim": 415,
+    "kesmeKa": 70,
+    "montaj": "ust"
+   },
+   "not": "Çizelge s.38: TO-2, ACB 2500 A, 70 kA; Cbl_SM-6 ile CRP.PL2.1 beslenir."
+  },
+  {
+   "ref": "CRP.PL1.1",
+   "tur": "mdb",
+   "ad": "CRP.PL1.1",
+   "olustur": false,
+   "alias": [
+    "CRP.PL1.1"
+   ]
+  },
+  {
+   "ref": "CRP.PL1.1:in",
+   "tur": "kesici",
+   "ad": "ACB CRP.PL1.1 girişi",
+   "olustur": false,
+   "alias": [
+    "ACB CRP.PL1.1 girişi"
+   ]
+  },
+  {
+   "ref": "CRP.PL1.1:bus",
+   "tur": "bara",
+   "ad": "BB/CRP.PL1.1 (catcher barası)",
+   "olustur": false,
+   "alias": [
+    "BB/CRP.PL1.1 (catcher barası)"
+   ]
+  },
+  {
+   "ref": "CRP.PL1.1:c1",
+   "tur": "kesici",
+   "ad": "ACB CRP.PL1.1 → Catcher 01",
+   "olustur": false,
+   "alias": [
+    "ACB CRP.PL1.1 → Catcher 01"
+   ],
+   "params": {
+    "montaj": "alt"
+   }
+  },
+  {
+   "ref": "CRP.PL1.1:c2",
+   "tur": "kesici",
+   "ad": "ACB CRP.PL1.1 → Catcher 02",
+   "olustur": false,
+   "alias": [
+    "ACB CRP.PL1.1 → Catcher 02"
+   ],
+   "params": {
+    "montaj": "alt"
+   }
+  },
+  {
+   "ref": "CRP.PL2.1",
+   "tur": "mdb",
+   "ad": "CRP.PL2.1",
+   "olustur": false,
+   "alias": [
+    "CRP.PL2.1"
+   ]
+  },
+  {
+   "ref": "CRP.PL2.1:in",
+   "tur": "kesici",
+   "ad": "ACB CRP.PL2.1 girişi",
+   "olustur": false,
+   "alias": [
+    "ACB CRP.PL2.1 girişi"
+   ]
+  },
+  {
+   "ref": "CRP.PL2.1:bus",
+   "tur": "bara",
+   "ad": "BB/CRP.PL2.1 (catcher barası)",
+   "olustur": false,
+   "alias": [
+    "BB/CRP.PL2.1 (catcher barası)"
+   ]
+  },
+  {
+   "ref": "CRP.PL2.1:c1",
+   "tur": "kesici",
+   "ad": "ACB CRP.PL2.1 → Catcher 01",
+   "olustur": false,
+   "alias": [
+    "ACB CRP.PL2.1 → Catcher 01"
+   ],
+   "params": {
+    "montaj": "alt"
+   }
+  },
+  {
+   "ref": "CRP.PL2.1:c2",
+   "tur": "kesici",
+   "ad": "ACB CRP.PL2.1 → Catcher 02",
+   "olustur": false,
+   "alias": [
+    "ACB CRP.PL2.1 → Catcher 02"
+   ],
+   "params": {
+    "montaj": "alt"
+   }
+  },
+  {
+   "ref": "ACD.MMR1.2",
+   "tur": "dagitimPanosu",
+   "ad": "ACD.MMR1.2",
+   "olustur": true,
+   "alias": [
+    "ACD.MMR1.2"
+   ],
+   "params": {
+    "gerilim": 415,
+    "nominalAkim": 63
+   }
+  },
+  {
+   "ref": "ACD.MMR1.2:yuk",
+   "tur": "genelYuk",
+   "ad": "ACD.MMR1.2 yükü",
+   "olustur": true,
+   "cizelge": {
+    "sayfa": 29,
+    "satir": "ACD.MMR1.2",
+    "kw": 23.6,
+    "kvar": 8.25,
+    "kva": 25
+   },
+   "alias": [
+    "ACD.MMR1.2 yükü"
+   ],
+   "params": {
+    "gerilim": 415
+   },
+   "varsayilan": {
+    "kuruluKw": 23.6,
+    "pf": 0.944,
+    "df": 1,
+    "kategori": "Mekanik",
+    "isiKonum": "elektrik"
+   },
+   "not": "Çizelge s.29: 23,6 kW / 8,25 kVAr / 25 kVA. Her iki bloğun sayfasında aynı satır var; tek yük sayıldı."
+  }
+ ],
+ "hatlar": [
+  {
+   "ad": "OG besleme (C1)",
+   "tip": "kablo",
+   "kaynak": "C1:grid",
+   "hedef": "C1:rmu",
+   "uzunluk": 100,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C1",
+   "akim": 200,
+   "kablo": {
+    "metin": "34,5 kV OG kablo",
+    "akim": 200,
+    "r": 0.3,
+    "x": 0.12
+   },
+   "aciklama": "şema dışı OG besleme (varsayım)",
+   "gerilim": 34500
+  },
+  {
+   "ad": "OG hat RMU.C1 → TX.C1",
+   "tip": "kablo",
+   "kaynak": "C1:rmu",
+   "hedef": "C1:tx",
+   "uzunluk": 10,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C1",
+   "akim": 200,
+   "kablo": {
+    "metin": "34,5 kV OG kablo",
+    "akim": 200,
+    "r": 0.3,
+    "x": 0.12
+   },
+   "aciklama": "OG hat (uzunluk 3D yerleşimden)",
+   "gerilim": 34500,
+   "uzunlukKaynak": "3d"
+  },
+  {
+   "ad": "BB/TX.C1",
+   "tip": "busbar",
+   "kaynak": "C1:tx",
+   "hedef": "C1:msb",
+   "uzunluk": 46,
+   "sayfa": "7,26,30",
+   "veri": "cizelge",
+   "blok": "C1",
+   "akim": 5000,
+   "hedefKesici": {
+    "ad": "ACB MSB.C1 trafo girişi",
+    "tip": "ACB",
+    "akim": 5000,
+    "icu": 70,
+    "kutup": "3P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "26",
+    "not": "Çizelge s.26: TX.C1 sekonder koruması ACB Electronic LSIG 5000 A, 70 kA."
+   },
+   "aciklama": "5000 A BUSBAR (4P)"
+  },
+  {
+   "ad": "GEN.C1.1 çıkış",
+   "tip": "busbar",
+   "kaynak": "C1:gen1",
+   "hedef": "C1:sync",
+   "uzunluk": 10,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C1",
+   "akim": 2500,
+   "kesici": {
+    "ad": "ACB GEN.C1.1 (jeneratör çıkışı)",
+    "tip": "ACB",
+    "akim": 2500,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: jeneratör çıkış ACB'si çizelgede yok; GEN.PL1.x gibi 2500 A (iki jeneratör = 5000 A baraya uyar)."
+   },
+   "aciklama": "jeneratör çıkış hattı (varsayım)"
+  },
+  {
+   "ad": "GEN.C1.2 çıkış",
+   "tip": "busbar",
+   "kaynak": "C1:gen2",
+   "hedef": "C1:sync",
+   "uzunluk": 10,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C1",
+   "akim": 2500,
+   "kesici": {
+    "ad": "ACB GEN.C1.2 (jeneratör çıkışı)",
+    "tip": "ACB",
+    "akim": 2500,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: jeneratör çıkış ACB'si çizelgede yok; GEN.PL1.x gibi 2500 A (iki jeneratör = 5000 A baraya uyar)."
+   },
+   "aciklama": "jeneratör çıkış hattı (varsayım)"
+  },
+  {
+   "ad": "BB/GEN.C1",
+   "tip": "busbar",
+   "kaynak": "C1:sync",
+   "hedef": "C1:msb",
+   "uzunluk": 100,
+   "sayfa": "7",
+   "veri": "cizelge",
+   "blok": "C1",
+   "akim": 5000,
+   "kesici": {
+    "ad": "ACB GEN.C1 çıkış (5000 A)",
+    "tip": "ACB",
+    "akim": 5000,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: BB/GEN.C1 başındaki ACB çizelgede yok; bara anma akımı (5000 A) alındı."
+   },
+   "hedefKesici": {
+    "ad": "ACB MSB.C1 jeneratör girişi",
+    "tip": "ACB",
+    "akim": 5000,
+    "icu": 70,
+    "kutup": "3P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: MSB.C1 jeneratör giriş ACB'si çizelgede yok; MSB anma akımı (5000 A) alındı."
+   },
+   "aciklama": "5000 A BUSBAR (5P)"
+  },
+  {
+   "ad": "BB/MSB.C1/01",
+   "tip": "busbar",
+   "kaynak": "C1:msb",
+   "hedef": "C1:udp1",
+   "uzunluk": 13,
+   "sayfa": "7,30",
+   "veri": "cizelge",
+   "blok": "C1",
+   "akim": 2500,
+   "kesici": {
+    "ad": "ACB MSB.C1 → UDP.C1.1 bypass",
+    "tip": "ACB",
+    "akim": 2500,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "acik",
+    "otomatik": "otomatik",
+    "veri": "cizelge",
+    "sayfa": "30",
+    "not": "Çizelge s.30: BB/MSB.C1/01 (çizelgede BB/MBS.C1/01), ACB 2500 A, 70 kA. Bakım bypass hattı; normalde AÇIK, UPS arızasında otomatik kapanır (UPS.PL1.x ile aynı mantık)."
+   },
+   "hedefKesici": {
+    "ad": "ACB UDP.C1.1 bypass girişi",
+    "tip": "ACB",
+    "akim": 2500,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "acik",
+    "otomatik": "otomatik",
+    "veri": "cizelge",
+    "sayfa": "28",
+    "not": "Çizelge s.28: UDP.C1.1 ACB 2500 A, 70 kA. Bypass girişi; normalde AÇIK."
+   },
+   "aciklama": "2500 A BUSBAR (5P) — UPS bypass hattı"
+  },
+  {
+   "ad": "BB/MSB.C1/02",
+   "tip": "busbar",
+   "kaynak": "C1:msb",
+   "hedef": "C1:ups1",
+   "uzunluk": 6.5,
+   "sayfa": "7",
+   "veri": "cizelge",
+   "blok": "C1",
+   "akim": 1600,
+   "kesici": {
+    "ad": "ACB MSB.C1 → UPS.C1.1 girişi",
+    "tip": "ACB",
+    "akim": 1600,
+    "icu": 70,
+    "kutup": "3P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: BB/MSB.C1/02 başındaki şalter çizelgede yok; bara anma akımı (1600 A), 70 kA (MSB Icu) alındı."
+   },
+   "aciklama": "1600 A BUSBAR (5P)"
+  },
+  {
+   "ad": "BB/UPS.C1.1",
+   "tip": "busbar",
+   "kaynak": "C1:ups1",
+   "hedef": "C1:udp1",
+   "uzunluk": 6.5,
+   "sayfa": "7",
+   "veri": "cizelge",
+   "blok": "C1",
+   "akim": 1600,
+   "hedefKesici": {
+    "ad": "ACB UDP.C1.1 ← UPS.C1.1 çıkışı",
+    "tip": "ACB",
+    "akim": 1600,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: UPS.C1.1 çıkış şalteri çizelgede yok; bara anma akımı (1600 A) alındı."
+   },
+   "aciklama": "1600 A BUSBAR (5P)"
+  },
+  {
+   "ad": "BB/MSB.C1/03",
+   "tip": "busbar",
+   "kaynak": "C1:msb",
+   "hedef": "C1:ups2",
+   "uzunluk": 6.5,
+   "sayfa": "7",
+   "veri": "cizelge",
+   "blok": "C1",
+   "akim": 1600,
+   "kesici": {
+    "ad": "ACB MSB.C1 → UPS.C1.2 girişi",
+    "tip": "ACB",
+    "akim": 1600,
+    "icu": 70,
+    "kutup": "3P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: BB/MSB.C1/03 başındaki şalter çizelgede yok; bara anma akımı (1600 A), 70 kA (MSB Icu) alındı."
+   },
+   "aciklama": "1600 A BUSBAR (5P)"
+  },
+  {
+   "ad": "BB/UPS.C1.2",
+   "tip": "busbar",
+   "kaynak": "C1:ups2",
+   "hedef": "C1:udp1",
+   "uzunluk": 6.5,
+   "sayfa": "7",
+   "veri": "cizelge",
+   "blok": "C1",
+   "akim": 1600,
+   "hedefKesici": {
+    "ad": "ACB UDP.C1.1 ← UPS.C1.2 çıkışı",
+    "tip": "ACB",
+    "akim": 1600,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: UPS.C1.2 çıkış şalteri çizelgede yok; bara anma akımı (1600 A) alındı."
+   },
+   "aciklama": "1600 A BUSBAR (5P)"
+  },
+  {
+   "ad": "CBL/MSB.C1/01",
+   "tip": "kablo",
+   "kaynak": "C1:msb",
+   "hedef": "C1:udp2",
+   "uzunluk": 10,
+   "sayfa": "7,27",
+   "veri": "cizelge",
+   "blok": "C1",
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 95,
+    "metin": "2x(4x95)+70 mm² N2XH",
+    "pe": 70,
+    "akim": 596,
+    "r": 0.0965,
+    "x": 0.0405
+   },
+   "kesici": {
+    "ad": "MCCB MSB.C1 → UDP.C1.2 bypass",
+    "tip": "MCCB",
+    "akim": 400,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "acik",
+    "otomatik": "otomatik",
+    "veri": "cizelge",
+    "sayfa": "27",
+    "not": "Çizelge s.27: CBL/MSB.C1/01, MCCB 400 A, 70 kA (Electronic LSI). Bakım bypass hattı; normalde AÇIK, otomatik kapanır."
+   },
+   "hedefKesici": {
+    "ad": "MCCB UDP.C1.2 bypass girişi",
+    "tip": "MCCB",
+    "akim": 400,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "acik",
+    "otomatik": "otomatik",
+    "veri": "cizelge",
+    "sayfa": "28",
+    "not": "Çizelge s.28: UDP.C1.2 MCCB 400 A, 70 kA. Bypass girişi; normalde AÇIK."
+   }
+  },
+  {
+   "ad": "CBL/MSB.C1/02",
+   "tip": "kablo",
+   "kaynak": "C1:msb",
+   "hedef": "C1:ups3",
+   "uzunluk": 7,
+   "sayfa": "7",
+   "veri": "cizelge",
+   "blok": "C1",
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 95,
+    "metin": "2x(4x95)+70 mm² N2XH",
+    "pe": 70,
+    "akim": 596,
+    "r": 0.0965,
+    "x": 0.0405
+   },
+   "kesici": {
+    "ad": "MCCB MSB.C1 → UPS.C1.3 girişi",
+    "tip": "MCCB",
+    "akim": 400,
+    "icu": 70,
+    "kutup": "3P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: CBL/MSB.C1/02 başındaki MCCB çizelge hesabında yok; CBL/MSB.C1/01 ile aynı (400 A, 70 kA) alındı."
+   }
+  },
+  {
+   "ad": "CBL/UPS.C1.3",
+   "tip": "kablo",
+   "kaynak": "C1:ups3",
+   "hedef": "C1:udp2",
+   "uzunluk": 3,
+   "sayfa": "7",
+   "veri": "cizelge",
+   "blok": "C1",
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 95,
+    "metin": "2x(4x95)+70 mm² N2XH",
+    "pe": 70,
+    "akim": 596,
+    "r": 0.0965,
+    "x": 0.0405
+   },
+   "hedefKesici": {
+    "ad": "MCCB UDP.C1.2 ← UPS.C1.3 çıkışı",
+    "tip": "MCCB",
+    "akim": 400,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: UPS.C1.3 çıkış şalteri çizelgede yok; UDP.C1.2 giriş MCCB'si (400 A) alındı."
+   }
+  },
+  {
+   "ad": "CBL/MSB.C1/03",
+   "tip": "kablo",
+   "kaynak": "C1:msb",
+   "hedef": "C1:mmr",
+   "uzunluk": 40,
+   "sayfa": "7,27",
+   "veri": "cizelge",
+   "blok": "C1",
+   "kablo": {
+    "paralel": 1,
+    "damar": 4,
+    "kesit": 95,
+    "metin": "4x95+50 mm² N2XH",
+    "pe": 50,
+    "akim": 298,
+    "r": 0.193,
+    "x": 0.081
+   },
+   "kesici": {
+    "ad": "MCCB MSB.C1 → MMR-1 DC Supply",
+    "tip": "MCCB",
+    "akim": 200,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "27",
+    "not": "Çizelge s.27: CBL/MSB.C1/03, MCCB 200 A, 70 kA."
+   }
+  },
+  {
+   "ad": "CBL/MSB.C1/04",
+   "tip": "kablo",
+   "kaynak": "C1:msb",
+   "hedef": "C1:gaux1",
+   "uzunluk": 100,
+   "sayfa": "7,27",
+   "veri": "cizelge",
+   "blok": "C1",
+   "kablo": {
+    "paralel": 1,
+    "damar": 5,
+    "kesit": 35,
+    "metin": "5x35 mm² N2XH",
+    "akim": 158,
+    "r": 0.524,
+    "x": 0.085
+   },
+   "kesici": {
+    "ad": "MCCB MSB.C1 → GEN.C1.1 Aux.",
+    "tip": "MCCB",
+    "akim": 100,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "27",
+    "not": "Çizelge s.27: CBL/MSB.C1/04, MCCB 100 A, 70 kA."
+   }
+  },
+  {
+   "ad": "CBL/MSB.C1/05",
+   "tip": "kablo",
+   "kaynak": "C1:msb",
+   "hedef": "C1:gaux2",
+   "uzunluk": 100,
+   "sayfa": "7,27",
+   "veri": "cizelge",
+   "blok": "C1",
+   "kablo": {
+    "paralel": 1,
+    "damar": 5,
+    "kesit": 35,
+    "metin": "5x35 mm² N2XH",
+    "akim": 158,
+    "r": 0.524,
+    "x": 0.085
+   },
+   "kesici": {
+    "ad": "MCCB MSB.C1 → GEN.C1.2 Aux.",
+    "tip": "MCCB",
+    "akim": 100,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "27",
+    "not": "Çizelge s.27: CBL/MSB.C1/05, MCCB 100 A, 70 kA."
+   }
+  },
+  {
+   "ad": "BB/MSB.C1/04",
+   "tip": "busbar",
+   "kaynak": "C1:msb",
+   "hedef": "C1:chiller",
+   "uzunluk": 3,
+   "sayfa": "30,29",
+   "veri": "cizelge",
+   "blok": "C1",
+   "akim": 1250,
+   "kesici": {
+    "ad": "ACB MSB.C1 → Chiller Redundant Supply",
+    "tip": "ACB",
+    "akim": 1250,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "30",
+    "not": "Çizelge s.30: BB/MSB.C1/04 (MSB → Chiller Redundant Supply), ACB 1250 A, 70 kA. Not: bu bara özet sayfasında (s.7) listelenmemiş, hesap sayfasında vardır."
+   },
+   "aciklama": "1250 A BUSBAR — Chiller Redundant Supply"
+  },
+  {
+   "ad": "CBL/UDP.C1.2/01",
+   "tip": "kablo",
+   "kaynak": "C1:udp2",
+   "hedef": "C1:udb1",
+   "uzunluk": 15,
+   "sayfa": "7,27",
+   "veri": "cizelge",
+   "blok": "C1",
+   "kablo": {
+    "paralel": 1,
+    "damar": 4,
+    "kesit": 70,
+    "metin": "4x70+25 mm² N2XH",
+    "pe": 25,
+    "akim": 246,
+    "r": 0.268,
+    "x": 0.082
+   },
+   "kesici": {
+    "ad": "MCCB UDP.C1.2 → UDB.C1.1",
+    "tip": "MCCB",
+    "akim": 160,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "27",
+    "not": "Çizelge s.27: CBL/UDP.C1.2/01, MCCB 160 A, 70 kA."
+   }
+  },
+  {
+   "ad": "CBL/UDP.C1.2/02",
+   "tip": "kablo",
+   "kaynak": "C1:udp2",
+   "hedef": "C1:udb2",
+   "uzunluk": 15,
+   "sayfa": "7,27",
+   "veri": "cizelge",
+   "blok": "C1",
+   "kablo": {
+    "paralel": 1,
+    "damar": 5,
+    "kesit": 16,
+    "metin": "5x16 mm² N2XH",
+    "akim": 99,
+    "r": 1.15,
+    "x": 0.09
+   },
+   "kesici": {
+    "ad": "MCCB UDP.C1.2 → UDB.C1.2",
+    "tip": "MCCB",
+    "akim": 63,
+    "icu": 50,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "27",
+    "not": "Çizelge s.27: CBL/UDP.C1.2/02, MCCB 63 A, 50 kA."
+   }
+  },
+  {
+   "ad": "CBL/UDP.C1.2/03",
+   "tip": "kablo",
+   "kaynak": "C1:udp2",
+   "hedef": "C1:udb3",
+   "uzunluk": 130,
+   "sayfa": "7,27",
+   "veri": "cizelge",
+   "blok": "C1",
+   "kablo": {
+    "paralel": 1,
+    "damar": 4,
+    "kesit": 35,
+    "metin": "4x35+25 mm² N2XH",
+    "pe": 25,
+    "akim": 158,
+    "r": 0.524,
+    "x": 0.085
+   },
+   "kesici": {
+    "ad": "MCCB UDP.C1.2 → UDB.C1.3",
+    "tip": "MCCB",
+    "akim": 80,
+    "icu": 50,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "27",
+    "not": "Çizelge s.27: CBL/UDP.C1.2/03, MCCB 80 A, 50 kA."
+   }
+  },
+  {
+   "ad": "CBL/UDB.C1.1/01",
+   "tip": "kablo",
+   "kaynak": "C1:udb1",
+   "hedef": "C1:udb4",
+   "uzunluk": 30,
+   "sayfa": "7,27",
+   "veri": "cizelge",
+   "blok": "C1",
+   "kablo": {
+    "paralel": 1,
+    "damar": 5,
+    "kesit": 16,
+    "metin": "5x16 mm² N2XH",
+    "akim": 99,
+    "r": 1.15,
+    "x": 0.09
+   },
+   "kesici": {
+    "ad": "MCCB UDB.C1.1 → UDB.C1.4",
+    "tip": "MCCB",
+    "akim": 63,
+    "icu": 50,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "27",
+    "not": "Çizelge s.27: CBL/UDB.C1.1/01, MCCB 63 A, 50 kA."
+   }
+  },
+  {
+   "ad": "CBL/UDB.C1.1/02",
+   "tip": "kablo",
+   "kaynak": "C1:udb1",
+   "hedef": "ACD.MMR1.2",
+   "uzunluk": 30,
+   "sayfa": "7,27",
+   "veri": "cizelge",
+   "blok": "C1",
+   "kablo": {
+    "paralel": 1,
+    "damar": 5,
+    "kesit": 16,
+    "metin": "5x16 mm² N2XH",
+    "akim": 99,
+    "r": 1.15,
+    "x": 0.09
+   },
+   "kesici": {
+    "ad": "MCCB UDB.C1.1 → ACD.MMR1.2",
+    "tip": "MCCB",
+    "akim": 63,
+    "icu": 50,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "27",
+    "not": "Çizelge s.27: CBL/UDB.C1.1/02, MCCB 63 A, 50 kA."
+   }
+  },
+  {
+   "ad": "UDB.C1.1 yükü",
+   "tip": "busbar",
+   "kaynak": "C1:udb1",
+   "hedef": "C1:udb1_yuk",
+   "uzunluk": 2,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C1",
+   "akim": 160,
+   "aciklama": "pano yükü (çizelge s.29)"
+  },
+  {
+   "ad": "UDB.C1.2 yükü",
+   "tip": "busbar",
+   "kaynak": "C1:udb2",
+   "hedef": "C1:udb2_yuk",
+   "uzunluk": 2,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C1",
+   "akim": 63,
+   "aciklama": "pano yükü (çizelge s.29)"
+  },
+  {
+   "ad": "UDB.C1.4 yükü",
+   "tip": "busbar",
+   "kaynak": "C1:udb4",
+   "hedef": "C1:udb4_yuk",
+   "uzunluk": 2,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C1",
+   "akim": 63,
+   "aciklama": "pano yükü (çizelge s.29)"
+  },
+  {
+   "ad": "BB/C1",
+   "tip": "busbar",
+   "kaynak": "C1:udp1",
+   "hedef": "C1:tf",
+   "uzunluk": 61,
+   "sayfa": "30",
+   "veri": "cizelge",
+   "blok": "C1",
+   "akim": 2500,
+   "kesici": {
+    "ad": "ACB UDP.C1.1 → catcher (BB/C1)",
+    "tip": "ACB",
+    "akim": 2500,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "30",
+    "not": "Çizelge s.30: BB/C1 (UDP.C1.1 → TF-1), ACB 2500 A, 70 kA."
+   },
+   "aciklama": "2500 A BUSBAR — catcher barası"
+  },
+  {
+   "ad": "BB/C1-Sec2",
+   "tip": "busbar",
+   "kaynak": "C1:tf",
+   "hedef": "C1:to1",
+   "uzunluk": 64,
+   "sayfa": "30",
+   "veri": "cizelge",
+   "blok": "C1",
+   "akim": 2500,
+   "grup": "catcher-C1-PL1",
+   "aciklama": "2500 A BUSBAR (TF-1 → TO-1)"
+  },
+  {
+   "ad": "Cbl_SM-5 (C1)",
+   "tip": "kablo",
+   "kaynak": "C1:to1",
+   "hedef": "CRP.PL1.1:c1",
+   "uzunluk": 10,
+   "sayfa": "27",
+   "veri": "cizelge",
+   "blok": "C1",
+   "kablo": {
+    "paralel": 10,
+    "damar": 4,
+    "kesit": 1000,
+    "metin": "10x(4x1000) mm² Cu XLPE",
+    "akim": 2500,
+    "r": 0.0018,
+    "x": 0.007
+   },
+   "grup": "catcher-C1-PL1",
+   "aciklama": "10x(4x1000) mm² Cu XLPE tek damar (TO-1 → CRP.PL1.1)"
+  },
+  {
+   "ad": "BB/C1-Sec3",
+   "tip": "busbar",
+   "kaynak": "C1:tf",
+   "hedef": "C1:to2",
+   "uzunluk": 67,
+   "sayfa": "30",
+   "veri": "cizelge",
+   "blok": "C1",
+   "akim": 2500,
+   "grup": "catcher-C1-PL2",
+   "aciklama": "2500 A BUSBAR (TF-1 → TO-2)"
+  },
+  {
+   "ad": "Cbl_SM-6 (C1)",
+   "tip": "kablo",
+   "kaynak": "C1:to2",
+   "hedef": "CRP.PL2.1:c1",
+   "uzunluk": 10,
+   "sayfa": "27",
+   "veri": "cizelge",
+   "blok": "C1",
+   "kablo": {
+    "paralel": 10,
+    "damar": 4,
+    "kesit": 1000,
+    "metin": "10x(4x1000) mm² Cu XLPE",
+    "akim": 2500,
+    "r": 0.0018,
+    "x": 0.007
+   },
+   "grup": "catcher-C1-PL2",
+   "aciklama": "10x(4x1000) mm² Cu XLPE tek damar (TO-2 → CRP.PL2.1)"
+  },
+  {
+   "ad": "OG besleme (C2)",
+   "tip": "kablo",
+   "kaynak": "C2:grid",
+   "hedef": "C2:rmu",
+   "uzunluk": 100,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C2",
+   "akim": 200,
+   "kablo": {
+    "metin": "34,5 kV OG kablo",
+    "akim": 200,
+    "r": 0.3,
+    "x": 0.12
+   },
+   "aciklama": "şema dışı OG besleme (varsayım)",
+   "gerilim": 34500
+  },
+  {
+   "ad": "OG hat RMU.C2 → TX.C2",
+   "tip": "kablo",
+   "kaynak": "C2:rmu",
+   "hedef": "C2:tx",
+   "uzunluk": 10,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C2",
+   "akim": 200,
+   "kablo": {
+    "metin": "34,5 kV OG kablo",
+    "akim": 200,
+    "r": 0.3,
+    "x": 0.12
+   },
+   "aciklama": "OG hat (uzunluk 3D yerleşimden)",
+   "gerilim": 34500,
+   "uzunlukKaynak": "3d"
+  },
+  {
+   "ad": "BB/TX.C2",
+   "tip": "busbar",
+   "kaynak": "C2:tx",
+   "hedef": "C2:msb",
+   "uzunluk": 46,
+   "sayfa": "8,33,37",
+   "veri": "cizelge",
+   "blok": "C2",
+   "akim": 5000,
+   "hedefKesici": {
+    "ad": "ACB MSB.C2 trafo girişi",
+    "tip": "ACB",
+    "akim": 5000,
+    "icu": 70,
+    "kutup": "3P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "33",
+    "not": "Çizelge s.33: TX.C2 sekonder koruması ACB Electronic LSIG 5000 A, 70 kA."
+   },
+   "aciklama": "5000 A BUSBAR (4P)"
+  },
+  {
+   "ad": "GEN.C2.1 çıkış",
+   "tip": "busbar",
+   "kaynak": "C2:gen1",
+   "hedef": "C2:sync",
+   "uzunluk": 10,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C2",
+   "akim": 2500,
+   "kesici": {
+    "ad": "ACB GEN.C2.1 (jeneratör çıkışı)",
+    "tip": "ACB",
+    "akim": 2500,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: jeneratör çıkış ACB'si çizelgede yok; GEN.PL1.x gibi 2500 A (iki jeneratör = 5000 A baraya uyar)."
+   },
+   "aciklama": "jeneratör çıkış hattı (varsayım)"
+  },
+  {
+   "ad": "GEN.C2.2 çıkış",
+   "tip": "busbar",
+   "kaynak": "C2:gen2",
+   "hedef": "C2:sync",
+   "uzunluk": 10,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C2",
+   "akim": 2500,
+   "kesici": {
+    "ad": "ACB GEN.C2.2 (jeneratör çıkışı)",
+    "tip": "ACB",
+    "akim": 2500,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: jeneratör çıkış ACB'si çizelgede yok; GEN.PL1.x gibi 2500 A (iki jeneratör = 5000 A baraya uyar)."
+   },
+   "aciklama": "jeneratör çıkış hattı (varsayım)"
+  },
+  {
+   "ad": "BB/GEN.C2",
+   "tip": "busbar",
+   "kaynak": "C2:sync",
+   "hedef": "C2:msb",
+   "uzunluk": 100,
+   "sayfa": "8",
+   "veri": "cizelge",
+   "blok": "C2",
+   "akim": 5000,
+   "kesici": {
+    "ad": "ACB GEN.C2 çıkış (5000 A)",
+    "tip": "ACB",
+    "akim": 5000,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: BB/GEN.C2 başındaki ACB çizelgede yok; bara anma akımı (5000 A) alındı."
+   },
+   "hedefKesici": {
+    "ad": "ACB MSB.C2 jeneratör girişi",
+    "tip": "ACB",
+    "akim": 5000,
+    "icu": 70,
+    "kutup": "3P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: MSB.C2 jeneratör giriş ACB'si çizelgede yok; MSB anma akımı (5000 A) alındı."
+   },
+   "aciklama": "5000 A BUSBAR (5P)"
+  },
+  {
+   "ad": "BB/MSB.C2/01",
+   "tip": "busbar",
+   "kaynak": "C2:msb",
+   "hedef": "C2:udp1",
+   "uzunluk": 13,
+   "sayfa": "8,37",
+   "veri": "cizelge",
+   "blok": "C2",
+   "akim": 2500,
+   "kesici": {
+    "ad": "ACB MSB.C2 → UDP.C2.1 bypass",
+    "tip": "ACB",
+    "akim": 2500,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "acik",
+    "otomatik": "otomatik",
+    "veri": "cizelge",
+    "sayfa": "37",
+    "not": "Çizelge s.37: BB/MSB.C2/01 (çizelgede BB/MBS.C2/01), ACB 2500 A, 70 kA. Bakım bypass hattı; normalde AÇIK, UPS arızasında otomatik kapanır (UPS.PL1.x ile aynı mantık)."
+   },
+   "hedefKesici": {
+    "ad": "ACB UDP.C2.1 bypass girişi",
+    "tip": "ACB",
+    "akim": 2500,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "acik",
+    "otomatik": "otomatik",
+    "veri": "cizelge",
+    "sayfa": "35",
+    "not": "Çizelge s.35: UDP.C2.1 ACB 2500 A, 70 kA. Bypass girişi; normalde AÇIK."
+   },
+   "aciklama": "2500 A BUSBAR (5P) — UPS bypass hattı"
+  },
+  {
+   "ad": "BB/MSB.C2/02",
+   "tip": "busbar",
+   "kaynak": "C2:msb",
+   "hedef": "C2:ups1",
+   "uzunluk": 6.5,
+   "sayfa": "8",
+   "veri": "cizelge",
+   "blok": "C2",
+   "akim": 1600,
+   "kesici": {
+    "ad": "ACB MSB.C2 → UPS.C2.1 girişi",
+    "tip": "ACB",
+    "akim": 1600,
+    "icu": 70,
+    "kutup": "3P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: BB/MSB.C2/02 başındaki şalter çizelgede yok; bara anma akımı (1600 A), 70 kA (MSB Icu) alındı."
+   },
+   "aciklama": "1600 A BUSBAR (5P)"
+  },
+  {
+   "ad": "BB/UPS.C2.1",
+   "tip": "busbar",
+   "kaynak": "C2:ups1",
+   "hedef": "C2:udp1",
+   "uzunluk": 6.5,
+   "sayfa": "8",
+   "veri": "cizelge",
+   "blok": "C2",
+   "akim": 1600,
+   "hedefKesici": {
+    "ad": "ACB UDP.C2.1 ← UPS.C2.1 çıkışı",
+    "tip": "ACB",
+    "akim": 1600,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: UPS.C2.1 çıkış şalteri çizelgede yok; bara anma akımı (1600 A) alındı."
+   },
+   "aciklama": "1600 A BUSBAR (5P)"
+  },
+  {
+   "ad": "BB/MSB.C2/03",
+   "tip": "busbar",
+   "kaynak": "C2:msb",
+   "hedef": "C2:ups2",
+   "uzunluk": 6.5,
+   "sayfa": "8",
+   "veri": "cizelge",
+   "blok": "C2",
+   "akim": 1600,
+   "kesici": {
+    "ad": "ACB MSB.C2 → UPS.C2.2 girişi",
+    "tip": "ACB",
+    "akim": 1600,
+    "icu": 70,
+    "kutup": "3P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: BB/MSB.C2/03 başındaki şalter çizelgede yok; bara anma akımı (1600 A), 70 kA (MSB Icu) alındı."
+   },
+   "aciklama": "1600 A BUSBAR (5P)"
+  },
+  {
+   "ad": "BB/UPS.C2.2",
+   "tip": "busbar",
+   "kaynak": "C2:ups2",
+   "hedef": "C2:udp1",
+   "uzunluk": 6.5,
+   "sayfa": "8",
+   "veri": "cizelge",
+   "blok": "C2",
+   "akim": 1600,
+   "hedefKesici": {
+    "ad": "ACB UDP.C2.1 ← UPS.C2.2 çıkışı",
+    "tip": "ACB",
+    "akim": 1600,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: UPS.C2.2 çıkış şalteri çizelgede yok; bara anma akımı (1600 A) alındı."
+   },
+   "aciklama": "1600 A BUSBAR (5P)"
+  },
+  {
+   "ad": "CBL/MSB.C2/01",
+   "tip": "kablo",
+   "kaynak": "C2:msb",
+   "hedef": "C2:udp2",
+   "uzunluk": 10,
+   "sayfa": "8,34",
+   "veri": "cizelge",
+   "blok": "C2",
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 95,
+    "metin": "2x(4x95)+70 mm² N2XH",
+    "pe": 70,
+    "akim": 596,
+    "r": 0.0965,
+    "x": 0.0405
+   },
+   "kesici": {
+    "ad": "MCCB MSB.C2 → UDP.C2.2 bypass",
+    "tip": "MCCB",
+    "akim": 400,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "acik",
+    "otomatik": "otomatik",
+    "veri": "cizelge",
+    "sayfa": "34",
+    "not": "Çizelge s.34: CBL/MSB.C2/01, MCCB 400 A, 70 kA (Electronic LSI). Bakım bypass hattı; normalde AÇIK, otomatik kapanır."
+   },
+   "hedefKesici": {
+    "ad": "MCCB UDP.C2.2 bypass girişi",
+    "tip": "MCCB",
+    "akim": 400,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "acik",
+    "otomatik": "otomatik",
+    "veri": "cizelge",
+    "sayfa": "35",
+    "not": "Çizelge s.35: UDP.C2.2 MCCB 400 A, 70 kA. Bypass girişi; normalde AÇIK."
+   }
+  },
+  {
+   "ad": "CBL/MSB.C2/02",
+   "tip": "kablo",
+   "kaynak": "C2:msb",
+   "hedef": "C2:ups3",
+   "uzunluk": 7,
+   "sayfa": "8",
+   "veri": "cizelge",
+   "blok": "C2",
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 95,
+    "metin": "2x(4x95)+70 mm² N2XH",
+    "pe": 70,
+    "akim": 596,
+    "r": 0.0965,
+    "x": 0.0405
+   },
+   "kesici": {
+    "ad": "MCCB MSB.C2 → UPS.C2.3 girişi",
+    "tip": "MCCB",
+    "akim": 400,
+    "icu": 70,
+    "kutup": "3P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: CBL/MSB.C2/02 başındaki MCCB çizelge hesabında yok; CBL/MSB.C2/01 ile aynı (400 A, 70 kA) alındı."
+   }
+  },
+  {
+   "ad": "CBL/UPS.C2.3",
+   "tip": "kablo",
+   "kaynak": "C2:ups3",
+   "hedef": "C2:udp2",
+   "uzunluk": 3,
+   "sayfa": "8",
+   "veri": "cizelge",
+   "blok": "C2",
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 95,
+    "metin": "2x(4x95)+70 mm² N2XH",
+    "pe": 70,
+    "akim": 596,
+    "r": 0.0965,
+    "x": 0.0405
+   },
+   "hedefKesici": {
+    "ad": "MCCB UDP.C2.2 ← UPS.C2.3 çıkışı",
+    "tip": "MCCB",
+    "akim": 400,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "varsayim",
+    "sayfa": "",
+    "not": "Varsayım: UPS.C2.3 çıkış şalteri çizelgede yok; UDP.C2.2 giriş MCCB'si (400 A) alındı."
+   }
+  },
+  {
+   "ad": "CBL/MSB.C2/03",
+   "tip": "kablo",
+   "kaynak": "C2:msb",
+   "hedef": "C2:mmr",
+   "uzunluk": 40,
+   "sayfa": "8,34",
+   "veri": "cizelge",
+   "blok": "C2",
+   "kablo": {
+    "paralel": 1,
+    "damar": 4,
+    "kesit": 95,
+    "metin": "4x95+50 mm² N2XH",
+    "pe": 50,
+    "akim": 298,
+    "r": 0.193,
+    "x": 0.081
+   },
+   "kesici": {
+    "ad": "MCCB MSB.C2 → MMR-1 DC Supply",
+    "tip": "MCCB",
+    "akim": 200,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "34",
+    "not": "Çizelge s.34: CBL/MSB.C2/03, MCCB 200 A, 70 kA."
+   }
+  },
+  {
+   "ad": "CBL/MSB.C2/04",
+   "tip": "kablo",
+   "kaynak": "C2:msb",
+   "hedef": "C2:gaux1",
+   "uzunluk": 100,
+   "sayfa": "8,34",
+   "veri": "cizelge",
+   "blok": "C2",
+   "kablo": {
+    "paralel": 1,
+    "damar": 5,
+    "kesit": 35,
+    "metin": "5x35 mm² N2XH",
+    "akim": 158,
+    "r": 0.524,
+    "x": 0.085
+   },
+   "kesici": {
+    "ad": "MCCB MSB.C2 → GEN.C2.1 Aux.",
+    "tip": "MCCB",
+    "akim": 100,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "34",
+    "not": "Çizelge s.34: CBL/MSB.C2/04, MCCB 100 A, 70 kA."
+   }
+  },
+  {
+   "ad": "CBL/MSB.C2/05",
+   "tip": "kablo",
+   "kaynak": "C2:msb",
+   "hedef": "C2:gaux2",
+   "uzunluk": 100,
+   "sayfa": "8,34",
+   "veri": "cizelge",
+   "blok": "C2",
+   "kablo": {
+    "paralel": 1,
+    "damar": 5,
+    "kesit": 35,
+    "metin": "5x35 mm² N2XH",
+    "akim": 158,
+    "r": 0.524,
+    "x": 0.085
+   },
+   "kesici": {
+    "ad": "MCCB MSB.C2 → GEN.C2.2 Aux.",
+    "tip": "MCCB",
+    "akim": 100,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "34",
+    "not": "Çizelge s.34: CBL/MSB.C2/05, MCCB 100 A, 70 kA."
+   }
+  },
+  {
+   "ad": "BB/MSB.C2/04",
+   "tip": "busbar",
+   "kaynak": "C2:msb",
+   "hedef": "C2:chiller",
+   "uzunluk": 3,
+   "sayfa": "37,36",
+   "veri": "cizelge",
+   "blok": "C2",
+   "akim": 1250,
+   "kesici": {
+    "ad": "ACB MSB.C2 → Chiller Redundant Supply",
+    "tip": "ACB",
+    "akim": 1250,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "37",
+    "not": "Çizelge s.37: BB/MSB.C2/04 (MSB → Chiller Redundant Supply), ACB 1250 A, 70 kA. Not: bu bara özet sayfasında (s.8) listelenmemiş, hesap sayfasında vardır."
+   },
+   "aciklama": "1250 A BUSBAR — Chiller Redundant Supply"
+  },
+  {
+   "ad": "CBL/UDP.C2.2/01",
+   "tip": "kablo",
+   "kaynak": "C2:udp2",
+   "hedef": "C2:udb1",
+   "uzunluk": 15,
+   "sayfa": "8,34",
+   "veri": "cizelge",
+   "blok": "C2",
+   "kablo": {
+    "paralel": 1,
+    "damar": 4,
+    "kesit": 70,
+    "metin": "4x70+25 mm² N2XH",
+    "pe": 25,
+    "akim": 246,
+    "r": 0.268,
+    "x": 0.082
+   },
+   "kesici": {
+    "ad": "MCCB UDP.C2.2 → UDB.C2.1",
+    "tip": "MCCB",
+    "akim": 160,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "34",
+    "not": "Çizelge s.34: CBL/UDP.C2.2/01, MCCB 160 A, 70 kA."
+   }
+  },
+  {
+   "ad": "CBL/UDP.C2.2/02",
+   "tip": "kablo",
+   "kaynak": "C2:udp2",
+   "hedef": "C2:udb2",
+   "uzunluk": 15,
+   "sayfa": "8,34",
+   "veri": "cizelge",
+   "blok": "C2",
+   "kablo": {
+    "paralel": 1,
+    "damar": 5,
+    "kesit": 16,
+    "metin": "5x16 mm² N2XH",
+    "akim": 99,
+    "r": 1.15,
+    "x": 0.09
+   },
+   "kesici": {
+    "ad": "MCCB UDP.C2.2 → UDB.C2.2",
+    "tip": "MCCB",
+    "akim": 63,
+    "icu": 50,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "34",
+    "not": "Çizelge s.34: CBL/UDP.C2.2/02, MCCB 63 A, 50 kA."
+   }
+  },
+  {
+   "ad": "CBL/UDP.C2.2/03",
+   "tip": "kablo",
+   "kaynak": "C2:udp2",
+   "hedef": "C2:udb3",
+   "uzunluk": 130,
+   "sayfa": "8,34",
+   "veri": "cizelge",
+   "blok": "C2",
+   "kablo": {
+    "paralel": 1,
+    "damar": 4,
+    "kesit": 35,
+    "metin": "4x35+25 mm² N2XH",
+    "pe": 25,
+    "akim": 158,
+    "r": 0.524,
+    "x": 0.085
+   },
+   "kesici": {
+    "ad": "MCCB UDP.C2.2 → UDB.C2.3",
+    "tip": "MCCB",
+    "akim": 80,
+    "icu": 50,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "34",
+    "not": "Çizelge s.34: CBL/UDP.C2.2/03, MCCB 80 A, 50 kA."
+   }
+  },
+  {
+   "ad": "CBL/UDB.C2.1/01",
+   "tip": "kablo",
+   "kaynak": "C2:udb1",
+   "hedef": "C2:udb4",
+   "uzunluk": 30,
+   "sayfa": "8,34",
+   "veri": "cizelge",
+   "blok": "C2",
+   "kablo": {
+    "paralel": 1,
+    "damar": 5,
+    "kesit": 16,
+    "metin": "5x16 mm² N2XH",
+    "akim": 99,
+    "r": 1.15,
+    "x": 0.09
+   },
+   "kesici": {
+    "ad": "MCCB UDB.C2.1 → UDB.C2.4",
+    "tip": "MCCB",
+    "akim": 63,
+    "icu": 50,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "34",
+    "not": "Çizelge s.34: CBL/UDB.C2.1/01, MCCB 63 A, 50 kA."
+   }
+  },
+  {
+   "ad": "CBL/UDB.C2.1/02",
+   "tip": "kablo",
+   "kaynak": "C2:udb1",
+   "hedef": "ACD.MMR1.2",
+   "uzunluk": 30,
+   "sayfa": "8,34",
+   "veri": "cizelge",
+   "blok": "C2",
+   "kablo": {
+    "paralel": 1,
+    "damar": 5,
+    "kesit": 16,
+    "metin": "5x16 mm² N2XH",
+    "akim": 99,
+    "r": 1.15,
+    "x": 0.09
+   },
+   "kesici": {
+    "ad": "MCCB UDB.C2.1 → ACD.MMR1.2",
+    "tip": "MCCB",
+    "akim": 63,
+    "icu": 50,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "34",
+    "not": "Çizelge s.34: CBL/UDB.C2.1/02, MCCB 63 A, 50 kA. Not: C2 sayfasında da \"ACD.MMR1.2\" yazıyor (C1 sayfasından kopya olabilir); çizelgeye uyularak aynı pano iki bloktan beslendi."
+   }
+  },
+  {
+   "ad": "UDB.C2.1 yükü",
+   "tip": "busbar",
+   "kaynak": "C2:udb1",
+   "hedef": "C2:udb1_yuk",
+   "uzunluk": 2,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C2",
+   "akim": 160,
+   "aciklama": "pano yükü (çizelge s.36)"
+  },
+  {
+   "ad": "UDB.C2.2 yükü",
+   "tip": "busbar",
+   "kaynak": "C2:udb2",
+   "hedef": "C2:udb2_yuk",
+   "uzunluk": 2,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C2",
+   "akim": 63,
+   "aciklama": "pano yükü (çizelge s.36)"
+  },
+  {
+   "ad": "UDB.C2.4 yükü",
+   "tip": "busbar",
+   "kaynak": "C2:udb4",
+   "hedef": "C2:udb4_yuk",
+   "uzunluk": 2,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C2",
+   "akim": 63,
+   "aciklama": "pano yükü (çizelge s.36)"
+  },
+  {
+   "ad": "BB/C2",
+   "tip": "busbar",
+   "kaynak": "C2:udp1",
+   "hedef": "C2:tf",
+   "uzunluk": 61,
+   "sayfa": "37",
+   "veri": "cizelge",
+   "blok": "C2",
+   "akim": 2500,
+   "kesici": {
+    "ad": "ACB UDP.C2.1 → catcher (BB/C2)",
+    "tip": "ACB",
+    "akim": 2500,
+    "icu": 70,
+    "kutup": "4P",
+    "durum": "kapali",
+    "otomatik": "yok",
+    "veri": "cizelge",
+    "sayfa": "37",
+    "not": "Çizelge s.37: BB/C2 (UDP.C2.1 → TF-1), ACB 2500 A, 70 kA."
+   },
+   "aciklama": "2500 A BUSBAR — catcher barası"
+  },
+  {
+   "ad": "BB/C2-Sec2",
+   "tip": "busbar",
+   "kaynak": "C2:tf",
+   "hedef": "C2:to1",
+   "uzunluk": 64,
+   "sayfa": "37",
+   "veri": "cizelge",
+   "blok": "C2",
+   "akim": 2500,
+   "grup": "catcher-C2-PL1",
+   "aciklama": "2500 A BUSBAR (TF-1 → TO-1)"
+  },
+  {
+   "ad": "Cbl_SM-5 (C2)",
+   "tip": "kablo",
+   "kaynak": "C2:to1",
+   "hedef": "CRP.PL1.1:c2",
+   "uzunluk": 10,
+   "sayfa": "34",
+   "veri": "cizelge",
+   "blok": "C2",
+   "kablo": {
+    "paralel": 10,
+    "damar": 4,
+    "kesit": 1000,
+    "metin": "10x(4x1000) mm² Cu XLPE",
+    "akim": 2500,
+    "r": 0.0018,
+    "x": 0.007
+   },
+   "grup": "catcher-C2-PL1",
+   "aciklama": "10x(4x1000) mm² Cu XLPE tek damar (TO-1 → CRP.PL1.1)"
+  },
+  {
+   "ad": "BB/C2-Sec3",
+   "tip": "busbar",
+   "kaynak": "C2:tf",
+   "hedef": "C2:to2",
+   "uzunluk": 67,
+   "sayfa": "37",
+   "veri": "cizelge",
+   "blok": "C2",
+   "akim": 2500,
+   "grup": "catcher-C2-PL2",
+   "aciklama": "2500 A BUSBAR (TF-1 → TO-2)"
+  },
+  {
+   "ad": "Cbl_SM-6 (C2)",
+   "tip": "kablo",
+   "kaynak": "C2:to2",
+   "hedef": "CRP.PL2.1:c2",
+   "uzunluk": 10,
+   "sayfa": "34",
+   "veri": "cizelge",
+   "blok": "C2",
+   "kablo": {
+    "paralel": 10,
+    "damar": 4,
+    "kesit": 1000,
+    "metin": "10x(4x1000) mm² Cu XLPE",
+    "akim": 2500,
+    "r": 0.0018,
+    "x": 0.007
+   },
+   "grup": "catcher-C2-PL2",
+   "aciklama": "10x(4x1000) mm² Cu XLPE tek damar (TO-2 → CRP.PL2.1)"
+  },
+  {
+   "ad": "CRP.PL1.1 ← Catcher 01",
+   "tip": "busbar",
+   "kaynak": "CRP.PL1.1:c1",
+   "hedef": "CRP.PL1.1",
+   "uzunluk": 2,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C2",
+   "akim": 2500,
+   "grup": "crp-PL1",
+   "aciklama": "Catcher 01 girişi (C1 bloğu)"
+  },
+  {
+   "ad": "CRP.PL1.1 ← Catcher 02",
+   "tip": "busbar",
+   "kaynak": "CRP.PL1.1:c2",
+   "hedef": "CRP.PL1.1",
+   "uzunluk": 2,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C2",
+   "akim": 2500,
+   "grup": "crp-PL1",
+   "aciklama": "Catcher 02 girişi (C2 bloğu)"
+  },
+  {
+   "ad": "CRP.PL1.1 çıkışı",
+   "tip": "busbar",
+   "kaynak": "CRP.PL1.1",
+   "hedef": "CRP.PL1.1:in",
+   "uzunluk": 2,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C2",
+   "akim": 2500,
+   "grup": "crp-PL1",
+   "aciklama": "CRP çıkışı → catcher barası"
+  },
+  {
+   "ad": "BB/CRP.PL1.1",
+   "tip": "busbar",
+   "kaynak": "CRP.PL1.1:in",
+   "hedef": "CRP.PL1.1:bus",
+   "uzunluk": 20,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C2",
+   "akim": 2500,
+   "grup": "crp-PL1",
+   "aciklama": "2500 A BUSBAR (5P)"
+  },
+  {
+   "ad": "CRP.PL2.1 ← Catcher 01",
+   "tip": "busbar",
+   "kaynak": "CRP.PL2.1:c1",
+   "hedef": "CRP.PL2.1",
+   "uzunluk": 2,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C2",
+   "akim": 2500,
+   "grup": "crp-PL2",
+   "aciklama": "Catcher 01 girişi (C1 bloğu)"
+  },
+  {
+   "ad": "CRP.PL2.1 ← Catcher 02",
+   "tip": "busbar",
+   "kaynak": "CRP.PL2.1:c2",
+   "hedef": "CRP.PL2.1",
+   "uzunluk": 2,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C2",
+   "akim": 2500,
+   "grup": "crp-PL2",
+   "aciklama": "Catcher 02 girişi (C2 bloğu)"
+  },
+  {
+   "ad": "CRP.PL2.1 çıkışı",
+   "tip": "busbar",
+   "kaynak": "CRP.PL2.1",
+   "hedef": "CRP.PL2.1:in",
+   "uzunluk": 2,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C2",
+   "akim": 2500,
+   "grup": "crp-PL2",
+   "aciklama": "CRP çıkışı → catcher barası"
+  },
+  {
+   "ad": "BB/CRP.PL2.1",
+   "tip": "busbar",
+   "kaynak": "CRP.PL2.1:in",
+   "hedef": "CRP.PL2.1:bus",
+   "uzunluk": 20,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "blok": "C2",
+   "akim": 2500,
+   "grup": "crp-PL2",
+   "aciklama": "2500 A BUSBAR (5P)"
+  },
+  {
+   "ad": "ACD.MMR1.2 yükü",
+   "tip": "busbar",
+   "kaynak": "ACD.MMR1.2",
+   "hedef": "ACD.MMR1.2:yuk",
+   "uzunluk": 2,
+   "sayfa": "varsayim",
+   "veri": "varsayim",
+   "akim": 63,
+   "aciklama": "pano yükü (çizelge s.29)"
+  }
+ ],
+ "temizle": {
+  "dugumler": [
+   {
+    "adlar": [
+     "CRP.PL1.1 beslemesi (şema dışı)"
+    ],
+    "tur": "sebeke",
+    "grup": "crp-PL1"
+   },
+   {
+    "adlar": [
+     "Catcher kaynağı (BB/CRP.PL1.1, şema dışı)"
+    ],
+    "tur": "sebeke",
+    "grup": "crp-PL1"
+   },
+   {
+    "adlar": [
+     "Busbar Catcher 01 (şema dışı bağlantı)",
+     "PL1 Busbar Catcher 01 (şema dışı bağlantı)"
+    ],
+    "tur": "genelYuk",
+    "grup": "crp-PL1"
+   },
+   {
+    "adlar": [
+     "Busbar Catcher 02 (şema dışı bağlantı)",
+     "PL1 Busbar Catcher 02 (şema dışı bağlantı)"
+    ],
+    "tur": "genelYuk",
+    "grup": "crp-PL1"
+   },
+   {
+    "adlar": [
+     "CRP.PL2.1 beslemesi (şema dışı)"
+    ],
+    "tur": "sebeke",
+    "grup": "crp-PL2"
+   },
+   {
+    "adlar": [
+     "Catcher kaynağı (BB/CRP.PL2.1, şema dışı)"
+    ],
+    "tur": "sebeke",
+    "grup": "crp-PL2"
+   },
+   {
+    "adlar": [
+     "Busbar Catcher 01 (şema dışı bağlantı)",
+     "PL2 Busbar Catcher 01 (şema dışı bağlantı)"
+    ],
+    "tur": "genelYuk",
+    "grup": "crp-PL2"
+   },
+   {
+    "adlar": [
+     "Busbar Catcher 02 (şema dışı bağlantı)",
+     "PL2 Busbar Catcher 02 (şema dışı bağlantı)"
+    ],
+    "tur": "genelYuk",
+    "grup": "crp-PL2"
+   }
+  ],
+  "hatlar": [
+   {
+    "kaynak": "CRP.PL1.1",
+    "hedef": "CRP.PL1.1:c1",
+    "grup": "crp-PL1"
+   },
+   {
+    "kaynak": "CRP.PL1.1",
+    "hedef": "CRP.PL1.1:c2",
+    "grup": "crp-PL1"
+   },
+   {
+    "kaynak": "CRP.PL1.1:in",
+    "hedef": "CRP.PL1.1",
+    "grup": "crp-PL1"
+   },
+   {
+    "kaynak": "CRP.PL2.1",
+    "hedef": "CRP.PL2.1:c1",
+    "grup": "crp-PL2"
+   },
+   {
+    "kaynak": "CRP.PL2.1",
+    "hedef": "CRP.PL2.1:c2",
+    "grup": "crp-PL2"
+   },
+   {
+    "kaynak": "CRP.PL2.1:in",
+    "hedef": "CRP.PL2.1",
+    "grup": "crp-PL2"
+   }
+  ]
+ }
+}
