@@ -3,6 +3,11 @@ import { tr } from '../i18n/tr'
 import { useStore } from '../store/useStore'
 import { buildWorkbook, workbookToBlob } from '../export/excel'
 import { renderDiagramPng } from '../export/png'
+import { buildReportHtml, printHtml } from '../export/report'
+import { analyze } from '../engine'
+import type { EnergyReport, RedundancyReport } from '../engine'
+import { toProjectEdges, toProjectNodes } from '../model/project'
+import { runInWorker } from './useWorker'
 import { useAnalysis } from '../store/useAnalysis'
 import { redo, undo } from '../store/history'
 import { downloadProject, readProjectFile, safeName, saveBlob } from './fileio'
@@ -22,16 +27,48 @@ export function Toolbar() {
   const [showOpen, setShowOpen] = useState(false)
   const hist = useStore((s) => s.history)
   const [showTpl, setShowTpl] = useState(false)
+  const [reportBusy, setReportBusy] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const analysis = useAnalysis()
 
   const exportExcel = async () => {
     try {
       const project = getProject()
-      const blob = await workbookToBlob(await buildWorkbook(project, analysis, useStore.getState().scenarios.find((x) => x.id === useStore.getState().activeScenarioId)?.ad))
+      const blob = await workbookToBlob(await buildWorkbook(project, analysis, useStore.getState().scenarios.find((x) => x.id === useStore.getState().activeScenarioId)?.ad, useStore.getState().sim?.steps))
       saveBlob(blob, `${safeName(project.name)}.xlsx`)
     } catch (err) {
       alert(`${tr.export.failed}: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  /** Yazdırılabilir rapor: özet, kayıplar, yedeklilik, enerji/maliyet ve (varsa) simülasyon; PDF olarak kaydedilebilir. */
+  const exportReport = async () => {
+    setReportBusy(true)
+    try {
+      const st = useStore.getState()
+      const model = { nodes: toProjectNodes(st.nodes), edges: toProjectEdges(st.edges) }
+      const scenario = st.scenarios.find((x) => x.id === st.activeScenarioId)
+      const [redundancy, energy] = await Promise.all([
+        runInWorker<RedundancyReport>({ task: 'redundancy', model }),
+        runInWorker<EnergyReport>({ task: 'energy', model, settings: st.ayarlar }),
+      ])
+      const diagramPng = await renderDiagramPng(st.nodes).catch(() => null)
+      printHtml(
+        buildReportHtml({
+          project: st.getProject(),
+          analysis: analyze(model, undefined, scenario),
+          scenarioName: scenario?.ad,
+          settings: st.ayarlar,
+          redundancy,
+          energy,
+          steps: st.sim?.steps,
+          diagramPng,
+        }),
+      )
+    } catch (err) {
+      alert(`${tr.export.failed}: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setReportBusy(false)
     }
   }
 
@@ -114,6 +151,9 @@ export function Toolbar() {
         </button>
         <button type="button" className={btn} onClick={() => void exportExcel()}>
           {tr.export.excel}
+        </button>
+        <button type="button" className={btn} disabled={reportBusy} onClick={() => void exportReport()} title={tr.export.reportHint}>
+          {reportBusy ? tr.red.computing : tr.export.report}
         </button>
         <button type="button" className={btn} onClick={() => void exportPng()}>
           {tr.export.png}

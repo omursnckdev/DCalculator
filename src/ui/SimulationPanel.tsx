@@ -4,6 +4,9 @@ import { tr } from '../i18n/tr'
 import { EQUIPMENT } from '../library/equipment'
 import { modelSignature } from '../store/modelSig'
 import { useStore } from '../store/useStore'
+import { analyze } from '../engine'
+import { buildReportHtml, printHtml } from '../export/report'
+import { toProjectEdges, toProjectNodes } from '../model/project'
 import { Chart, Legend } from './charts'
 import type { Series } from './charts'
 import { fmtNum } from './status'
@@ -198,6 +201,28 @@ export function SimulationPanel() {
                 onClick={() => clearFault(step && clearPick && step.failed.includes(clearPick) ? [clearPick] : undefined)}
               >
                 🔧 {tr.sim.clearFault}
+              </button>
+              <button
+                type="button"
+                className="ml-2 rounded border border-slate-300 px-2 py-0.5 text-sm"
+                onClick={() => {
+                  const st = useStore.getState()
+                  if (!st.sim) return
+                  const model = { nodes: toProjectNodes(st.nodes), edges: toProjectEdges(st.edges) }
+                  const sc = st.scenarios.find((x) => x.id === st.activeScenarioId)
+                  printHtml(
+                    buildReportHtml({
+                      project: st.getProject(),
+                      analysis: analyze(model, undefined, sc),
+                      scenarioName: sc?.ad,
+                      settings: st.ayarlar,
+                      steps: st.sim.steps,
+                      sections: { summary: false, losses: false, loading: false, issues: false, redundancy: false, energy: false, diagram: false, simulation: true },
+                    }),
+                  )
+                }}
+              >
+                {tr.export.simReport}
               </button>
               <button type="button" className="ml-2 rounded border border-slate-300 px-2 py-0.5 text-sm" onClick={stopSim}>
                 {tr.sim.stop}

@@ -1,6 +1,6 @@
 import type { Workbook } from 'exceljs'
 import { kwToTr } from '../engine/thermal'
-import type { Analysis } from '../engine'
+import type { Analysis, SimStep } from '../engine'
 import { tr } from '../i18n/tr'
 import { EQUIPMENT } from '../library/equipment'
 import type { FieldDef } from '../library/equipment'
@@ -24,7 +24,7 @@ const roomLabel = (v: string): string =>
  * Ekipman (girdiler + sonuçlar), Hatlar, Özet (toplamlar, kayıplar, ısıl yük, PUE, uyarılar).
  * Sayılar sayı olarak yazılır (Excel'de işlenebilsin diye).
  */
-export async function buildWorkbook(project: Project, a: Analysis, scenarioName?: string): Promise<Workbook> {
+export async function buildWorkbook(project: Project, a: Analysis, scenarioName?: string, simSteps?: SimStep[]): Promise<Workbook> {
   const { default: ExcelJS } = await import('exceljs')
   const wb = new ExcelJS.Workbook()
   wb.creator = 'DCalculator'
@@ -212,6 +212,31 @@ export async function buildWorkbook(project: Project, a: Analysis, scenarioName?
   }
   wsum.getColumn(1).width = 48
   wsum.getColumn(2).width = 16
+
+  // --- Simülasyon (varsa) ---------------------------------------------------------
+  if (simSteps && simSteps.length > 1) {
+    const wsim = wb.addWorksheet(tr.export.sheetSim, { views: [{ state: 'frozen', ySplit: 1 }] })
+    const nameOfNode = (id: string) => project.nodes.find((n) => n.id === id)?.ad ?? id
+    wsim.addRow(['Adım', 'Zaman', 'Süre (sn)', 'Faz', head('Kaybedilen yük', 'kW'), head('Kaynaktan çekilen', 'kW'), 'Arızalı ekipman', 'Olanlar', 'UPS bataryası'])
+    simSteps.forEach((st, i) => {
+      wsim.addRow([
+        `${i + 1}. ${st.title}`,
+        st.timeLabel || '—',
+        st.seconds < 0 ? 0 : st.seconds,
+        st.phase === 'recovery' ? 'Giderme' : 'Arıza',
+        st.lostKw,
+        st.analysis.totals.totalKw,
+        st.failed.map(nameOfNode).join(', '),
+        st.changes.map((c) => c.text).join('\n'),
+        st.battery.map((b) => `${nameOfNode(b.id)}: ${b.depleted ? 'tükendi' : `%${b.socPct.toFixed(0)}`}`).join('; '),
+      ])
+    })
+    wsim.getColumn(5).numFmt = '#,##0.0'
+    wsim.getColumn(6).numFmt = '#,##0.0'
+    wsim.getRow(1).font = { bold: true }
+    wsim.columns.forEach((c, k) => (c.width = [34, 12, 10, 10, 16, 18, 28, 70, 40][k] ?? 14))
+    wsim.getColumn(8).alignment = { wrapText: true, vertical: 'top' }
+  }
 
   // Ortak biçim: başlık satırları, sütun genişlikleri
   for (const sheet of [ws, wl]) {

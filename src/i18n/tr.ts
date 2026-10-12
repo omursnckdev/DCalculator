@@ -469,6 +469,10 @@ export const tr = {
   },
   export: {
     excel: 'Excel indir',
+    report: 'Rapor (PDF)',
+    reportHint: 'Özet, kayıplar, yedeklilik, enerji/maliyet ve simülasyon raporu; açılan pencerede "PDF olarak kaydet" seçin.',
+    simReport: 'Arıza raporu (PDF)',
+    sheetSim: 'Simülasyon',
     png: 'PNG indir',
     needDiagram: 'PNG için önce Şema sekmesine geçin.',
     failed: 'Dışa aktarma başarısız',

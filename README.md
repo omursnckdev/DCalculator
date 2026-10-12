@@ -20,7 +20,9 @@ bir web uygulamasıdır. Kapsam, mimari ve yol haritası için bkz. [docs/PLAN.m
   senaryolar ve senaryo karşılaştırma.
 - **Canlı simülasyon ve otomasyon (Faz 4 eki):** akan enerjiyi gösteren hat animasyonu, otomatik bypass kesicisi,
   senkron panosu (jeneratör kademelendirme), UPS batarya geçişi ve arızanın adım adım izlenmesi.
-- Faz 5: PDF rapor, şablon topolojiler, gruplama, undo/redo.
+- **Faz 5 (kapsam genişletme) tamamlandı:** kısa devre ve toplam gerilim düşümü, soğutma yeterliliği, harmonik/K-faktörü, kapasite ve yedeklilik özeti,
+  bakım modu, 24 saatlik yük profili ve enerji/maliyet, batarya enerjisi, sıralı arıza, simülasyon grafiği, geri al/yinele, çoklu seçim, arama,
+  gruplama, hazır şablonlar ve yazdırılabilir (PDF) rapor. Ayrıntı için aşağıdaki "Yeni özellikler" bölümüne bakın.
 
 ## Çalıştırma
 
@@ -109,6 +111,26 @@ Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmele
   **eşik %'sine** (varsayılan 70) inince fazladan jeneratör durdurulur; durdurulan jeneratör "Beklemede" rozeti alır. Mod *eşit* ise hepsi paylaşır.
 - **Sınırlar:** simülasyon, tipik gecikmelerle sıralanmış kararlı hal görüntüleridir; elektromanyetik geçici rejim hesaplanmaz.
   Süreler sabit tipik değerlerdir. Batarya devredeyken UPS çıkışı çalışır, yukarı akıma çekim yoktur.
+
+## Yeni özellikler
+
+- **Kısa devre ve toplam gerilim düşümü:** her düğümde üç faz simetrik kısa devre akımı (Isc, kA) ve kaynaktan o düğüme toplam gerilim düşümü (trafo dahil, %).
+  Isc, şebeke (kısa devre MVA), jeneratör (Xd″), trafo (uk) ve hat empedanslarından hesaplanır; tüm kaynaklar paralel varsayılır (en kötü durum).
+  Kesiciye "Kesme kapasitesi (kA)" girilirse Isc aşımı hata olur (0 = belirtilmedi). Yük uçlarında toplam düşüm %5'i aşarsa uyarı. Sonuçlar özellik panelinde, Tabloda ve Excel'de.
+- **Soğutma yeterliliği:** mekanik yüke "Soğutma kapasitesi (termal kW)" girin (chiller/CRAH). **Isıl özet** sekmesi enerjili kapasite, ihtiyaç (salon + elektrik odası),
+  yedek ve açığı gösterir; açıkta salon sıcaklığının izinli artışa ulaşma süresi (hava hacmi ve ısıl kütle çarpanına göre) hesaplanır. Simülasyon adımlarında "Soğutma açığı" satırı çıkar.
+- **Harmonik:** yüke ve UPS girişine akım THD (%) girilir; tipik spektrumdan K-faktörü hesaplanır. Trafo, harmonikli yükte ek yük kaybı (Pec-R) alır ve kullanılabilir kapasitesi düşer
+  (özellik panelinde K-faktörü ve kullanılabilir kapasite). UPS yük harmoniklerini yukarı iletmez; trafo UPS giriş THD'sini görür.
+- **Yedeklilik sekmesi:** her arıza adayı için tek arıza taraması: N-1, jeneratör N+1, UPS N+1, trafo doluluğu, soğutma yedekliliği ve tekil arıza noktaları.
+  **Bakım modu:** bir ekipmanı bakıma alın; bakım sürerken hangi ikinci arızanın yük kaybettireceğini görün. Ağır tarama arka planda (Web Worker) çalışır.
+- **Enerji ve maliyet sekmesi:** 24 saatlik IT/mekanik yük profili (hazır: düz, tipik, yaz, kış); günlük/yıllık kWh, ortalama PUE, saatlik grafik, elektrik maliyeti,
+  kayıpların maliyeti ve hedef PUE'ye inilirse yıllık tasarruf. Tarife, para birimi ve profil projeyle kaydedilir.
+- **Simülasyon eklemeleri:** UPS batarya şarjı ve kalan süre (yükle ters orantılı; farklı UPS'ler farklı zamanlarda tükenir), simülasyon sırasında **Bu adımda ek arıza** (sıralı arıza),
+  **Grafik** görünümü (kaybedilen yük, jeneratör yükü, çekilen güç, en düşük batarya) ve **Arıza raporu (PDF)**.
+- **Kullanım:** **↶/↷** geri al/yinele (Ctrl+Z / Ctrl+Y); **Seçim kutusu** (veya Shift+sürükle, Ctrl+tık) ile çoklu seçim, toplu arıza listesine ekleme ve gruplama;
+  **Ctrl+K** ekipman arama; grup çerçeveleri (şemada) ve grup bazında güç özeti (Isıl özet); **Şablon** menüsünden tek hat (N), jeneratörlü N+1 ve 2N tam yedekli hazır şemalar.
+- **Rapor (PDF):** üst çubuktaki düğme özet, şema görüntüsü, kayıplar, doluluk/Isc, doğrulama, yedeklilik, enerji/maliyet ve (varsa) simülasyon bölümlerini içeren yazdırılabilir rapor açar;
+  tarayıcının yazdır penceresinde "PDF olarak kaydet" seçin. Excel'e ayrıca **Kayıplar** ve (simülasyon varsa) **Simülasyon** sayfaları eklenir.
 
 ## HDC02 PL1 şeması
 
