@@ -1,4 +1,4 @@
-# DCalculator — Yapılanların Özeti
+# AOS_DCalculator — Yapılanların Özeti
 
 Bu belge, projede baştan bu yana yapılan her şeyi tek yerde anlatır: ne eklendi, nasıl çalışıyor, hangi varsayımlar var, nerede bulunur.
 Ayrıntılı formüller ve açık sorular için [PLAN.md](PLAN.md), kullanım için [../README.md](../README.md), Windows kurulumu için [KURULUM-WINDOWS.txt](KURULUM-WINDOWS.txt) dosyalarına bakın.

@@ -27,7 +27,7 @@ const roomLabel = (v: string): string =>
 export async function buildWorkbook(project: Project, a: Analysis, scenarioName?: string, simSteps?: SimStep[]): Promise<Workbook> {
   const { default: ExcelJS } = await import('exceljs')
   const wb = new ExcelJS.Workbook()
-  wb.creator = 'DCalculator'
+  wb.creator = 'AOS_DCalculator'
   wb.created = new Date()
 
   // --- Ekipman -------------------------------------------------------------

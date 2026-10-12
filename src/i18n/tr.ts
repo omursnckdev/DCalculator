@@ -1,6 +1,6 @@
 /** Tüm arayüz metinleri burada (plan §11, soru 1: ileride i18n için ayrı dosya). */
 export const tr = {
-  app: { title: 'DCalculator', subtitle: 'Veri merkezi güç zinciri ön tasarım aracı' },
+  app: { title: 'AOS_DCalculator', subtitle: 'Veri merkezi güç zinciri ön tasarım aracı' },
   disclaimer: 'Sonuçlar ön tasarım tahminidir; nihai mühendislik çalışmasının yerini tutmaz.',
   toolbar: {
     template: 'Şablon',

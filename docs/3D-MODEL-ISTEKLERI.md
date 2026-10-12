@@ -1,4 +1,4 @@
-# DCalculator — 3D Model Özelliği (İstek Belgesi)
+# AOS_DCalculator — 3D Model Özelliği (İstek Belgesi)
 
 > **Durum: uygulandı** (3D-1…3D-5). Uygulamada alınan kararlar ve istek belgesinden sapmalar için bkz. [PLAN.md](PLAN.md) madde 67–75 ve [YAPILANLAR.md](YAPILANLAR.md) §4.12. Bu belge özgün istek olarak korunmuştur.
 

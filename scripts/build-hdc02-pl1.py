@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 HDC02-ARP-SC-E-DD-ZZ-ZZ-POWR-6002 "LV Distribution Schematic Power Line-up 1" şemasından
-DCalculator proje dosyası (examples/hdc02-pl1.dcalc.json) üretir.
+AOS_DCalculator proje dosyası (examples/hdc02-pl1.dcalc.json) üretir.
 
 Topoloji ve değerler DXF'ten okundu (etiketler, akım değerleri, UPS/trafo/jeneratör etiketleri,
 kablo ve bara adları, blok konumları). Şemada OLMAYAN değerler (yük kW'ları, kablo uzunlukları,

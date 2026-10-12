@@ -1,4 +1,4 @@
-DCALCULATOR - WINDOWS KURULUM ADIMLARI
+AOS_DCALCULATOR - WINDOWS KURULUM ADIMLARI
 =======================================
 
 Windows 10/11 icindir. Ilk kurulumda internet gerekir; sonra uygulama internetsiz de calisir.

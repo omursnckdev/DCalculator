@@ -1,4 +1,6 @@
-# DCalculator
+# AOS_DCalculator
+
+> Uygulamanın görünen adı **AOS_DCalculator**'dır. Depo adı (`DCalculator`), proje dosyası uzantısı (`.dcalc.json`) ve tarayıcıdaki kayıt anahtarları (`dcalculator:*`, IndexedDB adı) değişmedi; böylece mevcut kayıtlı projeler ve tercihler kaybolmaz.
 
 Veri merkezi güç zinciri ve ısıl yük ön tasarım aracı. Tarayıcıda çalışan, sunucusuz
 bir web uygulamasıdır. Kapsam, mimari ve yol haritası için bkz. [docs/PLAN.md](docs/PLAN.md); yapılanların tam özeti için [docs/YAPILANLAR.md](docs/YAPILANLAR.md).
