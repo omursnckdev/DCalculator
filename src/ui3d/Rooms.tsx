@@ -7,6 +7,7 @@ import { roomAt } from '../layout3d/geometry'
 import { heatGrid, heatRgb } from '../layout3d/heat'
 import type { Oda3D } from '../model/types'
 import { useStore } from '../store/useStore'
+import { setSelection } from './drag'
 import { useScene } from './sceneData'
 import { Stairs } from './Stairs'
 import { use3dStore } from './use3dStore'
@@ -91,8 +92,10 @@ function Heat({ room }: { room: Oda3D }) {
 export function Rooms() {
   const sc = useScene()
   const hideWalls = use3dStore((s) => s.hideWalls)
+  const wallOpacity = use3dStore((s) => s.wallOpacity)
   const showHeat = use3dStore((s) => s.showHeat)
   const floor = use3dStore((s) => s.floor)
+  const selObj = use3dStore((s) => s.selObj)
   // Kat planı varsa duvarlar plandan gelir (PlanWalls); oda kutusu duvarı çizilmez.
   const hasPlan = useStore((s) => s.plan3d !== null)
   return (
@@ -105,18 +108,26 @@ export function Rooms() {
         // Avlu (jeneratör, dış alan) açıktır: duvarsız.
         const walls = !hideWalls && !hasPlan && r.tur !== 'dis' && r.tur !== 'jenerator'
         const upper = elev > 0.01
+        const selectRoom = (e: { delta: number; stopPropagation: () => void }) => {
+          if (e.delta > 3) return
+          e.stopPropagation()
+          setSelection([])
+          use3dStore.setState({ selObj: { kind: 'room', id: r.id } })
+        }
+        const picked = selObj?.kind === 'room' && selObj.id === r.id
         return (
           <group key={r.id}>
             {upper ? (
               // Üst kat döşemesi: üst yüzü oda kotunda, beyaz. Tüm katlar görünürken yarı saydam (alttaki kat görünsün).
-              <mesh position={[r.x + r.g / 2, elev - DOSEME / 2, r.z + r.d / 2]} raycast={() => null}>
+              // Yalnız "1. kat" süzgecinde tıklanabilir (tümünde alttaki ekipmanın tıklamasını engellemesin).
+              <mesh position={[r.x + r.g / 2, elev - DOSEME / 2, r.z + r.d / 2]} raycast={floor === 'tum' ? () => null : undefined} onClick={floor === 'tum' ? undefined : selectRoom}>
                 <boxGeometry args={[r.g, DOSEME, r.d]} />
                 <meshStandardMaterial color={UPPER} transparent opacity={floor === 'tum' ? 0.5 : 1} depthWrite={floor !== 'tum'} />
               </mesh>
             ) : (
-              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[r.x + r.g / 2, 0, r.z + r.d / 2]}>
+              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[r.x + r.g / 2, 0, r.z + r.d / 2]} onClick={selectRoom}>
                 <planeGeometry args={[r.g, r.d]} />
-                <meshStandardMaterial color={FLOOR[r.tur]} transparent opacity={0.85} />
+                <meshStandardMaterial color={picked ? '#93c5fd' : FLOOR[r.tur]} transparent opacity={0.85} />
               </mesh>
             )}
             {walls && (
@@ -129,7 +140,7 @@ export function Rooms() {
                 ].map(([x, z, w, d], i) => (
                   <mesh key={i} position={[x, elev + r.y / 2, z]} raycast={() => null}>
                     <boxGeometry args={[w, r.y, d]} />
-                    <meshStandardMaterial color={wallColor} transparent opacity={0.1} depthWrite={false} />
+                    <meshStandardMaterial color={wallColor} transparent={wallOpacity < 0.99} opacity={wallOpacity >= 0.99 ? 1 : wallOpacity * 0.25} depthWrite={wallOpacity >= 0.99} />
                   </mesh>
                 ))}
               </>

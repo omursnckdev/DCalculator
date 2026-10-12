@@ -9,13 +9,19 @@ import { use3dStore } from './use3dStore'
 export const PLAN_WALL_T = 0.12
 export const PLAN_WALL_H = 3.5
 
-const material = new THREE.MeshStandardMaterial({ color: '#94a3b8', transparent: true, opacity: 0.4, depthWrite: false, roughness: 0.9 })
 
 /** Kat planı duvarları: tek birleşik geometri (≈ 1 600 kutu, tek çizim). "Duvarlar" (H) ile gizlenir; zemin kat süzgecine bağlıdır. */
 export function PlanWalls() {
   const plan = useStore((s) => s.plan3d)
   const hideWalls = use3dStore((s) => s.hideWalls)
   const floor = use3dStore((s) => s.floor)
+  const opacity = use3dStore((s) => s.wallOpacity)
+  // Opak (≥ %99) duvar derinlik yazar; saydamda yazmaz (içindeki ekipman görünsün).
+  const material = useMemo(() => {
+    const solid = opacity >= 0.99
+    return new THREE.MeshStandardMaterial({ color: solid ? '#cbd5e1' : '#94a3b8', transparent: !solid, opacity, depthWrite: solid, roughness: 0.9 })
+  }, [opacity])
+  useEffect(() => () => material.dispose(), [material])
   const geo = useMemo(() => {
     if (!plan || plan.duvarlar.length === 0) return null
     const unit = new THREE.BoxGeometry(1, 1, 1)

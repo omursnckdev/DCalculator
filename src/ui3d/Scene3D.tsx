@@ -7,6 +7,7 @@ import { EquipmentLayer } from './Equipment'
 import { LabelLayer } from './LabelLayer'
 import { PlanSigns } from './PlanSigns'
 import { PlanWalls } from './PlanWalls'
+import { RoomEditor } from './RoomEditor'
 import { Rooms } from './Rooms'
 import { SceneCtx } from './sceneData'
 import { Walk } from './Walk'
@@ -41,6 +42,7 @@ export default function Scene3D({ data, dpr }: { data: SceneData; dpr: number })
         <Walk />
         <Ground />
         <Rooms />
+        <RoomEditor />
         <PlanWalls />
         <PlanSigns />
         <EquipmentLayer />

@@ -38,6 +38,7 @@ Hesap motoru (`src/engine`) saf TypeScript'tir; React'tan bağımsız ve testlid
 | **Faz K** | Jeneratör yakıt özerkliği, yük atma, sıralı yük alma ve gerilim çökmesi |
 | **Faz M** | Ekipman kataloğu ve Excel/CSV toplu içe aktarma |
 | **Faz L** | Dokümantasyon, tarayıcı doğrulaması, push |
+| **3D-13** | Duvar saydamlığı, sürükle-bırak ve tutamaçlı oda düzenleme, özel GLB ekipman modelleri |
 | **3D-12** | C1/C2 kablo çizelgesinden hat, bara ve şalter bağlantıları (hat çizelgesi içe aktarma, catcher bağlantısı) |
 | **3D-11** | DXF planı: gerçek ekipman blokları, yeni ekipman türleri, PL1→PL2 kopyası, ön yüz yönü |
 | **3D-10** | PDF kat planından (HDC02 zemin kat) duvar, oda ve ekipman yerleşimi |
@@ -128,6 +129,7 @@ Ayrıntılı istek: [3D-MODEL-ISTEKLERI.md](3D-MODEL-ISTEKLERI.md); kararlar ve 
 - **Kat planı içe aktarma (PLAN 94–96):** HDC02 zemin kat PDF'i `scripts/pdf-plan.py` ile plan JSON'a çevrilir (1 159 duvar, 72 etiketli ekipman dikdörtgeni, ölçek 1:100); uygulamada duvarlar, elle belirlenmiş odalar ve etiketi eşleşen ekipman plandaki yerine oturur, planda olmayanlar bölgesine yerleşir, yürürken duvarlar engeldir. Odalar (24) PDF'e bindirilip duvarlara karşı doğrulandı (PLAN 97); ekipman adı ekipmanın üstünde, oda adı oda girişinde duvarda yazar (PLAN 98).
 - **DXF planı, yeni ekipman türleri, PL2 kopyası (PLAN 99–103):** HDC02 DXF'inden 222 gerçek ekipman bloğu (konum, boyut, yükseklik, etiket) ve duvarlar; şemada olmayan ekipman (RMU, batarya dolabı, BCP, DC pano, DB/BTU, telekom/ODF dolapları, load bank) yeni türlerle düğüm olarak eklenir; ön yüz arkasındaki duvara göre; PL1 zinciri PL2'ye bağlantılarıyla kopyalanır; yüzlerce düğümde şema hızlandırıldı (sayı biçimleyici önbelleği, bağlantısız plan nesneleri 2D'de gizli).
 - **Hat çizelgesi: C1/C2 bağlantı ve şalterleri (PLAN 104–110):** LV Cable Schedule'dan (s.7–8, 26–39) üretilen `examples/hdc02-c1c2.hatlar.json` 3D → Kat planı paneli altındaki "Hat çizelgesini uygula" ile modele işlenir: C1 ve C2 için RMU → TX → MSB → UPS → UDP → UDB zinciri, jeneratör tesisi, BB/Cx catcher barası → TF-1 → TO-1/TO-2 → CRP.PL1.1/CRP.PL2.1; her hat başına çizelgedeki ACB/MCCB (anma akımı, Icu) ayrı şalter olarak eklenir ve 3D'de panoya oturur. Değerler PDF metniyle otomatik karşılaştırılır (327 alan); çizelgede olmayanlar "Varsayım:" ile işaretlidir.
+- **Duvar saydamlığı, oda düzenleme, özel modeller (PLAN 111–113):** "Göster" menüsünde duvar opaklığı (opak / yarı saydam / saydam + kaydırıcı); odalar palette sürüklenip sahneye bırakılır, tutamaçlarla taşınır/boyutlandırılır (ızgaraya yapışır, içindeki ekipmanla taşınır); ekipmana GLB model atanır (IndexedDB kütüphanesi, kutuya sığdırma, gerçek boyut, türe uygulama).
 - **3D'de senaryo:** Senaryo ve bakım paneli ile canlı simülasyon şeridi (PLAN 76).
 - **Sınırlar:** mimari (duvar çarpışması, kapı/pencere), CFD, glTF yükleme yok; yalnız iki katlı otomatik bina ve türetilmiş tek dış merdiven var; ekipman boyutları tipik yer tutucudur.
 

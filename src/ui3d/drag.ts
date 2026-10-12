@@ -4,6 +4,8 @@ import type { Box } from '../layout3d/geometry'
 import { dimsOf } from '../layout3d/dims'
 import { followersOf } from '../layout3d/autoLayout'
 import { floorOf } from '../layout3d/floors'
+import { resizeRoom } from '../layout3d/roomEdit'
+import type { RoomHandle } from '../layout3d/roomEdit'
 import { toProjectEdges, toProjectNodes } from '../model/project'
 import type { Nokta3D, Oda3D, ProjectEdge } from '../model/types'
 import { useStore } from '../store/useStore'
@@ -14,6 +16,7 @@ type Drag =
   | { kind: 'nodes'; ids: string[]; start: Record<string, { x: number; z: number }>; startGround: { x: number; z: number }; primary: string; grab: boolean; /** Sürükleme düzleminin kotu (birincil ekipman tabanı). */ y: number; /** G ile tutuldu, ilk harekette başlangıç yeniden alınır. */ fresh: boolean }
   | { kind: 'wp'; edgeId: string; index: number; y: number; pts: Nokta3D[] }
   | { kind: 'pt'; obj: 'tray' | 'pipe'; id: string; index: number; y: number }
+  | { kind: 'room'; id: string; mode: RoomHandle; start: Oda3D; startGround: { x: number; z: number }; y: number; /** Odanın içindeki ekipman (taşırken birlikte gelir). */ contents: Record<string, { x: number; z: number }> }
 
 export const drag: { current: Drag | null; last: { x: number; z: number } } = { current: null, last: { x: 0, z: 0 } }
 
@@ -75,6 +78,16 @@ export function beginObjectPointDrag(obj: 'tray' | 'pipe', id: string, index: nu
   drag.current = { kind: 'pt', obj, id, index, y }
 }
 
+/** Oda tutamacı sürükleme: taşıma (içindeki ekipmanla birlikte) veya kenar/köşe boyutlandırma. */
+export function beginRoomDrag(id: string, mode: RoomHandle, ground: { x: number; z: number } | null): void {
+  const st = useStore.getState()
+  const room = st.odalar3d.find((r) => r.id === id)
+  if (!room || !ground) return
+  const contents: Record<string, { x: number; z: number }> = {}
+  if (mode === 'move') for (const n of st.nodes) if (n.data.yerlesim3d?.oda === id) contents[n.id] = { x: n.data.yerlesim3d.x, z: n.data.yerlesim3d.z }
+  drag.current = { kind: 'room', id, mode, start: { ...room }, startGround: ground, y: room.elev ?? 0, contents }
+}
+
 export function beginWaypointDrag(edgeId: string, index: number, y: number, pts: Nokta3D[]): void {
   drag.current = { kind: 'wp', edgeId, index, y, pts }
 }
@@ -88,6 +101,16 @@ export function moveDrag(ground: { x: number; z: number }, boxes: Box[], rooms: 
     const step = use3dStore.getState().snapStep
     const next = d.pts.map((p, i) => (i === d.index ? { x: snap(ground.x, step), y: p.y, z: snap(ground.z, step) } : p))
     st.setEdgeRoute3d(d.edgeId, next)
+    return
+  }
+  if (d.kind === 'room') {
+    const r = resizeRoom(d.start, d.mode, ground.x - d.startGround.x, ground.z - d.startGround.z, use3dStore.getState().snapStep)
+    st.updateOda3d(d.id, r)
+    if (d.mode === 'move') {
+      const patches: Record<string, { x: number; z: number }> = {}
+      for (const [id, p] of Object.entries(d.contents)) patches[id] = { x: p.x + (r.x - d.start.x), z: p.z + (r.z - d.start.z) }
+      if (Object.keys(patches).length) st.setLayout3d(patches)
+    }
     return
   }
   if (d.kind === 'pt') {
@@ -137,8 +160,21 @@ export function endDrag(): void {
   const d = drag.current
   drag.current = null
   use3dStore.getState().setGuides([])
-  if (!d || d.kind !== 'nodes') return
+  if (!d) return
   const st = useStore.getState()
+  if (d.kind === 'room') {
+    // Oda büyüyüp küçülünce içeri/dışarı kalan ekipmanın oda ataması yenilenir.
+    const patches: Record<string, { oda: string | undefined }> = {}
+    for (const n of st.nodes) {
+      const l = n.data.yerlesim3d
+      if (!l) continue
+      const room = roomAt(st.odalar3d, l.x, l.z, l.elev ?? 0)
+      if (room?.id !== l.oda) patches[n.id] = { oda: room?.id }
+    }
+    if (Object.keys(patches).length) st.setLayout3d(patches as never)
+    return
+  }
+  if (d.kind !== 'nodes') return
   const patches: Record<string, { oda: string | undefined }> = {}
   for (const id of d.ids) {
     const l = st.nodes.find((n) => n.id === id)?.data.yerlesim3d

@@ -4,13 +4,15 @@ import type { CatalogEntry } from '../library/catalog'
 import { EQUIPMENT, PALETTE_GROUPS, defsInGroup } from '../library/equipment'
 import { tr } from '../i18n/tr'
 import { newId } from '../model/project'
-import type { EquipmentType } from '../model/types'
+import { ODA_TURLERI } from '../model/types'
+import type { EquipmentType, OdaTuru } from '../model/types'
 import { useStore } from '../store/useStore'
 import { useUiPrefs } from '../store/uiPrefs'
 import { Symbol } from './Symbol'
 
 export const DND_MIME = 'application/x-dcalculator-equipment'
 export const DND_CATALOG = 'application/x-dcalculator-catalog'
+export const DND_ROOM = 'application/x-dcalculator-room'
 
 /** Kimlikten katalog kaydını bulur (hazır + kullanıcı). */
 export const findCatalogEntry = (id: string): CatalogEntry | undefined => [...BUILTIN_CATALOG, ...loadUserCatalog()].find((c) => c.id === id)
@@ -76,7 +78,37 @@ function CatalogSection({ onAddCatalog }: { onAddCatalog: (c: CatalogEntry) => v
   )
 }
 
-export function Palette({ onAdd, onAddCatalog }: { onAdd: (type: EquipmentType) => void; onAddCatalog: (c: CatalogEntry) => void }) {
+const ROOM_COLOR: Record<OdaTuru, string> = { elektrik: '#9ca3af', salon: '#d1d5db', jenerator: '#a8a29e', dis: '#bcd5a0' }
+
+/** 3D sekmesinde: oda öğeleri sahneye sürüklenip bırakılır (veya tıklanınca görünümün ortasına eklenir). */
+function RoomSection({ onAddRoom }: { onAddRoom: (t: OdaTuru) => void }) {
+  return (
+    <section className="mb-4">
+      <h3 className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{tr.palette.rooms}</h3>
+      <p className="mb-1 text-[11px] text-slate-500">{tr.palette.roomsHint}</p>
+      <div className="flex flex-col gap-1">
+        {ODA_TURLERI.map((t) => (
+          <button
+            key={t}
+            type="button"
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData(DND_ROOM, t)
+              e.dataTransfer.effectAllowed = 'move'
+            }}
+            onClick={() => onAddRoom(t)}
+            className="flex cursor-grab items-center gap-2 rounded-md border border-slate-200 px-2 py-1.5 text-left text-sm hover:border-blue-400 hover:bg-blue-50"
+          >
+            <span className="inline-block h-4 w-6 rounded-sm border border-slate-400" style={{ background: ROOM_COLOR[t] }} />
+            <span className="truncate">{tr.v3d.roomTypes[t]}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+export function Palette({ onAdd, onAddCatalog, onAddRoom }: { onAdd: (type: EquipmentType) => void; onAddCatalog: (c: CatalogEntry) => void; onAddRoom?: (t: OdaTuru) => void }) {
   const open = useUiPrefs((s) => s.leftOpen)
   const setLeft = useUiPrefs((s) => s.setLeft)
   if (!open) return null
@@ -89,6 +121,7 @@ export function Palette({ onAdd, onAddCatalog }: { onAdd: (type: EquipmentType) 
         </button>
       </div>
       <p className="mb-3 text-xs text-slate-500">{tr.palette.hint}</p>
+      {onAddRoom && <RoomSection onAddRoom={onAddRoom} />}
       <CatalogSection onAddCatalog={onAddCatalog} />
       {PALETTE_GROUPS.map((g) => (
         <section key={g} className="mb-4">

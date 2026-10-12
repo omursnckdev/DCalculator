@@ -18,6 +18,8 @@ interface Prefs {
   colorMode: ColorMode
   snapStep: number
   hideWalls: boolean
+  /** Duvar opaklığı: 1 = opak, düşük = saydam (plan duvarları ve oda kutusu duvarları). */
+  wallOpacity: number
   showHeat: boolean
   showCables: boolean
   showLabels: boolean
@@ -25,7 +27,7 @@ interface Prefs {
 }
 
 const KEY = 'dcalculator:view3d'
-const DEFAULTS: Prefs = { colorMode: 'tur', snapStep: 0.1, hideWalls: false, showHeat: true, showCables: true, showLabels: false, quality: 'normal' }
+const DEFAULTS: Prefs = { colorMode: 'tur', snapStep: 0.1, hideWalls: false, wallOpacity: 0.4, showHeat: true, showCables: true, showLabels: false, quality: 'normal' }
 
 function loadPrefs(): Prefs {
   try {
@@ -34,6 +36,7 @@ function loadPrefs(): Prefs {
       colorMode: (['tur', 'doluluk', 'isi', 'enerji', 'grup'] as const).includes(raw.colorMode as never) ? (raw.colorMode as ColorMode) : DEFAULTS.colorMode,
       snapStep: typeof raw.snapStep === 'number' && raw.snapStep >= 0 && raw.snapStep <= 2 ? raw.snapStep : DEFAULTS.snapStep,
       hideWalls: typeof raw.hideWalls === 'boolean' ? raw.hideWalls : DEFAULTS.hideWalls,
+      wallOpacity: typeof raw.wallOpacity === 'number' && raw.wallOpacity >= 0.05 && raw.wallOpacity <= 1 ? raw.wallOpacity : DEFAULTS.wallOpacity,
       showHeat: typeof raw.showHeat === 'boolean' ? raw.showHeat : DEFAULTS.showHeat,
       showCables: typeof raw.showCables === 'boolean' ? raw.showCables : DEFAULTS.showCables,
       showLabels: typeof raw.showLabels === 'boolean' ? raw.showLabels : DEFAULTS.showLabels,
@@ -73,8 +76,8 @@ interface View3DState extends Prefs {
   marquee: { x0: number; y0: number; x1: number; y1: number } | null
   setMarquee: (m: { x0: number; y0: number; x1: number; y1: number } | null) => void
   /** Seçili tava veya boru (düğüm/hat seçimiyle birlikte olmaz). */
-  selObj: { kind: 'tray' | 'pipe'; id: string } | null
-  setSelObj: (o: { kind: 'tray' | 'pipe'; id: string } | null) => void
+  selObj: { kind: 'tray' | 'pipe' | 'room'; id: string } | null
+  setSelObj: (o: { kind: 'tray' | 'pipe' | 'room'; id: string } | null) => void
   /** Çizim modu: yeni tava/boru noktaları zemine tıklanarak eklenir (Enter: bitir, Esc: vazgeç). */
   draw: { kind: 'tray' | 'pipe'; pts: { x: number; z: number }[] } | null
   startDraw: (kind: 'tray' | 'pipe') => void
@@ -95,7 +98,7 @@ export const use3dStore = create<View3DState>((set, get) => ({
     set(p)
     const s = get()
     try {
-      localStorage.setItem(KEY, JSON.stringify({ colorMode: s.colorMode, snapStep: s.snapStep, hideWalls: s.hideWalls, showHeat: s.showHeat, showCables: s.showCables, showLabels: s.showLabels, quality: s.quality }))
+      localStorage.setItem(KEY, JSON.stringify({ colorMode: s.colorMode, snapStep: s.snapStep, hideWalls: s.hideWalls, wallOpacity: s.wallOpacity, showHeat: s.showHeat, showCables: s.showCables, showLabels: s.showLabels, quality: s.quality }))
     } catch {
       /* depolama kapalı */
     }

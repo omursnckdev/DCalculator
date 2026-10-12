@@ -18,7 +18,9 @@ import { toProjectEdges, toProjectNodes } from '../model/project'
 import type { Nokta3D, OdaTuru } from '../model/types'
 import { ODA_TURLERI } from '../model/types'
 import { useStore } from '../store/useStore'
-import { DND_CATALOG, DND_MIME, Palette, findCatalogEntry } from '../ui/Palette'
+import { DND_CATALOG, DND_MIME, DND_ROOM, Palette, findCatalogEntry } from '../ui/Palette'
+import { newRoomAt } from '../layout3d/roomEdit'
+import { setSelection } from './drag'
 import { saveBlob } from '../ui/fileio'
 import { EQUIPMENT_TYPES } from '../model/types'
 import type { EquipmentType } from '../model/types'
@@ -124,6 +126,20 @@ function Toolbar3D({ gpu }: { gpu: GpuInfo | null }) {
       </label>
       <Menu label={tr.v3d.show}>
         {check(tr.v3d.walls, !s.hideWalls, (v) => s.setPrefs({ hideWalls: !v }))}
+        <div className="flex flex-col gap-1" title={tr.v3d.wallOpacityHint}>
+          <span className="flex items-center justify-between gap-2">
+            {tr.v3d.wallOpacity}
+            <span className="tabular-nums text-slate-500">%{Math.round(s.wallOpacity * 100)}</span>
+          </span>
+          <input type="range" min={5} max={100} step={5} value={Math.round(s.wallOpacity * 100)} onChange={(e) => s.setPrefs({ wallOpacity: Number(e.target.value) / 100, hideWalls: false })} />
+          <span className="flex gap-1">
+            {([['wallSolid', 1], ['wallSemi', 0.4], ['wallClear', 0.12]] as const).map(([k, v]) => (
+              <button key={k} type="button" className={`flex-1 rounded border px-1 py-0.5 text-[11px] ${Math.abs(s.wallOpacity - v) < 0.01 ? 'border-blue-500 bg-blue-50' : 'border-slate-300 hover:bg-slate-50'}`} onClick={() => s.setPrefs({ wallOpacity: v, hideWalls: false })}>
+                {tr.v3d[k]}
+              </button>
+            ))}
+          </span>
+        </div>
         {check(tr.v3d.heat, s.showHeat, (v) => s.setPrefs({ showHeat: v }))}
         {check(tr.v3d.cables, s.showCables, (v) => s.setPrefs({ showCables: v }))}
         {check(tr.v3d.labels, s.showLabels, (v) => s.setPrefs({ showLabels: v }))}
@@ -344,6 +360,7 @@ function RoomsPanel() {
   const add = useStore((st) => st.addOda3d)
   const update = useStore((st) => st.updateOda3d)
   const remove = useStore((st) => st.removeOda3d)
+  const selObj = use3dStore((s) => s.selObj)
   const [open, setOpen] = useState(false)
   const inp = 'w-14 rounded border border-slate-300 px-1 py-0.5 text-right text-xs'
   return (
@@ -356,10 +373,13 @@ function RoomsPanel() {
           {tr.v3d.addRoom}
         </button>
       </div>
-      {open &&
-        rooms.map((r) => (
-          <div key={r.id} className="mt-1 grid grid-cols-[1fr_auto] items-center gap-1 border-t border-slate-100 pt-1">
+      {(open || selObj?.kind === 'room') &&
+        rooms
+          .filter((r) => open || (selObj?.kind === 'room' && selObj.id === r.id))
+          .map((r) => (
+          <div key={r.id} className={`mt-1 grid grid-cols-[1fr_auto] items-center gap-1 border-t pt-1 ${selObj?.kind === 'room' && selObj.id === r.id ? 'border-blue-300 bg-blue-50' : 'border-slate-100'}`}>
             <div className="flex flex-wrap items-center gap-1">
+              <button type="button" className={btn} title={tr.v3d.roomSelect} onClick={() => { setSelection([]); use3dStore.setState({ selObj: { kind: 'room', id: r.id } }) }}>◎</button>
               <input className="w-28 rounded border border-slate-300 px-1 py-0.5" value={r.ad} title={tr.v3d.roomName} onChange={(e) => update(r.id, { ad: e.target.value })} />
               <select className="rounded border border-slate-300 px-1 py-0.5" value={r.tur} title={tr.v3d.roomType} onChange={(e) => update(r.id, { tur: e.target.value as OdaTuru })}>
                 {ODA_TURLERI.map((t) => (
@@ -647,6 +667,14 @@ export function View3D() {
     const z = snap(g?.z ?? 0, step || 0.1)
     addNode3d(type, x, z, entry ? { ad: entry.ad, params: entry.params } : undefined)
   }
+  /** Yeni oda: bırakılan nokta merkez; 1. kat süzgecindeyken üst kat kotunda açılır. Oluşan oda seçilir (tutamaçlar görünür). */
+  const placeRoom = (g: { x: number; z: number } | null, tur: OdaTuru) => {
+    const st = useStore.getState()
+    const v = use3dStore.getState()
+    const id = st.addOda3d(newRoomAt(st.odalar3d, tur, g?.x ?? 0, g?.z ?? 0, v.snapStep, v.floor === 'kat1'))
+    setSelection([])
+    use3dStore.setState({ selObj: { kind: 'room', id } })
+  }
   const [host, setHost] = useState<HTMLDivElement | null>(null)
 
   if (!ok) {
@@ -655,7 +683,7 @@ export function View3D() {
   const overlapCount = overlaps.size
   return (
     <div className="flex min-h-0 min-w-0 flex-1">
-      <Palette onAdd={(t) => place(centerGround(host), t)} onAddCatalog={(c) => place(centerGround(host), c.type, c)} />
+      <Palette onAdd={(t) => place(centerGround(host), t)} onAddCatalog={(c) => place(centerGround(host), c.type, c)} onAddRoom={(t) => placeRoom(centerGround(host), t)} />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Toolbar3D gpu={gpu} />
         <div
@@ -668,6 +696,8 @@ export function View3D() {
           onDrop={(e) => {
             e.preventDefault()
             const g = pickGround(e.clientX, e.clientY)
+            const roomType = e.dataTransfer.getData(DND_ROOM) as OdaTuru
+            if (ODA_TURLERI.includes(roomType)) return placeRoom(g, roomType)
             const cat = findCatalogEntry(e.dataTransfer.getData(DND_CATALOG))
             if (cat) return place(g, cat.type, cat)
             const type = e.dataTransfer.getData(DND_MIME) as EquipmentType

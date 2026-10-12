@@ -10,6 +10,7 @@ import { useStore } from '../store/useStore'
 import { portOf } from '../model/project'
 import { portCount } from '../library/equipment'
 import type { EquipmentNode } from '../model/types'
+import { ModelSection } from './ModelSection'
 import { STATUS_BG, STATUS_COLOR, fmtNum } from './status'
 import { STATE_COLOR, useInputs } from './useInputs'
 
@@ -84,6 +85,7 @@ function Pos3D({ node }: { node: EquipmentNode }) {
     </Row>
   )
   return (
+    <>
     <details className="mb-3 rounded border border-slate-200 p-2">
       <summary className="cursor-pointer text-xs font-semibold">{tr.v3d.pos3d}</summary>
       <div className="mt-2 grid grid-cols-2 gap-x-2">
@@ -96,6 +98,8 @@ function Pos3D({ node }: { node: EquipmentNode }) {
         {dim(tr.v3d.dimH, 'y')}
       </div>
     </details>
+    <ModelSection node={node} />
+    </>
   )
 }
 

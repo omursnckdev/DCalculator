@@ -4,10 +4,14 @@ import { memo, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { isCoolingSystem } from '../engine/coolingUnits'
 import { nodeColor } from '../layout3d/colors'
+import { modelSpecOf } from '../layout3d/customModel'
+import type { ModelSpec } from '../layout3d/customModel'
 import { floorVisible } from '../layout3d/floors'
+import { useModelUrl } from '../store/modelStore'
 import { clearanceOf, rackCount } from '../layout3d/dims'
 import type { EquipmentType } from '../model/types'
 import { tick } from './anim'
+import { CustomModel } from './CustomModel'
 import { beginNodeDrag, drag, groundFromRay } from './drag'
 import { addDrawPoint } from './drawing'
 import { bodyMaterial, equipGeometry, fixedMaterial } from './geoms'
@@ -67,6 +71,10 @@ export interface EqProps {
   coolAffected: boolean
   running: boolean
   battery: boolean
+  /** Özel GLB model (kütüphane kimliği; boşsa yerleşik model), sığdırma ve ek dönüş. */
+  model: string
+  modelFit: ModelSpec['fit']
+  modelRot: number
 }
 
 /** Tek ekipman. Yalnız ilkel (karşılaştırılabilir) prop alır: sürüklerken sadece taşınan ekipman yeniden çizilir. */
@@ -75,6 +83,7 @@ const Equipment = memo(function Equipment(p: EqProps) {
   const setHover = use3dStore((s) => s.setHover)
   const geo = useMemo(() => equipGeometry(p.type, p.g, p.d, p.h, p.count, p.variant), [p.type, p.g, p.d, p.h, p.count, p.variant])
   const clearance = clearanceOf(p.type)
+  const modelSrc = useModelUrl(p.model)
 
   const onDown = (e: ThreeEvent<PointerEvent>) => {
     if (e.button !== 0) return
@@ -97,6 +106,13 @@ const Equipment = memo(function Equipment(p: EqProps) {
     document.body.style.cursor = 'grabbing'
   }
 
+  const body = (
+    <>
+      <mesh geometry={geo.main} material={bodyMaterial(p.color)} />
+      {geo.fixed && <mesh geometry={geo.fixed} material={fixedMaterial} />}
+    </>
+  )
+
   return (
     <group
       position={[p.x, p.elev, p.z]}
@@ -116,8 +132,11 @@ const Equipment = memo(function Equipment(p: EqProps) {
         document.body.style.cursor = ''
       }}
     >
-      <mesh geometry={geo.main} material={bodyMaterial(p.color)} />
-      {geo.fixed && <mesh geometry={geo.fixed} material={fixedMaterial} />}
+      {modelSrc ? (
+        <CustomModel url={modelSrc} spec={{ id: p.model, fit: p.modelFit, rot: p.modelRot }} g={p.g} d={p.d} h={p.h} color={p.color} fallback={body} />
+      ) : (
+        body
+      )}
       {(p.selected || p.overlap) && <Frame g={p.g} h={p.h} d={p.d} color={p.overlap ? '#ef4444' : '#2563eb'} />}
       {hovered && !p.selected && !p.overlap && <Frame g={p.g} h={p.h} d={p.d} color="#64748b" pad={0.1} opacity={0.9} />}
       {p.selected && (clearance.front > 0 || clearance.back > 0) && (
@@ -145,6 +164,7 @@ export function EquipmentLayer() {
         if (!b || !floorVisible(floor, b.elev)) return null
         const r = sc.analysis.nodes[n.id]
         const cooling = sc.analysis.cooling
+        const ms = modelSpecOf(n.params)
         return (
           <Equipment
             key={n.id}
@@ -169,6 +189,9 @@ export function EquipmentLayer() {
             coolAffected={!!cooling && cooling.deficitKw > 0.5 && !!r?.energized && !r.failed && isCoolingSystem(n)}
             running={!!r?.running}
             battery={!!r?.onBattery && !r.failed}
+            model={ms?.id ?? ''}
+            modelFit={ms?.fit ?? 'gerdir'}
+            modelRot={ms?.rot ?? 0}
           />
         )
       })}

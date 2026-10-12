@@ -194,7 +194,7 @@ export function Controllers() {
         return
       }
       const d = drag.current
-      const g = groundOf(e, d?.kind === 'wp' || d?.kind === 'nodes' ? d.y : 0)
+      const g = groundOf(e, d?.kind === 'wp' || d?.kind === 'nodes' || d?.kind === 'room' ? d.y : 0)
       if (g && !d) drag.last = g
       if (!d || !g) return
       if (ctl) ctl.enabled = false
@@ -303,6 +303,7 @@ export function Controllers() {
         const so = st.selObj
         if (so) {
           if (so.kind === 'tray') useStore.getState().removeTava3d(so.id)
+          else if (so.kind === 'room') useStore.getState().removeOda3d(so.id)
           else useStore.getState().removeBoru3d(so.id)
           st.setSelObj(null)
         } else useStore.getState().deleteSelection()
