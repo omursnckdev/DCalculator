@@ -97,6 +97,7 @@ const loadFields: FieldDef[] = [
   categoryField,
   voltage,
   heatField,
+  n('thd', A.thd, '%', { min: 0, max: 150, step: 1 }),
 ]
 
 const defs: EquipmentDef[] = [
@@ -126,6 +127,7 @@ const defs: EquipmentDef[] = [
       bostaKayip: 3,
       yukKayip: 22,
       isiKonum: 'elektrik',
+      eddyOran: 10,
     },
     fields: [
       n('nominalKva', A.nominalKva, 'kVA', { min: 0, step: 50 }),
@@ -134,6 +136,7 @@ const defs: EquipmentDef[] = [
       n('uk', A.uk, '%', { min: 0, step: 0.1 }),
       n('bostaKayip', A.bostaKayip, 'kW', { min: 0, step: 0.1 }),
       n('yukKayip', A.yukKayip, 'kW', { min: 0, step: 0.5 }),
+      n('eddyOran', A.eddyOran, '%', { min: 0, max: 100, step: 1 }),
       heatField,
     ],
     summary: (p) =>
@@ -306,6 +309,7 @@ const defs: EquipmentDef[] = [
       verim100: 96.3,
       bataryaDk: 10,
       kisaDevreKati: 1.5,
+      girisThd: 0,
       isiKonum: 'elektrik',
     },
     fields: [
@@ -330,6 +334,7 @@ const defs: EquipmentDef[] = [
       n('verim100', A.verim100, '%', { min: 50, max: 100, step: 0.1 }),
       n('bataryaDk', A.bataryaDk, 'dk', { min: 0, step: 1 }),
       n('kisaDevreKati', A.kisaDevreKati, '× In', { min: 0, step: 0.1 }),
+      n('girisThd', A.girisThd, '%', { min: 0, max: 150, step: 1 }),
       heatField,
     ],
     summary: (p) =>
@@ -364,7 +369,7 @@ const defs: EquipmentDef[] = [
     hasInput: true,
     hasOutput: false,
     color: '#dc2626',
-    defaults: { kuruluKw: 100, pf: 0.95, df: 1, kategori: 'IT', gerilim: 400, isiKonum: 'salon' },
+    defaults: { kuruluKw: 100, pf: 0.95, df: 1, kategori: 'IT', gerilim: 400, isiKonum: 'salon', thd: 0 },
     fields: loadFields,
     summary: loadSummary,
   },
@@ -375,8 +380,8 @@ const defs: EquipmentDef[] = [
     hasInput: true,
     hasOutput: false,
     color: '#ea580c',
-    defaults: { kuruluKw: 200, pf: 0.85, df: 0.8, kategori: 'Mekanik', gerilim: 400, isiKonum: 'dis' },
-    fields: loadFields,
+    defaults: { kuruluKw: 200, pf: 0.85, df: 0.8, kategori: 'Mekanik', gerilim: 400, isiKonum: 'dis', thd: 0, sogutmaKw: 0 },
+    fields: [...loadFields, n('sogutmaKw', A.sogutmaKw, 'kW', { min: 0, step: 10 })],
     summary: loadSummary,
   },
   {
@@ -387,7 +392,7 @@ const defs: EquipmentDef[] = [
     hasOutput: false,
     color: '#ca8a04',
     // Plan yalnız IT/Mekanik kategorisi tanımlıyor; yardımcı yükler şimdilik Mekanik (Açık Soru 6).
-    defaults: { kuruluKw: 20, pf: 0.9, df: 0.8, kategori: 'Mekanik', gerilim: 400, isiKonum: 'salon' },
+    defaults: { kuruluKw: 20, pf: 0.9, df: 0.8, kategori: 'Mekanik', gerilim: 400, isiKonum: 'salon', thd: 0 },
     fields: loadFields,
     summary: loadSummary,
   },
@@ -398,7 +403,7 @@ const defs: EquipmentDef[] = [
     hasInput: true,
     hasOutput: false,
     color: '#9333ea',
-    defaults: { kuruluKw: 50, pf: 0.9, df: 1, kategori: 'Mekanik', gerilim: 400, isiKonum: 'salon' },
+    defaults: { kuruluKw: 50, pf: 0.9, df: 1, kategori: 'Mekanik', gerilim: 400, isiKonum: 'salon', thd: 0 },
     fields: loadFields,
     summary: loadSummary,
   },

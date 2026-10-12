@@ -356,6 +356,12 @@ export function PropertiesPanel() {
                 <Stat label={tr.results.total} value={`${fmtNum(nodeResult.totalKw)} kW`} />
                 <Stat label={tr.results.kva} value={`${fmtNum(nodeResult.kva)} kVA`} />
                 <Stat label={tr.results.current} value={`${fmtNum(nodeResult.currentA)} A`} />
+                {nodeResult.kFactor !== undefined && nodeResult.kFactor > 1.01 && (
+                  <>
+                    <Stat label={tr.results.kFactor} value={fmtNum(nodeResult.kFactor, 2)} />
+                    <Stat label={tr.results.derating} value={`%${fmtNum((nodeResult.derating ?? 1) * 100, 1)}`} />
+                  </>
+                )}
                 {nodeResult.iscKa !== undefined && <Stat label={tr.results.isc} value={`${fmtNum(nodeResult.iscKa, 1)} kA`} />}
                 {nodeResult.chainDropPct !== undefined && nodeResult.chainDropPct > 0 && (
                   <Stat label={tr.results.chainDrop} value={`%${fmtNum(nodeResult.chainDropPct, 2)}`} />

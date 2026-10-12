@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { kwToTr } from '../engine'
+import { kwToTr, rideThroughMinutes } from '../engine'
 import type { LossItem } from '../engine'
 import { tr } from '../i18n/tr'
 import { useAnalysis } from '../store/useAnalysis'
+import { useStore } from '../store/useStore'
 import { fmtNum } from './status'
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
@@ -97,6 +98,74 @@ function LossItems({ items }: { items: LossItem[] }) {
   )
 }
 
+function NumInput({ label, value, onChange, step = 1 }: { label: string; value: number; onChange: (v: number) => void; step?: number }) {
+  return (
+    <label className="flex items-center justify-between gap-2 text-xs text-slate-600">
+      {label}
+      <input
+        type="number"
+        className="w-24 rounded border border-slate-300 px-1.5 py-0.5 text-right text-sm"
+        value={value}
+        step={step}
+        onChange={(e) => {
+          const v = Number(e.target.value)
+          if (Number.isFinite(v) && v > 0) onChange(v)
+        }}
+      />
+    </label>
+  )
+}
+
+/** Soğutma kapasitesi ve ihtiyaç; açık varsa salon sıcaklığının izinli artışa ulaşma süresi. */
+function CoolingCard() {
+  const { cooling } = useAnalysis()
+  const s = useStore((st) => st.ayarlar)
+  const setAyarlar = useStore((st) => st.setAyarlar)
+  const fullMin = cooling ? rideThroughMinutes(cooling.demandKw, s) : Infinity
+  return (
+    <Card title={tr.isi.coolTitle}>
+      {!cooling ? (
+        <p className="text-sm text-slate-500">{tr.isi.coolNone}</p>
+      ) : (
+        <>
+          <table className="text-sm">
+            <tbody>
+              <Row label={tr.isi.coolCap} kw={cooling.capacityKw} tr />
+              <Row label={tr.isi.coolNeed} kw={cooling.demandKw} tr />
+              {cooling.deficitKw > 0.5 ? <Row label={tr.isi.coolDeficit} kw={cooling.deficitKw} tr bold /> : null}
+              <tr>
+                <td className="py-0.5 pr-6 text-slate-600">{tr.isi.coolReserve}</td>
+                <td className={`py-0.5 text-right tabular-nums ${cooling.deficitKw > 0.5 ? 'font-semibold text-red-600' : ''}`}>
+                  {cooling.reservePct === undefined ? '—' : `%${fmtNum(cooling.reservePct, 1)}`}
+                </td>
+              </tr>
+              {cooling.deficitKw > 0.5 && (
+                <tr>
+                  <td className="py-0.5 pr-6 text-slate-600">{tr.isi.coolRide}</td>
+                  <td className="py-0.5 text-right tabular-nums text-red-600">
+                    ≈ {fmtNum(rideThroughMinutes(cooling.deficitKw, s), 0)} dk
+                  </td>
+                </tr>
+              )}
+              <tr>
+                <td className="py-0.5 pr-6 text-slate-600">{tr.isi.coolFull}</td>
+                <td className="py-0.5 text-right tabular-nums">≈ {Number.isFinite(fullMin) ? fmtNum(fullMin, 1) : '—'} dk</td>
+              </tr>
+            </tbody>
+          </table>
+          {cooling.deficitKw <= 0.5 && <p className="mt-1 text-xs text-green-700">{tr.isi.coolOk}</p>}
+          <p className="mt-1 text-xs text-slate-500">{tr.isi.coolRideNote(String(s.izinliArtis))}</p>
+        </>
+      )}
+      <div className="mt-3 space-y-1 border-t border-slate-100 pt-2">
+        <NumInput label={tr.isi.coolVolume} value={s.salonHacmi} step={100} onChange={(v) => setAyarlar({ salonHacmi: v })} />
+        <NumInput label={tr.isi.coolMass} value={s.isilKutle} onChange={(v) => setAyarlar({ isilKutle: v })} />
+        <NumInput label={tr.isi.coolRiseLimit} value={s.izinliArtis} onChange={(v) => setAyarlar({ izinliArtis: v })} />
+      </div>
+    </Card>
+  )
+}
+
 export function SummaryView() {
   const { totals, heat, losses, lossItems, pue } = useAnalysis()
   const cooling = heat.salonKw + heat.elektrikKw
@@ -150,6 +219,8 @@ export function SummaryView() {
           </table>
           <p className="mt-2 text-xs text-slate-500">{tr.isi.trNote}</p>
         </Card>
+
+        <CoolingCard />
 
         <LossItems items={lossItems} />
       </div>

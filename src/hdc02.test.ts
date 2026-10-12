@@ -238,3 +238,22 @@ describe('HDC02 PL1: adım adım simülasyon', () => {
     expect(p.edges.filter((e) => e.target === 'sync')).toHaveLength(2)
   })
 })
+
+describe('HDC02 PL1: soğutma ve kısa devre', () => {
+  it('iki chiller: normalde yeterli; bir chiller kaybında hâlâ yeterli, ikisi kaybında açık', () => {
+    const a = analyze(p)
+    expect(a.cooling).toBeDefined()
+    expect(a.cooling!.deficitKw).toBe(0)
+    const one = analyze(p, undefined, { id: 's', ad: 's', failedNodes: ['acc1'], edgeStates: {}, nodeStates: {} })
+    expect(one.cooling!.deficitKw).toBe(0)
+    const both = analyze(p, undefined, { id: 's', ad: 's', failedNodes: ['acc1', 'acc2'], edgeStates: {}, nodeStates: {} })
+    expect(both.cooling!.deficitKw).toBeGreaterThan(1000)
+  })
+
+  it('MSB barasında kısa devre akımı hesaplanır (TX + jeneratör katkıları, en kötü durum)', () => {
+    const a = analyze(p)
+    expect(a.nodes.msb.iscKa).toBeGreaterThan(40)
+    expect(a.nodes.msb.iscKa).toBeLessThan(100)
+    expect(a.nodes.udp1.iscKa!).toBeLessThan(a.nodes.msb.iscKa!)
+  })
+})

@@ -17,6 +17,7 @@ const KIND_STYLE: Record<string, string> = {
   genStart: 'bg-amber-50 text-amber-800',
   battery: 'bg-amber-50 text-amber-800',
   overload: 'bg-red-50 text-red-700',
+  cooling: 'bg-sky-50 text-sky-800',
   cleared: 'bg-green-100 text-green-800',
   genStop: 'bg-slate-100 text-slate-700',
 }
@@ -32,6 +33,7 @@ const KIND_ICON: Record<string, string> = {
   genStart: '⚙',
   battery: '🔋',
   overload: '⚠',
+  cooling: '❄',
   cleared: '🔧',
   genStop: '■',
 }

@@ -5,6 +5,7 @@ import type { EquipmentType, HeatLocation, ProjectEdge, ProjectNode, Scenario } 
 import { resolveAutoClosed, stagingStandby, withDefaults } from './automation'
 import type { SimOptions } from './automation'
 import { energize } from './energize'
+import { deratingFactor, harmonicLossFactor, kFactor } from './harmonics'
 import { enrichStudies } from './networkStudies'
 import { switchState } from './switches'
 import { DEFAULT_THRESHOLDS, statusOf } from './thresholds'
@@ -41,6 +42,11 @@ function addScaled(into: Demand, d: Demand, k: number): void {
   for (const key of ['it', 'mech', 'loss'] as const) {
     into[key].p += d[key].p * k
     into[key].q += d[key].q * k
+  }
+  if (d.harm) {
+    const h = into.harm ?? (into.harm = { s2: 0, fs2: 0 })
+    h.s2 += d.harm.s2 * k * k
+    h.fs2 += d.harm.fs2 * k * k
   }
 }
 
@@ -350,7 +356,11 @@ function analyzeCore(
       const p = kw * df
       const q = p * tanPhi(pf)
       const bucket = n.params.kategori === 'IT' || (n.params.kategori === undefined && n.type === 'itYuku') ? 'it' : 'mech'
-      if (en) out[bucket] = { p, q }
+      if (en) {
+        out[bucket] = { p, q }
+        const s2 = p * p + q * q
+        out.harm = { s2, fs2: s2 * kFactor(param(n, 'thd')) }
+      }
       else unservedKw = p
       explain.push({ label: tr.hesap.peakKw, formula: `${fmt(kw)} kW × ${fmt(df)}`, result: `${fmt(p)} kW` })
       explain.push({
@@ -396,6 +406,8 @@ function analyzeCore(
     // Giriş talebi: UPS ve trafoda kendi kaybı eklenir, diğerlerinde aynıdır.
     let input: Demand
     let ownLoss = 0
+    let kF: number | undefined
+    let derate: number | undefined
     if (n.type === 'ups') {
       const girisPf = param(n, 'girisPf')
       const o = sumPQ(out)
@@ -410,7 +422,14 @@ function analyzeCore(
       const pIn = o.p / eta
       const qIn = pIn * tanPhi(girisPf)
       ownLoss = pIn - o.p
-      input = { it: { ...out.it }, mech: { ...out.mech }, loss: { p: out.loss.p + ownLoss, q: out.loss.q + (qIn - o.q) } }
+      // Evirici UPS: yukarı akıştaki harmonik, UPS giriş THD'sine göre belirlenir (yük harmonikleri izole edilir).
+      const sIn2 = pIn * pIn + qIn * qIn
+      input = {
+        it: { ...out.it },
+        mech: { ...out.mech },
+        loss: { p: out.loss.p + ownLoss, q: out.loss.q + (qIn - o.q) },
+        harm: { s2: sIn2, fs2: sIn2 * kFactor(param(n, 'girisThd')) },
+      }
       // Üç bileşenin toplamı pIn ve qIn'e eşit olmalı: loss.q farkı kapatır.
       explain.push({ label: tr.hesap.upsInput, formula: `${fmt(o.p)} kW / ${fmt(eta, 4)}`, result: `${fmt(pIn)} kW` })
       explain.push({ label: tr.hesap.upsLoss, formula: `${fmt(pIn)} − ${fmt(o.p)}`, result: `${fmt(ownLoss)} kW` })
@@ -424,14 +443,20 @@ function analyzeCore(
       const ratio = sn > 0 ? kvaOf(sumPQ(out)) / sn : 0
       const p0 = param(n, 'bostaKayip')
       const pk = param(n, 'yukKayip')
-      const lossP = p0 + pk * ratio * ratio
+      // Harmonik: aşağı akıştaki yüklerin güç ağırlıklı K-faktörü; yük kaybı (1+K·Pec)/(1+Pec) ile artar.
+      const pecR = param(n, 'eddyOran') / 100
+      const hk = out.harm && out.harm.s2 > 0 ? out.harm.fs2 / out.harm.s2 : 1
+      kF = hk
+      derate = deratingFactor(pecR, hk)
+      const hf = harmonicLossFactor(pecR, hk)
+      const lossP = p0 + pk * ratio * ratio * hf
       // Reaktif kayıp: kısa devre reaktansı üzerinden, uk · Sn · (S/Sn)² (mıknatıslanma ihmal).
       const lossQ = (param(n, 'uk') / 100) * sn * ratio * ratio
       ownLoss = lossP
-      input = { it: { ...out.it }, mech: { ...out.mech }, loss: { p: out.loss.p + lossP, q: out.loss.q + lossQ } }
+      input = { it: { ...out.it }, mech: { ...out.mech }, loss: { p: out.loss.p + lossP, q: out.loss.q + lossQ }, harm: out.harm }
       explain.push({
         label: tr.hesap.trafoLoss,
-        formula: `${fmt(p0)} + ${fmt(pk)} × (${fmt(ratio, 4)})²`,
+        formula: hf > 1 + 1e-9 ? `${fmt(p0)} + ${fmt(pk)} × (${fmt(ratio, 4)})² × ${fmt(hf, 4)} (K=${fmt(hk, 2)})` : `${fmt(p0)} + ${fmt(pk)} × (${fmt(ratio, 4)})²`,
         result: `${fmt(lossP)} kW`,
       })
       explain.push({
@@ -448,7 +473,7 @@ function analyzeCore(
       const rMilli = param(n, 'baraDirenc') > 0 ? param(n, 'baraDirenc') : nominal > 0 ? PANEL_BUS_R_COEFF / nominal : 0
       const lossP = (3 * cur * cur * (rMilli / 1000) * len) / 1000
       ownLoss = lossP
-      input = { it: { ...out.it }, mech: { ...out.mech }, loss: { p: out.loss.p + lossP, q: out.loss.q } }
+      input = { it: { ...out.it }, mech: { ...out.mech }, loss: { p: out.loss.p + lossP, q: out.loss.q }, harm: out.harm }
       explain.push({ label: tr.hesap.panelR, formula: param(n, 'baraDirenc') > 0 ? tr.alan.baraDirenc : `${PANEL_BUS_R_COEFF} / ${fmt(nominal)} A`, result: `${fmt(rMilli, 4)} mΩ/m` })
       explain.push({ label: tr.hesap.panelLoss, formula: `3 × ${fmt(cur)}² × ${fmt(rMilli, 4)} mΩ/m × ${fmt(len)} m / 10⁶`, result: `${fmt(lossP, 3)} kW` })
     } else {
@@ -472,7 +497,8 @@ function analyzeCore(
     const capacity: NodeResult['capacity'] = {}
     const ratios: number[] = []
     if (n.type === 'trafo' || n.type === 'jenerator' || n.type === 'ups') {
-      const capKva = param(n, 'nominalKva')
+      // Trafo: harmonikli yükte kullanılabilir kapasite K-faktörüne göre düşer.
+      const capKva = param(n, 'nominalKva') * (n.type === 'trafo' ? derate ?? 1 : 1)
       capacity.kva = capKva
       if (capKva > 0) {
         ratios.push(kva / capKva)
@@ -517,6 +543,8 @@ function analyzeCore(
       inputKw: i.p,
       inputKva: kvaOf(i),
       ownLossKw: ownLoss,
+      kFactor: kF,
+      derating: derate,
       weight: weight.get(id) ?? 0,
       capacity: Object.keys(capacity).length ? capacity : undefined,
       loadingPct,

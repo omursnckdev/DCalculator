@@ -223,5 +223,18 @@ export function enrichStudies(model: Model, a: Analysis, th: Thresholds, scenari
       }
     }
   }
+  // 4) Soğutma yeterliliği (soğutma kapasitesi tanımlı birim varsa).
+  const units = model.nodes
+    .filter((n) => n.type === 'mekanikYuk' && num(n, 'sogutmaKw') > 0)
+    .map((n) => ({ id: n.id, name: n.ad, kw: num(n, 'sogutmaKw'), energized: !!a.nodes[n.id]?.energized && !a.nodes[n.id]?.failed }))
+  if (units.length > 0) {
+    const capacityKw = units.reduce((s, u) => s + (u.energized ? u.kw : 0), 0)
+    const demandKw = a.heat.salonKw + a.heat.elektrikKw
+    const deficitKw = Math.max(0, demandKw - capacityKw)
+    a.cooling = { capacityKw, demandKw, deficitKw, reservePct: demandKw > 0 ? ((capacityKw - demandKw) / demandKw) * 100 : undefined, units }
+    if (deficitKw > 0.5) {
+      issues.push({ severity: 'warning', message: tr.analiz.coolingShort(Math.round(demandKw).toLocaleString('tr-TR'), Math.round(capacityKw).toLocaleString('tr-TR')) })
+    }
+  }
   a.issues.push(...issues)
 }

@@ -1877,7 +1877,7 @@
    "ad": "ACC-01 Module-1 Chiller-1",
    "etiket": "ACC-01",
    "grup": "",
-   "notlar": "Varsayım: şemada değer yok; 630 A MCCB: 0.75 × √3 × 415 V × 630 A × cosφ 0.85 ≈ 289 kW.",
+   "notlar": "Varsayım: şemada değer yok; 630 A MCCB: 0.75 × √3 × 415 V × 630 A × cosφ 0.85 ≈ 289 kW. Varsayım: soğutma kapasitesi = elektrik gücü × COP 5 (termal ≈ 1445 kW).",
    "x": 3703,
    "y": 1034,
    "params": {
@@ -1887,6 +1887,7 @@
     "kategori": "Mekanik",
     "gerilim": 415,
     "isiKonum": "dis",
+    "sogutmaKw": 1445,
     "girisSayisi": 1
    }
   },
@@ -1916,7 +1917,7 @@
    "ad": "ACC-02 Module-1 Chiller-2",
    "etiket": "ACC-02",
    "grup": "",
-   "notlar": "Varsayım: şemada değer yok; 630 A MCCB: 0.75 × √3 × 415 V × 630 A × cosφ 0.85 ≈ 289 kW.",
+   "notlar": "Varsayım: şemada değer yok; 630 A MCCB: 0.75 × √3 × 415 V × 630 A × cosφ 0.85 ≈ 289 kW. Varsayım: soğutma kapasitesi = elektrik gücü × COP 5 (termal ≈ 1445 kW).",
    "x": 3796,
    "y": 1119,
    "params": {
@@ -1926,6 +1927,7 @@
     "kategori": "Mekanik",
     "gerilim": 415,
     "isiKonum": "dis",
+    "sogutmaKw": 1445,
     "girisSayisi": 1
    }
   },

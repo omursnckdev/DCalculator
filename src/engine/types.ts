@@ -18,6 +18,8 @@ export interface Demand {
   mech: PQ
   /** Aşağı yöndeki kayıplar (UPS, trafo, kablo/busbar). */
   loss: PQ
+  /** Harmonik ağırlıkları: Σ S² ve Σ S²·K (K-faktörü), kVA² cinsinden; ortalama K = fs2/s2. */
+  harm?: { s2: number; fs2: number }
 }
 
 export type Severity = 'error' | 'warning'
@@ -56,6 +58,10 @@ export interface NodeResult {
   running?: boolean
   /** Kaynaktan bu düğüme toplam gerilim düşümü (%), canlı yol boyunca en kötü. */
   chainDropPct?: number
+  /** Trafo: aşağı akıştaki yüklerin güç ağırlıklı K-faktörü. */
+  kFactor?: number
+  /** Trafo: harmonikli yük için kullanılabilir kapasite çarpanı (0..1). */
+  derating?: number
   /** Üç faz simetrik kısa devre akımı (kA), tüm kaynak katkıları. */
   iscKa?: number
   /** Bir kaynaktan canlı bir yolla besleniyor mu (arıza ve açık anahtarlar dahil). */
@@ -136,6 +142,16 @@ export interface LossItem {
   location: HeatLocation
 }
 
+/** Soğutma yeterliliği: soğutma birimlerinin enerjili kapasitesi ile salon + elektrik odası ısı yükü. */
+export interface CoolingSummary {
+  capacityKw: number
+  demandKw: number
+  deficitKw: number
+  /** (kapasite − ihtiyaç) / ihtiyaç, %. İhtiyaç 0 ise tanımsız. */
+  reservePct?: number
+  units: { id: string; name: string; kw: number; energized: boolean }[]
+}
+
 export interface Totals {
   itKw: number
   mechKw: number
@@ -163,6 +179,8 @@ export interface Analysis {
   losses: LossBreakdown
   /** Tek tek kayıp kalemleri (kayba göre azalan). Toplamı `losses` toplamına eşittir. */
   lossItems: LossItem[]
+  /** Soğutma birimi tanımlıysa soğutma yeterliliği. */
+  cooling?: CoolingSummary
   /** Yaklaşık PUE = toplam tesis gücü / IT gücü; IT yoksa tanımsız. */
   pue?: number
 }

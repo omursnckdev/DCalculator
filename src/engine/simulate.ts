@@ -3,7 +3,10 @@ import { EQUIPMENT } from '../library/equipment'
 import type { ProjectNode, Scenario } from '../model/types'
 import { FULL_AUTOMATION } from './automation'
 import type { SimOptions } from './automation'
+import type { ProjectSettings } from '../model/settings'
+import { DEFAULT_SETTINGS } from '../model/settings'
 import { analyze } from './analyze'
+import { rideThroughMinutes } from './cooling'
 import { DEFAULT_THRESHOLDS } from './thresholds'
 import type { Analysis, Model, Thresholds } from './types'
 
@@ -32,6 +35,7 @@ export type SimChangeKind =
   | 'battery'
   | 'overload'
   | 'cleared'
+  | 'cooling'
   | 'genStop'
 
 export interface SimChange {
@@ -121,6 +125,7 @@ export function diffAnalyses(
   cur: Analysis,
   faultNames: string[] = [],
   reference?: Analysis,
+  settings: ProjectSettings = DEFAULT_SETTINGS,
 ): { changes: SimChange[]; changedNodes: string[] } {
   const changes: SimChange[] = []
   const changed = new Set<string>()
@@ -181,6 +186,15 @@ export function diffAnalyses(
   const at = faultNames.length // arıza satırları hep en üstte
   if (lostKw > 0.5) changes.splice(at, 0, { kind: 'lost', text: tr.sim.lostLoad(fmt(lostKw), list(lost)) })
   else if (lostKw < -0.5) changes.splice(at, 0, { kind: 'restored', text: tr.sim.restoredLoad(fmt(-lostKw), list(back)) })
+  if (cur.cooling && prev.cooling) {
+    const d0 = prev.cooling.deficitKw
+    const d1 = cur.cooling.deficitKw
+    if (d1 > 0.5 && d0 <= 0.5) {
+      changes.push({ kind: 'cooling', text: tr.sim.coolingShort(fmt(d1), fmt(d1 / 3.517, 1), fmt(rideThroughMinutes(d1, settings), 0), fmt(settings.izinliArtis)) })
+    } else if (d1 <= 0.5 && d0 > 0.5) {
+      changes.push({ kind: 'cooling', text: tr.sim.coolingOk })
+    }
+  }
   if (off.length) changes.push({ kind: 'deenergized', text: tr.sim.deenergized(list(off)) })
   if (on.length) changes.push({ kind: 'energized', text: tr.sim.energizedAgain(list(on)) })
   return { changes, changedNodes: [...changed] }
@@ -239,6 +253,7 @@ export function simulateFailure(
   failedIds: string[],
   baseScenario?: Scenario,
   th: Thresholds = DEFAULT_THRESHOLDS,
+  settings: ProjectSettings = DEFAULT_SETTINGS,
 ): SimStep[] {
   const byId = new Map(model.nodes.map((n) => [n.id, n]))
   const faultNames = failedIds.map((id) => byId.get(id)?.ad ?? id)
@@ -269,7 +284,7 @@ export function simulateFailure(
 
   const steps: SimStep[] = []
   const push = (id: SimStageId, seconds: number, analysis: Analysis, opts: Partial<SimOptions>, prev?: Analysis, faults: string[] = []) => {
-    const { changes, changedNodes } = diffAnalyses(model, prev, analysis, faults, base)
+    const { changes, changedNodes } = diffAnalyses(model, prev, analysis, faults, base, settings)
     steps.push({
       id,
       title: tr.sim.stages[id],
@@ -318,6 +333,7 @@ export function simulateRecovery(
   clearIds: string[],
   baseScenario?: Scenario,
   th: Thresholds = DEFAULT_THRESHOLDS,
+  settings: ProjectSettings = DEFAULT_SETTINGS,
 ): SimStep[] {
   const base = analyze(model, th, baseScenario)
   const byId = new Map(model.nodes.map((n) => [n.id, n]))
@@ -361,7 +377,7 @@ export function simulateRecovery(
     markRunning(a, st.running(a))
     const sig = signature(a, model)
     if (st.id !== 'clear' && sig === prevSig) continue
-    const { changes, changedNodes } = diffAnalyses(model, prev, a, [], base)
+    const { changes, changedNodes } = diffAnalyses(model, prev, a, [], base, settings)
     if (st.id === 'clear') for (const id of cleared.slice().reverse()) changes.unshift({ kind: 'cleared', text: tr.sim.changeCleared(byId.get(id)?.ad ?? id) })
     out.push({
       id: st.id,

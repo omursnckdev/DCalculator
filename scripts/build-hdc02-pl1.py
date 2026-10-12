@@ -249,6 +249,10 @@ def feeder(id, ad, amp_trip, frame, pole, x, bar_name, spec, mm2, parallel, load
 
 feeder('mf_acc1', 'MCCB ACC-01 Module-1 Chiller-1', 630, 630, '4P', 73763, 'CBL/MSB.PL1/03', '2x(4x95)+120 mm² N2XH', 120, 2, 'acc1', 'ACC-01 Module-1 Chiller-1', round(K * p3(630, 0.85)), 0.85, 'dis')
 feeder('mf_acc2', 'MCCB ACC-02 Module-1 Chiller-2', 630, 630, '4P', 75763, 'CBL/MSB.PL1/04', '2x(4x95)+120 mm² N2XH', 120, 2, 'acc2', 'ACC-02 Module-1 Chiller-2', round(K * p3(630, 0.85)), 0.85, 'dis')
+# Soğutma kapasitesi (varsayım): chiller termal kapasitesi = elektrik gücü × COP (≈5). Şemada yoktur.
+for _id in ('acc1', 'acc2'):
+    nodes[_id]['params']['sogutmaKw'] = round(nodes[_id]['params']['kuruluKw'] * 5)
+    nodes[_id]['notlar'] += ' Varsayım: soğutma kapasitesi = elektrik gücü × COP 5 (termal ≈ %d kW).' % nodes[_id]['params']['sogutmaKw']
 feeder('mf_gaux1', 'MCCB GEN.PL1.1 Aux. Loads', 100, 250, '4P', 77763, 'CBL/MSB.PL1/05', '5x16 mm² N2XH', 16, 1, 'gaux1', 'GEN.PL1.1 Aux. Loads', round(K * p3(100, 0.85)), 0.85, 'dis')
 feeder('mf_gaux2', 'MCCB GEN.PL1.2 Aux. Loads', 100, 250, '4P', 79763, 'CBL/MSB.PL1/08', '5x16 mm² N2XH', 16, 1, 'gaux2', 'GEN.PL1.2 Aux. Loads', round(K * p3(100, 0.85)), 0.85, 'dis')
 feeder('mf_db1', 'MCCB DB.PL1.1 (Small Power and Lighting DB)', 63, 250, '4P', 82963, 'CBL/MSB.PL1/06', '5x35 mm² N2XH', 35, 1, 'db1', 'DB.PL1.1 (Small Power and Lighting DB)', round(K * p3(63, 0.9)), 0.9, 'salon', typ='aydinlatma')

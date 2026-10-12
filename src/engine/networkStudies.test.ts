@@ -101,3 +101,44 @@ describe('toplam gerilim düşümü zinciri', () => {
     expect(b.issues.some((i) => i.nodeId === 'l' && /toplam gerilim düşümü/.test(i.message))).toBe(false)
   })
 })
+
+describe('soğutma yeterliliği', () => {
+  const cool = () => {
+    const nodes = [
+      node('g', 'sebeke', { gerilim: 400 }),
+      node('m', 'mdb'),
+      node('it', 'itYuku', { kuruluKw: 400, pf: 1, df: 1 }),
+      node('c1', 'mekanikYuk', { kuruluKw: 100, pf: 1, df: 1, sogutmaKw: 300 }),
+      node('c2', 'mekanikYuk', { kuruluKw: 100, pf: 1, df: 1, sogutmaKw: 300 }),
+    ]
+    return { nodes, edges: [edge('g', 'm'), edge('m', 'it'), edge('m', 'c1'), edge('m', 'c2')] }
+  }
+
+  it('kapasite 600 kW, ihtiyaç 400 kW → yedek %50, açık yok', () => {
+    const a = analyze(cool())
+    expect(a.cooling).toBeDefined()
+    expect(a.cooling!.capacityKw).toBe(600)
+    expect(a.cooling!.demandKw).toBeCloseTo(400, 6)
+    expect(a.cooling!.deficitKw).toBe(0)
+    expect(a.cooling!.reservePct).toBeCloseTo(50, 6)
+  })
+
+  it('bir chiller arızalanınca kapasite 300 kW: 100 kW açık, uyarı ve sıcaklık süresi', async () => {
+    const { rideThroughMinutes, riseRateKPerMin } = await import('./cooling')
+    const a = analyze(cool(), undefined, { id: 's', ad: 's', failedNodes: ['c1'], edgeStates: {}, nodeStates: {} })
+    expect(a.cooling!.capacityKw).toBe(300)
+    expect(a.cooling!.deficitKw).toBeCloseTo(100, 6)
+    expect(a.issues.some((i) => /Soğutma kapasitesi yetersiz/.test(i.message))).toBe(true)
+    const s = { salonHacmi: 2000, isilKutle: 10, izinliArtis: 8 }
+    // 1,2 kJ/m³K · 2000 m³ · 10 · 8 K = 192 000 kJ; 100 kW → 1920 s = 32 dk
+    expect(rideThroughMinutes(100, s)).toBeCloseTo(32, 6)
+    expect(riseRateKPerMin(100, s)).toBeCloseTo(0.25, 6)
+    expect(rideThroughMinutes(0, s)).toBe(Infinity)
+  })
+
+  it('soğutma birimi tanımlı değilse özet yok', () => {
+    const f = cool()
+    for (const n of f.nodes) if (n.params.sogutmaKw) n.params.sogutmaKw = 0
+    expect(analyze(f).cooling).toBeUndefined()
+  })
+})

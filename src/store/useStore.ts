@@ -169,7 +169,7 @@ export const useStore = create<State>((set, get) => ({
   startSim: (failed) => {
     const s = get()
     const model = { nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }
-    const steps = simulateFailure(model, failed, s.scenarios.find((x) => x.id === s.activeScenarioId))
+    const steps = simulateFailure(model, failed, s.scenarios.find((x) => x.id === s.activeScenarioId), undefined, s.ayarlar)
     set({ sim: { failed, steps, history: [], index: 0, playing: false, speed: 1 } })
   },
   clearSimFault: (ids) => {
@@ -181,7 +181,7 @@ export const useStore = create<State>((set, get) => ({
     const clearIds = (ids ?? from.failed).filter((id) => from.failed.includes(id))
     if (clearIds.length === 0) return
     const model = { nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }
-    const rec = simulateRecovery(model, from, clearIds, s.scenarios.find((x) => x.id === s.activeScenarioId))
+    const rec = simulateRecovery(model, from, clearIds, s.scenarios.find((x) => x.id === s.activeScenarioId), undefined, s.ayarlar)
     const steps = [...sim.steps.slice(0, sim.index + 1), ...rec]
     set({
       sim: {
