@@ -1,6 +1,10 @@
 /// <reference lib="webworker" />
 import { energyReport } from './energy'
 import { maintenanceScan, redundancyReport } from './redundancy'
+import { reliabilityReport } from './reliability'
+import type { ReliabilityReport } from './reliability'
+import { compareTemplates } from './reliabilityCompare'
+import type { TopologyRow } from './reliabilityCompare'
 import type { EnergyReport } from './energy'
 import type { MaintenanceReport, RedundancyReport } from './redundancy'
 import type { ProjectSettings } from '../model/settings'
@@ -11,8 +15,10 @@ export type WorkerRequest =
   | { id: number; task: 'redundancy'; model: Model }
   | { id: number; task: 'maintenance'; model: Model; maintId: string }
   | { id: number; task: 'energy'; model: Model; settings: ProjectSettings }
+  | { id: number; task: 'reliability'; model: Model; settings: ProjectSettings }
+  | { id: number; task: 'reliabilityCompare'; settings: ProjectSettings }
 
-export type WorkerResult = RedundancyReport | MaintenanceReport | EnergyReport
+export type WorkerResult = RedundancyReport | MaintenanceReport | EnergyReport | ReliabilityReport | TopologyRow[]
 export type WorkerResponse = { id: number; result: WorkerResult } | { id: number; error: string }
 
 self.onmessage = (ev: MessageEvent<WorkerRequest>) => {
@@ -21,6 +27,8 @@ self.onmessage = (ev: MessageEvent<WorkerRequest>) => {
     let result: WorkerResult
     if (req.task === 'redundancy') result = redundancyReport(req.model)
     else if (req.task === 'maintenance') result = maintenanceScan(req.model, req.maintId)
+    else if (req.task === 'reliability') result = reliabilityReport(req.model, req.settings)
+    else if (req.task === 'reliabilityCompare') result = compareTemplates(req.settings)
     else result = energyReport(req.model, req.settings)
     self.postMessage({ id: req.id, result } satisfies WorkerResponse)
   } catch (e) {

@@ -5,7 +5,7 @@ import { buildWorkbook, workbookToBlob } from '../export/excel'
 import { renderDiagramPng } from '../export/png'
 import { buildReportHtml, printHtml } from '../export/report'
 import { analyze } from '../engine'
-import type { EnergyReport, RedundancyReport } from '../engine'
+import type { EnergyReport, RedundancyReport, ReliabilityReport } from '../engine'
 import { toProjectEdges, toProjectNodes } from '../model/project'
 import { runInWorker } from './useWorker'
 import { useAnalysis } from '../store/useAnalysis'
@@ -48,9 +48,10 @@ export function Toolbar() {
       const st = useStore.getState()
       const model = { nodes: toProjectNodes(st.nodes), edges: toProjectEdges(st.edges) }
       const scenario = st.scenarios.find((x) => x.id === st.activeScenarioId)
-      const [redundancy, energy] = await Promise.all([
+      const [redundancy, energy, reliability] = await Promise.all([
         runInWorker<RedundancyReport>({ task: 'redundancy', model }),
         runInWorker<EnergyReport>({ task: 'energy', model, settings: st.ayarlar }),
+        runInWorker<ReliabilityReport>({ task: 'reliability', model, settings: st.ayarlar }),
       ])
       const diagramPng = await renderDiagramPng(st.nodes).catch(() => null)
       printHtml(
@@ -61,6 +62,7 @@ export function Toolbar() {
           settings: st.ayarlar,
           redundancy,
           energy,
+          reliability,
           steps: st.sim?.steps,
           diagramPng,
         }),

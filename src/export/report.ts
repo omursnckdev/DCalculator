@@ -1,6 +1,6 @@
 import { kwToTr } from '../engine'
 import { MONTH_NAMES } from '../engine/climate'
-import type { Analysis, EnergyReport, RedundancyReport, SimStep } from '../engine'
+import type { Analysis, EnergyReport, RedundancyReport, ReliabilityReport, SimStep } from '../engine'
 import { rideThroughMinutes } from '../engine/cooling'
 import { tr } from '../i18n/tr'
 import { EQUIPMENT } from '../library/equipment'
@@ -18,12 +18,13 @@ export interface ReportInput {
   settings: ProjectSettings
   redundancy?: RedundancyReport
   energy?: EnergyReport
+  reliability?: ReliabilityReport
   /** Arıza simülasyonu adımları (varsa "Arıza raporu" bölümü eklenir). */
   steps?: SimStep[]
   /** Şema görüntüsü (PNG data URL). */
   diagramPng?: string | null
   /** Hangi bölümler yazılsın (varsayılan: hepsi). */
-  sections?: { summary?: boolean; losses?: boolean; loading?: boolean; issues?: boolean; redundancy?: boolean; energy?: boolean; simulation?: boolean; diagram?: boolean }
+  sections?: { reliability?: boolean; summary?: boolean; losses?: boolean; loading?: boolean; issues?: boolean; redundancy?: boolean; energy?: boolean; simulation?: boolean; diagram?: boolean }
 }
 
 export const esc = (v: unknown): string =>
@@ -204,6 +205,24 @@ function energySection(e: EnergyReport, s: ProjectSettings): string {
   }`
 }
 
+function reliabilitySection(r: ReliabilityReport): string {
+  const pct = (a: number): string => `%${(a * 100).toFixed(a > 0.9999 ? 6 : 4).replace('.', ',')}`
+  return `
+  <h2>8. Erişilebilirlik ve güvenilirlik</h2>
+  <div class="kpi">
+    <div>Erişilebilirlik<b>${pct(r.availability)}</b></div>
+    <div>Yıllık beklenen kesinti<b>${n1(r.downtimeMinPerYear)} dk</b></div>
+    <div>Kaç dokuz<b>${Number.isFinite(r.nines) ? n2(r.nines) : '∞'}</b></div>
+    <div>Tier kıyası<b>${esc(r.tier ?? 'Tier I altında')}</b></div>
+  </div>
+  <p class="small">${r.components} bileşen; ${r.counts.single} tekil, ${r.counts.pair} çift, ${r.counts.triple} üçlü kesit kümesi. IT yüklerinden herhangi birinin enerjisiz kalması kesinti sayılır; bileşenler bağımsız, yalnız bağlantı değerlendirilir.${r.truncated ? ' Üçlü kombinasyonlar atlandı.' : ''}</p>
+  ${table(
+    ['Derece', 'Eşzamanlı arıza', 'Olasılık', 'Pay (%)'],
+    r.cutSets.slice(0, 15).map((c) => [String(c.order), esc(c.names.join(' + ')), c.probability.toExponential(2).replace('.', ','), n1(c.share)]),
+    [2, 3],
+  )}`
+}
+
 function simulationSection(steps: SimStep[], s: ProjectSettings, names: (id: string) => string): string {
   const last = steps[steps.length - 1]
   const failedAll = [...new Set(steps.flatMap((st) => st.failed))]
@@ -232,7 +251,7 @@ function simulationSection(steps: SimStep[], s: ProjectSettings, names: (id: str
 /** Raporun tam HTML belgesini üretir. */
 export function buildReportHtml(inp: ReportInput): string {
   const { project, analysis: a, settings } = inp
-  const sec = { summary: true, losses: true, loading: true, issues: true, redundancy: true, energy: true, simulation: true, diagram: true, ...inp.sections }
+  const sec = { reliability: true, summary: true, losses: true, loading: true, issues: true, redundancy: true, energy: true, simulation: true, diagram: true, ...inp.sections }
   const names = (id: string): string => project.nodes.find((n) => n.id === id)?.ad ?? id
   const parts: string[] = []
   parts.push(`<h1>${esc(tr.app.title)} — ${esc(project.name)}</h1>
@@ -246,6 +265,7 @@ export function buildReportHtml(inp: ReportInput): string {
   if (sec.redundancy && inp.redundancy) parts.push(redundancySection(inp.redundancy))
   if (sec.energy && inp.energy) parts.push(energySection(inp.energy, settings))
   if (sec.simulation && inp.steps && inp.steps.length > 1) parts.push(simulationSection(inp.steps, settings, names))
+  if (sec.reliability && inp.reliability) parts.push(reliabilitySection(inp.reliability))
   const cool = a.cooling && a.cooling.deficitKw > 0.5 ? rideThroughMinutes(a.cooling.deficitKw, settings) : undefined
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>${esc(project.name)} — Rapor</title><style>${CSS}</style></head><body>${parts.join('\n')}${cool !== undefined ? `<p class="small">Soğutma açığı sürerse salon sıcaklığı ≈ ${n0(cool)} dk içinde izinli artışa ulaşır.</p>` : ''}</body></html>`
 }

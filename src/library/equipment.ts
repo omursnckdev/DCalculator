@@ -1,4 +1,5 @@
 import { tr } from '../i18n/tr'
+import { GEN_START_FAILURE_PCT, RELIABILITY_DEFAULTS } from './reliability'
 import type { EquipmentType, Params } from '../model/types'
 
 /**
@@ -616,6 +617,17 @@ for (const d of defs) {
   if (d.hasOutput) {
     d.defaults.cikisSayisi = PORT_DEFAULTS[d.type].out
     extra.push(n('cikisSayisi', A.cikisSayisi, undefined, { min: 1, max: MAX_PORTS, step: 1 }))
+  }
+  // Güvenilirlik alanları (MTBF / MTTR): güç zincirindeki ekipmanda; yükler ve ölçü elemanlarında yok.
+  const rel = RELIABILITY_DEFAULTS[d.type]
+  if (rel) {
+    d.defaults.mtbf = rel.mtbf
+    d.defaults.mttr = rel.mttr
+    extra.push(n('mtbf', A.mtbf, 'saat', { min: 1, step: 1000 }), n('mttr', A.mttr, 'saat', { min: 0.1, step: 1 }))
+    if (d.type === 'jenerator') {
+      d.defaults.baslamaHata = GEN_START_FAILURE_PCT
+      extra.push(n('baslamaHata', A.baslamaHata, '%', { min: 0, max: 100, step: 0.5 }))
+    }
   }
   d.fields = [...d.fields, ...extra]
 }
