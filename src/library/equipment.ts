@@ -228,7 +228,7 @@ const defs: EquipmentDef[] = [
     hasOutput: true,
     color: '#b91c1c',
     // Açık kesici hattı keser (normalde açık bypass/kuplaj/load bank gibi). Kapalıysa geçirgendir.
-    defaults: { tip: 'ACB', nominalAkim: 1600, kutup: '4P', durum: 'kapali', otomatik: 'yok', gerilim: 400, kesmeKa: 0 },
+    defaults: { tip: 'ACB', nominalAkim: 1600, kutup: '4P', durum: 'kapali', otomatik: 'yok', gerilim: 400, kesmeKa: 0, korumaModu: 'oto', irOran: 100, trSn: 12, isdKat: 6, tsdSn: 0.3, iiKat: 15 },
     fields: [
       { kind: 'select', key: 'tip', label: A.kesiciTip, options: [
         { value: 'ACB', label: 'ACB' },
@@ -250,6 +250,15 @@ const defs: EquipmentDef[] = [
       ] },
       voltage,
       n('kesmeKa', A.kesmeKa, 'kA', { min: 0, step: 1 }),
+      { kind: 'select', key: 'korumaModu', label: A.korumaModu, options: [
+        { value: 'oto', label: A.korumaOto },
+        { value: 'ozel', label: A.korumaOzel },
+      ] },
+      n('irOran', A.irOran, '% In', { min: 40, max: 100, step: 5 }),
+      n('trSn', A.trSn, 'sn', { min: 0.5, max: 100, step: 0.5 }),
+      n('isdKat', A.isdKat, '× Ir', { min: 0, max: 15, step: 0.5 }),
+      n('tsdSn', A.tsdSn, 'sn', { min: 0.05, max: 1, step: 0.05 }),
+      n('iiKat', A.iiKat, '× In', { min: 0, max: 40, step: 1 }),
     ],
     summary: (p) => `${p.tip ?? 'ACB'} ${fmt(num(p, 'nominalAkim'))} A ${p.kutup ?? ''} · ${p.durum === 'acik' ? tr.senaryo.acik : tr.senaryo.kapali}`,
   },

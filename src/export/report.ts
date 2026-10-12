@@ -2,6 +2,7 @@ import { kwToTr } from '../engine'
 import { MONTH_NAMES } from '../engine/climate'
 import type { Analysis, EnergyReport, RedundancyReport, ReliabilityReport, SimStep } from '../engine'
 import { rideThroughMinutes } from '../engine/cooling'
+import type { ArcFlashRow, SelectivityRow } from '../engine/protection'
 import { tr } from '../i18n/tr'
 import { EQUIPMENT } from '../library/equipment'
 import type { ProjectSettings } from '../model/settings'
@@ -19,12 +20,14 @@ export interface ReportInput {
   redundancy?: RedundancyReport
   energy?: EnergyReport
   reliability?: ReliabilityReport
+  selectivity?: SelectivityRow[]
+  arcFlash?: ArcFlashRow[]
   /** Arıza simülasyonu adımları (varsa "Arıza raporu" bölümü eklenir). */
   steps?: SimStep[]
   /** Şema görüntüsü (PNG data URL). */
   diagramPng?: string | null
   /** Hangi bölümler yazılsın (varsayılan: hepsi). */
-  sections?: { reliability?: boolean; summary?: boolean; losses?: boolean; loading?: boolean; issues?: boolean; redundancy?: boolean; energy?: boolean; simulation?: boolean; diagram?: boolean }
+  sections?: { electrical?: boolean; reliability?: boolean; summary?: boolean; losses?: boolean; loading?: boolean; issues?: boolean; redundancy?: boolean; energy?: boolean; simulation?: boolean; diagram?: boolean }
 }
 
 export const esc = (v: unknown): string =>
@@ -223,6 +226,26 @@ function reliabilitySection(r: ReliabilityReport): string {
   )}`
 }
 
+function electricalSection(sel: SelectivityRow[] | undefined, arc: ArcFlashRow[] | undefined): string {
+  const lab = { total: 'Tam seçici', partial: 'Kısmi seçici', none: 'Seçici değil' } as const
+  const ppe = (r: ArcFlashRow): string => (r.ppe === 5 ? '&gt; 40: tehlikeli' : r.ppe === 0 ? 'Kategori 0' : `Kategori ${r.ppe}`)
+  return `
+  <h2>9. Elektrik çalışmaları</h2>
+  ${
+    sel && sel.length
+      ? `<h3>Koruma seçiciliği (en zayıf ${Math.min(15, sel.length)})</h3>` +
+        table(['Üst kesici', 'Alt kesici', 'Isc (kA)', 'Seçicilik limiti (kA)', 'Durum'], sel.slice(0, 15).map((r) => [esc(r.upName), esc(r.downName), n1(r.iscKa), n1(r.limitKa), `<span class="${r.status === 'none' ? 'fail' : r.status === 'partial' ? 'warn' : 'ok'}">${lab[r.status]}</span>`]), [2, 3])
+      : '<p class="small">Seçicilik değerlendirilecek kesici çifti yok.</p>'
+  }
+  ${
+    arc && arc.length
+      ? `<h3>Ark flaşı (IEEE 1584-2002, basitleştirilmiş; en yüksek ${Math.min(15, arc.length)})</h3>` +
+        table(['Pano', 'Ibf (kA)', 'Ia (kA)', 'Koruyan kesici', 't (sn)', 'E (cal/cm²)', 'PPE'], arc.slice(0, 15).map((r) => [esc(r.name), n1(r.ibfKa), n1(r.iaKa), esc(r.protectedBy ?? 'yok (2 sn varsayım)'), n2(r.clearingSec), n1(r.energy), `<span class="${r.ppe >= 4 ? 'fail' : r.ppe >= 2 ? 'warn' : 'ok'}">${ppe(r)}</span>`]), [1, 2, 4, 5])
+      : ''
+  }
+  <p class="small">Açma eğrileri tipik ayarlardır; üretici eğrileri ve IEEE 1584-2018 ile doğrulanmalıdır.</p>`
+}
+
 function simulationSection(steps: SimStep[], s: ProjectSettings, names: (id: string) => string): string {
   const last = steps[steps.length - 1]
   const failedAll = [...new Set(steps.flatMap((st) => st.failed))]
@@ -251,7 +274,7 @@ function simulationSection(steps: SimStep[], s: ProjectSettings, names: (id: str
 /** Raporun tam HTML belgesini üretir. */
 export function buildReportHtml(inp: ReportInput): string {
   const { project, analysis: a, settings } = inp
-  const sec = { reliability: true, summary: true, losses: true, loading: true, issues: true, redundancy: true, energy: true, simulation: true, diagram: true, ...inp.sections }
+  const sec = { electrical: true, reliability: true, summary: true, losses: true, loading: true, issues: true, redundancy: true, energy: true, simulation: true, diagram: true, ...inp.sections }
   const names = (id: string): string => project.nodes.find((n) => n.id === id)?.ad ?? id
   const parts: string[] = []
   parts.push(`<h1>${esc(tr.app.title)} — ${esc(project.name)}</h1>
@@ -266,6 +289,7 @@ export function buildReportHtml(inp: ReportInput): string {
   if (sec.energy && inp.energy) parts.push(energySection(inp.energy, settings))
   if (sec.simulation && inp.steps && inp.steps.length > 1) parts.push(simulationSection(inp.steps, settings, names))
   if (sec.reliability && inp.reliability) parts.push(reliabilitySection(inp.reliability))
+  if (sec.electrical && (inp.selectivity || inp.arcFlash)) parts.push(electricalSection(inp.selectivity, inp.arcFlash))
   const cool = a.cooling && a.cooling.deficitKw > 0.5 ? rideThroughMinutes(a.cooling.deficitKw, settings) : undefined
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>${esc(project.name)} — Rapor</title><style>${CSS}</style></head><body>${parts.join('\n')}${cool !== undefined ? `<p class="small">Soğutma açığı sürerse salon sıcaklığı ≈ ${n0(cool)} dk içinde izinli artışa ulaşır.</p>` : ''}</body></html>`
 }

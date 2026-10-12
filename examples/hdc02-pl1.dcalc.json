@@ -672,12 +672,12 @@
    "ad": "Catcher kaynağı (BB/CRP.PL1.1, şema dışı)",
    "etiket": "",
    "grup": "",
-   "notlar": "Varsayım: BB/CRP.PL1.1 barasının üst ucu \"Circuit Reference\" ile başka şemaya gidiyor; kaynağı bilinmiyor, kapasite sınırsız kabul edildi (415 V).",
+   "notlar": "Varsayım: BB/CRP.PL1.1 barasının üst ucu \"Circuit Reference\" ile başka şemaya gidiyor; kaynağı bilinmiyor, güç akışında kapasite sınırsız kabul edildi (415 V). Kısa devre için başka bir hat çıkışı gibi 30 MVA (≈ 42 kA) varsayıldı.",
    "x": 300,
    "y": 1718,
    "params": {
     "gerilim": 415,
-    "kisaDevreMva": 500,
+    "kisaDevreMva": 30,
     "cikisSayisi": 1
    }
   },

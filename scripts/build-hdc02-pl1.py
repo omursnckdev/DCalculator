@@ -151,8 +151,8 @@ edge('ud_ups3', 'udp3', '', '', cap=400, length=2)
 
 # ---------------------------------------------------------------- UDP çıkışları + STS panoları
 CATCHER_SRC = 'catcher_src'
-add(CATCHER_SRC, 'sebeke', 'Catcher kaynağı (BB/CRP.PL1.1, şema dışı)', (X(6000), Y(33000)), dict(gerilim=V, kisaDevreMva=500, cikisSayisi=1),
-    notlar='Varsayım: BB/CRP.PL1.1 barasının üst ucu "Circuit Reference" ile başka şemaya gidiyor; kaynağı bilinmiyor, kapasite sınırsız kabul edildi (415 V).')
+add(CATCHER_SRC, 'sebeke', 'Catcher kaynağı (BB/CRP.PL1.1, şema dışı)', (X(6000), Y(33000)), dict(gerilim=V, kisaDevreMva=30, cikisSayisi=1),
+    notlar='Varsayım: BB/CRP.PL1.1 barasının üst ucu "Circuit Reference" ile başka şemaya gidiyor; kaynağı bilinmiyor, güç akışında kapasite sınırsız kabul edildi (415 V). Kısa devre için başka bir hat çıkışı gibi 30 MVA (≈ 42 kA) varsayıldı.')
 bus('catcher_bus', 'BB/CRP.PL1.1 (catcher barası)', 2500, (6000, 38200), tip='bara', etiket='BB/CRP.PL1.1', notlar='Şema: 2500 A BUSBAR (5P). Dört STS\'nin B kaynağı.')
 edge(CATCHER_SRC, 'catcher_bus', 'BB/CRP.PL1.1', '2500 A BUSBAR (5P)', cap=2500, length=20)
 

@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore'
 import { buildWorkbook, workbookToBlob } from '../export/excel'
 import { renderDiagramPng } from '../export/png'
 import { buildReportHtml, printHtml } from '../export/report'
+import { arcFlashStudy, selectivityStudy } from '../engine/protection'
 import { analyze } from '../engine'
 import type { EnergyReport, RedundancyReport, ReliabilityReport } from '../engine'
 import { toProjectEdges, toProjectNodes } from '../model/project'
@@ -54,10 +55,13 @@ export function Toolbar() {
         runInWorker<ReliabilityReport>({ task: 'reliability', model, settings: st.ayarlar }),
       ])
       const diagramPng = await renderDiagramPng(st.nodes).catch(() => null)
+      const baseA = analyze(model, undefined, scenario)
       printHtml(
         buildReportHtml({
           project: st.getProject(),
-          analysis: analyze(model, undefined, scenario),
+          analysis: baseA,
+          selectivity: selectivityStudy(model, baseA),
+          arcFlash: arcFlashStudy(model, baseA, st.ayarlar),
           scenarioName: scenario?.ad,
           settings: st.ayarlar,
           redundancy,

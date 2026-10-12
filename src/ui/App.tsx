@@ -6,6 +6,7 @@ import { redo, undo } from '../store/history'
 import { useStore } from '../store/useStore'
 import { Canvas } from './Canvas'
 import { IssuesPanel } from './IssuesPanel'
+import { ElectricalView } from './ElectricalView'
 import { EnergyView } from './EnergyView'
 import { PropertiesPanel } from './PropertiesPanel'
 import { RedundancyView } from './RedundancyView'
@@ -17,7 +18,7 @@ import { SummaryView } from './SummaryView'
 import { TableView } from './TableView'
 import { Toolbar } from './Toolbar'
 
-type View = 'diagram' | 'table' | 'summary' | 'scenario' | 'redundancy' | 'reliability' | 'energy'
+type View = 'diagram' | 'table' | 'summary' | 'scenario' | 'redundancy' | 'reliability' | 'electrical' | 'energy'
 
 export function App() {
   const [view, setView] = useState<View>('diagram')
@@ -70,7 +71,7 @@ export function App() {
       <div className="flex h-full flex-col">
         <Toolbar />
         <div className="flex items-center border-b border-slate-200 bg-white">
-          {(['diagram', 'table', 'summary', 'scenario', 'redundancy', 'reliability', 'energy'] as const).map((v) => (
+          {(['diagram', 'table', 'summary', 'scenario', 'redundancy', 'reliability', 'electrical', 'energy'] as const).map((v) => (
             <button
               key={v}
               type="button"
@@ -106,6 +107,8 @@ export function App() {
             <SummaryView />
           ) : view === 'redundancy' ? (
             <RedundancyView />
+          ) : view === 'electrical' ? (
+            <ElectricalView />
           ) : view === 'reliability' ? (
             <ReliabilityView />
           ) : view === 'energy' ? (
