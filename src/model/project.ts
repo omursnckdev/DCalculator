@@ -1,6 +1,6 @@
 import { EQUIPMENT } from '../library/equipment'
 import { DEFAULT_SETTINGS, cloneSettings, parseSettings } from './settings'
-import { BORU_TURLERI, EDGE_STATES, EQUIPMENT_TYPES, HEAT_LOCATIONS, LINE_TYPES, ODA_TURLERI, TAVA_TURLERI } from './types'
+import { BARA_TURLERI, BORU_TURLERI, EDGE_STATES, EQUIPMENT_TYPES, HEAT_LOCATIONS, LINE_TYPES, ODA_TURLERI, TAVA_TURLERI } from './types'
 import type {
   EquipmentNode,
   EquipmentType,
@@ -10,6 +10,7 @@ import type {
   Nokta3D,
   Oda3D,
   Plan3D,
+  PlanBara,
   PlanEkipman,
   Boru3D,
   Params,
@@ -245,10 +246,20 @@ export function parsePlan(v: unknown): Plan3D | undefined {
       ...(e.etiketsiz === true ? { etiketsiz: true } : {}),
     })
   }
+  const baralar: PlanBara[] = []
+  for (const b of (Array.isArray(v.baralar) ? v.baralar : []).slice(0, 20000)) {
+    if (!isObj(b) || !BARA_TURLERI.includes(b.t as never)) continue
+    const x = optNum(b.x)
+    const z = optNum(b.z)
+    const g = optNum(b.g)
+    const d = optNum(b.d)
+    if (x === undefined || z === undefined || g === undefined || d === undefined || g <= 0 || d <= 0) continue
+    baralar.push({ t: b.t as PlanBara['t'], x, z, g, d })
+  }
   const sinir = isObj(v.sinir) ? v.sinir : v
   const g = optNum(sinir.g) ?? Math.max(1, ...duvarlar.map((w) => Math.max(w[0], w[2])))
   const d = optNum(sinir.d) ?? Math.max(1, ...duvarlar.map((w) => Math.max(w[1], w[3])))
-  return { ad: str(v.ad, 'Kat planı'), ...(typeof v.kaynak === 'string' ? { kaynak: v.kaynak } : {}), g, d, duvarlar, odalar, ekipman }
+  return { ad: str(v.ad, 'Kat planı'), ...(typeof v.kaynak === 'string' ? { kaynak: v.kaynak } : {}), g, d, duvarlar, odalar, ekipman, ...(baralar.length ? { baralar } : {}) }
 }
 
 function parseTavalar(v: unknown): Tava3D[] | undefined {

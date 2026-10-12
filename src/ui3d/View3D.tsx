@@ -87,6 +87,7 @@ function Toolbar3D({ gpu }: { gpu: GpuInfo | null }) {
   const autoLayout3d = useStore((st) => st.autoLayout3d)
   const flowAnim = useStore((st) => st.flowAnim)
   const setFlowAnim = useStore((st) => st.setFlowAnim)
+  const hasBusbars = useStore((st) => (st.plan3d?.baralar?.length ?? 0) > 0)
   const [q, setQ] = useState('')
   const [help, setHelp] = useState(false)
   const matches = q.trim() ? nodes.filter((n) => `${n.data.ad} ${n.data.etiket} ${n.data.grup}`.toLocaleLowerCase('tr').includes(q.trim().toLocaleLowerCase('tr'))).slice(0, 8) : []
@@ -140,6 +141,7 @@ function Toolbar3D({ gpu }: { gpu: GpuInfo | null }) {
             ))}
           </span>
         </div>
+        {hasBusbars && check(tr.v3d.busbars, s.showBusbars, (v) => s.setPrefs({ showBusbars: v }))}
         {check(tr.v3d.heat, s.showHeat, (v) => s.setPrefs({ showHeat: v }))}
         {check(tr.v3d.cables, s.showCables, (v) => s.setPrefs({ showCables: v }))}
         {check(tr.v3d.labels, s.showLabels, (v) => s.setPrefs({ showLabels: v }))}

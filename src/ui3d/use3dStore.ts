@@ -21,13 +21,15 @@ interface Prefs {
   /** Duvar opaklığı: 1 = opak, düşük = saydam (plan duvarları ve oda kutusu duvarları). */
   wallOpacity: number
   showHeat: boolean
+  /** Busbar planından gelen bara güzergâhı parçaları. */
+  showBusbars: boolean
   showCables: boolean
   showLabels: boolean
   quality: 'dusuk' | 'normal' | 'yuksek'
 }
 
 const KEY = 'dcalculator:view3d'
-const DEFAULTS: Prefs = { colorMode: 'tur', snapStep: 0.1, hideWalls: false, wallOpacity: 0.4, showHeat: true, showCables: true, showLabels: false, quality: 'normal' }
+const DEFAULTS: Prefs = { colorMode: 'tur', snapStep: 0.1, hideWalls: false, wallOpacity: 0.4, showHeat: true, showBusbars: true, showCables: true, showLabels: false, quality: 'normal' }
 
 function loadPrefs(): Prefs {
   try {
@@ -38,6 +40,7 @@ function loadPrefs(): Prefs {
       hideWalls: typeof raw.hideWalls === 'boolean' ? raw.hideWalls : DEFAULTS.hideWalls,
       wallOpacity: typeof raw.wallOpacity === 'number' && raw.wallOpacity >= 0.05 && raw.wallOpacity <= 1 ? raw.wallOpacity : DEFAULTS.wallOpacity,
       showHeat: typeof raw.showHeat === 'boolean' ? raw.showHeat : DEFAULTS.showHeat,
+      showBusbars: typeof raw.showBusbars === 'boolean' ? raw.showBusbars : DEFAULTS.showBusbars,
       showCables: typeof raw.showCables === 'boolean' ? raw.showCables : DEFAULTS.showCables,
       showLabels: typeof raw.showLabels === 'boolean' ? raw.showLabels : DEFAULTS.showLabels,
       quality: raw.quality === 'dusuk' || raw.quality === 'yuksek' ? raw.quality : 'normal',
@@ -98,7 +101,7 @@ export const use3dStore = create<View3DState>((set, get) => ({
     set(p)
     const s = get()
     try {
-      localStorage.setItem(KEY, JSON.stringify({ colorMode: s.colorMode, snapStep: s.snapStep, hideWalls: s.hideWalls, wallOpacity: s.wallOpacity, showHeat: s.showHeat, showCables: s.showCables, showLabels: s.showLabels, quality: s.quality }))
+      localStorage.setItem(KEY, JSON.stringify({ colorMode: s.colorMode, snapStep: s.snapStep, hideWalls: s.hideWalls, wallOpacity: s.wallOpacity, showHeat: s.showHeat, showBusbars: s.showBusbars, showCables: s.showCables, showLabels: s.showLabels, quality: s.quality }))
     } catch {
       /* depolama kapalı */
     }

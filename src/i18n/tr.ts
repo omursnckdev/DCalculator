@@ -34,6 +34,7 @@ export const tr = {
     color: 'Renk',
     modes: { tur: 'Ekipman türü', doluluk: 'Doluluk', isi: 'Isı yükü', enerji: 'Enerjili / arızalı', grup: 'Grup' },
     walls: 'Duvarlar',
+    busbars: 'Baralar (busbar planı)',
     wallOpacity: 'Duvar saydamlığı (opaklık)',
     wallOpacityHint: 'Opak: duvarlar görüşü kapatır; saydam: içerideki ekipman duvardan görünür. Duvarları tümüyle gizlemek için "Duvarlar" kutusunu (veya H tuşunu) kullanın.',
     wallSolid: 'Opak',

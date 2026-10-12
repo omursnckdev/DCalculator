@@ -128,6 +128,19 @@ export interface Plan3D {
   duvarlar: [number, number, number, number][]
   odalar: Omit<Oda3D, 'id'>[]
   ekipman: PlanEkipman[]
+  /** Busbar planından bara güzergâhı parçaları (scripts/busbar-plan.py): görsel referans. */
+  baralar?: PlanBara[]
+}
+
+/** Bara güzergâhı parçası: eksene paralel kutu (merkez x, z; genişlik g, derinlik d; m). `t`: 'duz' düz bara, 'tap' tap-off/konnektör, diğerleri dirsek/te ailesi. */
+export const BARA_TURLERI = ['duz', 'tap', 'tx', 'gen', 'hat', 'yakalayici', 'yukbankasi', 'chiller', 'salon'] as const
+export type BaraTuru = (typeof BARA_TURLERI)[number]
+export interface PlanBara {
+  t: BaraTuru
+  x: number
+  z: number
+  g: number
+  d: number
 }
 
 export const TAVA_TURLERI = ['guc', 'veri'] as const

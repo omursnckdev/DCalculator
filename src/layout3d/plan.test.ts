@@ -20,6 +20,28 @@ describe('kat planı', () => {
     expect(plan.ekipman.length).toBeGreaterThan(200)
     expect(plan.g).toBeGreaterThan(100)
   })
+  it('busbar planından gelen bara parçaları okunur; geçersiz parça düşer', () => {
+    expect(plan.baralar!.length).toBeGreaterThan(400)
+    const kinds = new Set(plan.baralar!.map((b) => b.t))
+    for (const k of ['duz', 'tx', 'gen', 'hat', 'yakalayici', 'yukbankasi', 'chiller', 'salon']) expect(kinds.has(k as never), k).toBe(true)
+    // parçalar bina sınırı içinde (zemin kat planıyla aynı çerçeve: x = (X + 12076 − 37054)/1000)
+    for (const b of plan.baralar!) {
+      expect(b.x).toBeGreaterThan(-5)
+      expect(b.x).toBeLessThan(plan.g + 5)
+      expect(b.z).toBeGreaterThan(-5)
+      expect(b.z).toBeLessThan(plan.d + 10)
+    }
+    const p = parsePlan({ ad: 'a', duvarlar: [[0, 0, 1, 1]], baralar: [{ t: 'duz', x: 1, z: 2, g: 3, d: 0.2 }, { t: 'bilinmeyen', x: 1, z: 2, g: 3, d: 1 }, { t: 'gen', x: 1, z: 2, g: 0, d: 1 }, 'x'] })!
+    expect(p.baralar).toEqual([{ t: 'duz', x: 1, z: 2, g: 3, d: 0.2 }])
+    expect(parsePlan({ ad: 'a', duvarlar: [[0, 0, 1, 1]] })!.baralar).toBeUndefined()
+  })
+  it('busbar planındaki ekipman, zemin kat planıyla aynı yerde (bara çiziminin orijin kayması giderilmiş)', () => {
+    // Bara çiziminde de bulunan batarya dolabı sırası (z = 34,54 / 36,94): plan ekipmanıyla aynı z, bara kutuları da aynı çerçevede
+    const bat = plan.ekipman.filter((e) => e.etiket.startsWith('BAT.C1'))
+    expect(bat.length).toBeGreaterThan(3)
+    const nearBat = plan.baralar!.filter((b) => b.x > 84 && b.x < 96 && b.z > 30 && b.z < 46)
+    expect(nearBat.length).toBeGreaterThan(5)
+  })
   it('bozuk girdi atılır, geçersiz plan undefined', () => {
     expect(parsePlan(null)).toBeUndefined()
     expect(parsePlan({ duvarlar: 'x' })).toBeUndefined()
