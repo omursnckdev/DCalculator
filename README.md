@@ -137,7 +137,7 @@ Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmele
 - **Soğutma zinciri ve salon sıcaklığı:** soğuk su/kondenser **pompası** ve **ısı atım** (kuru soğutucu, kule) ekipmanı arızalanınca chiller kapasitesi hidrolik zincir çarpanıyla düşer
   (pompa yedeği "Görev: yedek" ile tanımlanır). Simülasyonda salon sıcaklığı dakika dakika modellenir (ısıl kütle çarpanıyla); sınır aşılınca "Salon sıcaklığı sınıra ulaştı" adımı çıkar.
 - **Güvenilirlik sekmesi:** ekipmana MTBF/MTTR girilir (varsayılanlar tipiktir); sistem **erişilebilirlik, yılda kesinti dakikası, "kaç dokuz"**, asgari kesit kümeleri (tek arıza noktaları dahil) ve
-  N / N+1 / 2N şablonlarının karşılaştırması. Tier ifadesi yalnızca güç zinciri bağlantı topolojisinden çıkarılan bir göstergedir, sertifikasyon değildir.
+  N / N+1 / 2N şablonlarının karşılaştırması. Tier ifadesi yalnızca hesaplanan erişilebilirlik yüzdesinin Uptime tablosundaki eşiklerle karşılaştırılmasıdır; sertifikasyon değildir.
 - **Elektrik çalışmaları sekmesi:** (1) **Koruma seçiciliği:** kesici açma eğrileri (TCC grafiği) ve üst/alt kesici seçicilik limiti; (2) **Ark flaşı:** IEEE 1584-2002 basitleştirilmiş olay enerjisi ve PPE kategorisi;
   (3) **Kablo seçimi:** IEC 60364-5-52 tipik değerleriyle akım, gerilim düşümü ve kısa devre dayanımına göre kesit/paralel kablo önerisi (tek tıkla hatta uygula);
   (4) **Jeneratör:** şebeke kaybında **yakıt özerkliği** (saat), **sıralı yük alma** ve motor kalkışında **jeneratör gerilim çökmesi**, yük **öncelik/kalkış katı** tablosu.
