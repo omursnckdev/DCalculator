@@ -377,7 +377,7 @@ export function buildImport(items: ImportItem[], existing: ProjectNode[], existi
     n.x = idx * 220
     n.y = maxY + d * 190
   }
-  return { nodes, edges, warnings }
+  return { nodes, edges, warnings: [...new Set(warnings)] }
 }
 
 // --- dosya okuma / şablon ----------------------------------------------------------------

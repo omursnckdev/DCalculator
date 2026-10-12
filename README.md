@@ -131,6 +131,21 @@ Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmele
   **Ctrl+K** ekipman arama; grup çerçeveleri (şemada) ve grup bazında güç özeti (Isıl özet); **Şablon** menüsünden tek hat (N), jeneratörlü N+1 ve 2N tam yedekli hazır şemalar.
 - **Rapor (PDF):** üst çubuktaki düğme özet, şema görüntüsü, kayıplar, doluluk/Isc, doğrulama, yedeklilik, enerji/maliyet ve (varsa) simülasyon bölümlerini içeren yazdırılabilir rapor açar;
   tarayıcının yazdır penceresinde "PDF olarak kaydet" seçin. Excel'e ayrıca **Kayıplar** ve (simülasyon varsa) **Simülasyon** sayfaları eklenir.
+- **İklim, COP ve mevsimsel PUE (Enerji ve maliyet):** 12 aylık ortalama dış sıcaklık ve günlük genlik (veya 8760 saatlik veri yükleme) girilir. Chiller/CRAC için COP dış sıcaklıkla değişir
+  (nominal sıcaklığın üstünde %/K düşer), **free-cooling** (alt/üst sıcaklık arasında doğrusal pay) etkin olunca elektrik gücü düşer. Aylık/mevsimsel PUE, yıllık kWh ve maliyet,
+  **WUE** (kule su tüketimi, L/kWh BT) ve **CO₂** ayak izi (emisyon faktörü, varsayılan 0,45 kg/kWh) hesaplanır.
+- **Soğutma zinciri ve salon sıcaklığı:** soğuk su/kondenser **pompası** ve **ısı atım** (kuru soğutucu, kule) ekipmanı arızalanınca chiller kapasitesi hidrolik zincir çarpanıyla düşer
+  (pompa yedeği "Görev: yedek" ile tanımlanır). Simülasyonda salon sıcaklığı dakika dakika modellenir (ısıl kütle çarpanıyla); sınır aşılınca "Salon sıcaklığı sınıra ulaştı" adımı çıkar.
+- **Güvenilirlik sekmesi:** ekipmana MTBF/MTTR girilir (varsayılanlar tipiktir); sistem **erişilebilirlik, yılda kesinti dakikası, "kaç dokuz"**, asgari kesit kümeleri (tek arıza noktaları dahil) ve
+  N / N+1 / 2N şablonlarının karşılaştırması. Tier ifadesi yalnızca güç zinciri bağlantı topolojisinden çıkarılan bir göstergedir, sertifikasyon değildir.
+- **Elektrik çalışmaları sekmesi:** (1) **Koruma seçiciliği:** kesici açma eğrileri (TCC grafiği) ve üst/alt kesici seçicilik limiti; (2) **Ark flaşı:** IEEE 1584-2002 basitleştirilmiş olay enerjisi ve PPE kategorisi;
+  (3) **Kablo seçimi:** IEC 60364-5-52 tipik değerleriyle akım, gerilim düşümü ve kısa devre dayanımına göre kesit/paralel kablo önerisi (tek tıkla hatta uygula);
+  (4) **Jeneratör:** şebeke kaybında **yakıt özerkliği** (saat), **sıralı yük alma** ve motor kalkışında **jeneratör gerilim çökmesi**, yük **öncelik/kalkış katı** tablosu.
+- **Yük atma ve yakıt (simülasyon):** jeneratör nominal gücünün üzerinde yüklenirse öncelik 5 → 2 sırasıyla yük atılır (1 = kritik, atılmaz; Elektrik çalışmaları → Jeneratör'den kapatılabilir).
+  "Simülasyonda yakıt tükenmesini de göster" açıksa tank bitince jeneratör durur ve yük kalan kaynaklara kalır (saat cinsinden adım).
+- **Katalog ve toplu içe aktarma:** paletteki **Katalog** bölümü üretici-bağımsız tipik boyutları (trafo, jeneratör, UPS, ACB/MCCB, chiller, CRAH...) tek tıkla veya sürükleyerek ekler; seçili ekipman
+  **kendi kataloğunuza** kaydedilebilir (tarayıcıda saklanır). **Liste içe aktar** düğmesi Excel (.xlsx) veya CSV'den ekipman listesini okur: sütunlar Türkçe/İngilizce başlıklarla tanınır
+  (Ad, Tip, kVA, kW, Soğutma kW, Gerilim, Grup, Adet, Besleyen, Öncelik ve tipin tüm alan adları); önizlemede uyarılar görülür, "Besleyen" sütunu hatları da oluşturur. Şablon CSV indirilebilir.
 
 ## Ekipman kütüphanesi
 
