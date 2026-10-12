@@ -1,6 +1,7 @@
 import { EQUIPMENT } from '../library/equipment'
 import type { ProjectEdge, ProjectNode, Scenario } from '../model/types'
 import { tr } from '../i18n/tr'
+import { fuelHours, fuelLph, ratedKw } from './generator'
 import { chainGroup, coolingKw, coolingRole, isDuty } from './coolingUnits'
 import { switchState } from './switches'
 import type { Analysis, Issue, Model, Thresholds } from './types'
@@ -174,6 +175,7 @@ export function enrichStudies(model: Model, a: Analysis, th: Thresholds, scenari
   const issues: Issue[] = []
   if (studies) studyBlock(model, a, th, scenario, byId, issues)
   coolingBlock(model, a, issues)
+  fuelBlock(model, a)
   a.issues.push(...issues)
 }
 
@@ -229,6 +231,17 @@ function studyBlock(model: Model, a: Analysis, th: Thresholds, scenario: Scenari
         issues.push({ severity: 'error', nodeId: n.id, message: tr.analiz.breakingCapacity(n.ad, ka.toFixed(1).replace('.', ','), String(rating)) })
       }
     }
+  }
+}
+
+/** Yük taşıyan jeneratörlerin yakıt tüketimi ve özerkliği. */
+function fuelBlock(model: Model, a: Analysis): void {
+  for (const g of model.nodes) {
+    if (g.type !== 'jenerator') continue
+    const r = a.nodes[g.id]
+    if (!r || !r.energized || r.totalKw <= 0.5) continue
+    r.fuelLph = fuelLph(ratedKw(g), r.totalKw)
+    r.fuelHours = fuelHours(g, r.totalKw)
   }
 }
 

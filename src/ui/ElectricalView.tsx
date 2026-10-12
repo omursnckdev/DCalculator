@@ -1,15 +1,17 @@
 import { useMemo, useState } from 'react'
 import { analyze } from '../engine'
 import { cableStudy } from '../engine/cableSizing'
+import { generatorStudy } from '../engine/generator'
 import { arcFlashStudy, curvePoints, selectivityStudy, tripSettings } from '../engine/protection'
 import type { ArcFlashRow, SelectivityRow } from '../engine/protection'
+import { EQUIPMENT } from '../library/equipment'
 import { tr } from '../i18n/tr'
 import { useBaseModel } from '../store/useModel'
 import { useStore } from '../store/useStore'
 import { Legend, TccChart } from './charts'
 import { fmtNum } from './status'
 
-type Tab = 'sel' | 'arc' | 'cable'
+type Tab = 'sel' | 'arc' | 'cable' | 'gen'
 
 const STATUS: Record<SelectivityRow['status'], { cls: string; label: string }> = {
   total: { cls: 'text-green-700', label: tr.elk.selTotal },
@@ -213,6 +215,152 @@ function CablePanel() {
   )
 }
 
+function GeneratorPanel() {
+  const model = useBaseModel()
+  const s = useStore((st) => st.ayarlar)
+  const setAyarlar = useStore((st) => st.setAyarlar)
+  const setParam = useStore((st) => st.updateNodeParam)
+  const st = useMemo(() => generatorStudy(model, s), [model, s])
+  const loads = useMemo(
+    () => model.nodes.filter((n) => EQUIPMENT[n.type].hasInput && !EQUIPMENT[n.type].hasOutput && n.type !== 'yardimci' && 'oncelik' in EQUIPMENT[n.type].defaults),
+    [model],
+  )
+  const HOURS = { ok: 'text-green-700', warn: 'text-amber-700', fail: 'text-red-700 font-semibold' }
+  const numInput = (label: string, key: 'yakitHedefSaat' | 'gerilimCokmesiSiniri' | 'yukAlmaAraligi', step: number) => (
+    <label className="flex items-center gap-2">
+      {label}
+      <input type="number" step={step} className="w-20 rounded border border-slate-300 px-1.5 py-0.5 text-right" value={s[key]} onChange={(e) => setAyarlar({ [key]: Math.max(0, Number(e.target.value) || 0) })} />
+    </label>
+  )
+  const th = 'py-1 pr-2 font-medium'
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-slate-500">{tr.elk.genIntro}</p>
+      <div className="flex flex-wrap gap-4 text-sm">
+        {numInput(tr.elk.genTarget, 'yakitHedefSaat', 1)}
+        {numInput(tr.elk.genDipLimit, 'gerilimCokmesiSiniri', 1)}
+        {numInput(tr.elk.genInterval, 'yukAlmaAraligi', 1)}
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={s.yukAtma} onChange={(e) => setAyarlar({ yukAtma: e.target.checked })} />
+          {tr.elk.genShed}
+        </label>
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={s.yakitSimulasyon} onChange={(e) => setAyarlar({ yakitSimulasyon: e.target.checked })} />
+          {tr.elk.genFuelSim}
+        </label>
+      </div>
+      <section className="rounded-lg border border-slate-200 bg-white p-4">
+        <h3 className="mb-2 text-sm font-semibold">{tr.elk.genFuelTitle}</h3>
+        {st.rows.length === 0 ? (
+          <p className="text-sm text-slate-500">{tr.elk.genNone}</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs text-slate-500">
+              <tr>
+                <th className={th}>{tr.elk.genName}</th>
+                <th className={`${th} text-right`}>{tr.elk.genLoad}</th>
+                <th className={`${th} text-right`}>{tr.elk.genLoadPct}</th>
+                <th className={`${th} text-right`}>{tr.elk.genLph}</th>
+                <th className={`${th} text-right`}>{tr.elk.genTank}</th>
+                <th className={`${th} text-right`}>{tr.elk.genHours}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {st.rows.map((r) => (
+                <tr key={r.id} className="border-t border-slate-100">
+                  <td className="py-0.5 pr-2">{r.name}</td>
+                  <td className="py-0.5 pr-2 text-right tabular-nums">{fmtNum(r.loadKw, 0)}</td>
+                  <td className={`py-0.5 pr-2 text-right tabular-nums ${r.loadingPct > 100 ? 'font-semibold text-red-700' : ''}`}>{fmtNum(r.loadingPct, 0)}</td>
+                  <td className="py-0.5 pr-2 text-right tabular-nums">{fmtNum(r.lph, 0)}</td>
+                  <td className="py-0.5 pr-2 text-right tabular-nums">{fmtNum(r.tankL, 0)}</td>
+                  <td className={`py-0.5 pr-2 text-right tabular-nums ${HOURS[r.status]}`}>{Number.isFinite(r.hours) ? fmtNum(r.hours, 1) : '∞'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+      <section className="rounded-lg border border-slate-200 bg-white p-4">
+        <h3 className="mb-2 text-sm font-semibold">{tr.elk.genStartTitle}</h3>
+        {st.steps.length === 0 ? (
+          <p className="text-sm text-slate-500">{tr.elk.genNone}</p>
+        ) : (
+          <>
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs text-slate-500">
+                <tr>
+                  <th className={th}>{tr.elk.genStep}</th>
+                  <th className={`${th} text-right`}>{tr.elk.genAt}</th>
+                  <th className={th}>{tr.elk.genLoads}</th>
+                  <th className={`${th} text-right`}>{tr.elk.genSteady}</th>
+                  <th className={`${th} text-right`}>{tr.elk.genSurge}</th>
+                  <th className={`${th} text-right`}>{tr.elk.genCum}</th>
+                  <th className={`${th} text-right`}>{tr.elk.genDip}</th>
+                  <th className="py-1 font-medium">{tr.elk.status}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {st.steps.map((x) => (
+                  <tr key={x.step} className="border-t border-slate-100 align-top">
+                    <td className="py-0.5 pr-2">{x.step}</td>
+                    <td className="py-0.5 pr-2 text-right tabular-nums">{fmtNum(x.delaySec, 0)}</td>
+                    <td className="py-0.5 pr-2 text-slate-600">{x.names.length > 6 ? `${x.names.slice(0, 6).join(', ')} … (+${x.names.length - 6})` : x.names.join(', ')}</td>
+                    <td className="py-0.5 pr-2 text-right tabular-nums">{fmtNum(x.steadyKva, 0)}</td>
+                    <td className="py-0.5 pr-2 text-right tabular-nums">{fmtNum(x.surgeKva, 0)}</td>
+                    <td className="py-0.5 pr-2 text-right tabular-nums">{fmtNum(x.loadPct, 0)}</td>
+                    <td className="py-0.5 pr-2 text-right tabular-nums">{fmtNum(x.dipPct, 1)}</td>
+                    <td className={`py-0.5 ${x.ok ? 'text-green-700' : 'font-semibold text-red-700'}`}>{x.ok ? tr.elk.genOk : tr.elk.genBad}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-1 text-xs text-slate-500">
+              {tr.elk.genWorst}: %{fmtNum(st.worstDipPct, 1)} · Σ {fmtNum(st.totalKva, 0)} kVA
+            </p>
+          </>
+        )}
+      </section>
+      <section className="rounded-lg border border-slate-200 bg-white p-4">
+        <h3 className="mb-2 text-sm font-semibold">{tr.elk.genPrioTitle}</h3>
+        <div className="max-h-[22rem] overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-white text-left text-xs text-slate-500">
+              <tr>
+                <th className={th}>{tr.elk.genLoadName}</th>
+                <th className={th}>{tr.elk.genPrio}</th>
+                <th className={th}>{tr.elk.genKat}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loads.map((n) => {
+                const onc = Number(n.params.oncelik ?? EQUIPMENT[n.type].defaults.oncelik ?? 3)
+                const kat = Number(n.params.kalkisKat ?? EQUIPMENT[n.type].defaults.kalkisKat ?? 1)
+                return (
+                  <tr key={n.id} className="border-t border-slate-100">
+                    <td className="py-0.5 pr-2">{n.ad}</td>
+                    <td className="py-0.5 pr-2">
+                      <select className="rounded border border-slate-300 px-1 py-0.5" value={onc} onChange={(e) => setParam(n.id, 'oncelik', Number(e.target.value))}>
+                        {[1, 2, 3, 4, 5].map((v) => (
+                          <option key={v} value={v}>
+                            {v}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-0.5 pr-2">
+                      <input type="number" min={1} step={0.5} className="w-20 rounded border border-slate-300 px-1.5 py-0.5 text-right" value={kat} onChange={(e) => setParam(n.id, 'kalkisKat', Math.max(1, Number(e.target.value) || 1))} />
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 /** Elektrik çalışmaları: koruma seçiciliği (TCC) ve ark flaşı. */
 export function ElectricalView() {
   const [tab, setTab] = useState<Tab>('sel')
@@ -220,6 +368,7 @@ export function ElectricalView() {
     ['sel', tr.elk.tabSel],
     ['arc', tr.elk.tabArc],
     ['cable', tr.elk.tabCable],
+    ['gen', tr.elk.tabGen],
   ]
   return (
     <div className="min-w-0 flex-1 overflow-auto bg-slate-50 p-4">
@@ -235,6 +384,7 @@ export function ElectricalView() {
         {tab === 'sel' && <SelectivityPanel />}
         {tab === 'arc' && <ArcPanel />}
         {tab === 'cable' && <CablePanel />}
+        {tab === 'gen' && <GeneratorPanel />}
       </div>
     </div>
   )

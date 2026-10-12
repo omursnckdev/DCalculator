@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { analyze, energyReport, redundancyReport, simulateFailure } from '../engine'
 import { DEFAULT_SETTINGS } from '../model/settings'
 import { TEMPLATES } from '../library/templates'
+import { generatorStudy } from '../engine/generator'
 import { buildWorkbook } from './excel'
 import { buildReportHtml, esc } from './report'
 
@@ -29,6 +30,12 @@ describe('yazdırılabilir rapor', () => {
     expect((html.match(/\d\d:00<\/td>/g) ?? []).length).toBe(24)
     // simülasyon adımları
     expect(html).toContain('Arıza anı')
+  })
+
+  it('jeneratör bölümü: yakıt özerkliği ve sıralı yük alma', () => {
+    const html = buildReportHtml({ project, analysis: a, settings: DEFAULT_SETTINGS, generator: generatorStudy(project, DEFAULT_SETTINGS) })
+    expect(html).toContain('Jeneratör yakıt özerkliği')
+    expect(html).toContain('Sıralı yük alma')
   })
 
   it('bölümler kapatılabilir; simülasyon yoksa 7. bölüm yazılmaz', () => {

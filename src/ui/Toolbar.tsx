@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore'
 import { buildWorkbook, workbookToBlob } from '../export/excel'
 import { renderDiagramPng } from '../export/png'
 import { buildReportHtml, printHtml } from '../export/report'
+import { generatorStudy } from '../engine/generator'
 import { arcFlashStudy, selectivityStudy } from '../engine/protection'
 import { analyze } from '../engine'
 import type { EnergyReport, RedundancyReport, ReliabilityReport } from '../engine'
@@ -61,6 +62,7 @@ export function Toolbar() {
           project: st.getProject(),
           analysis: baseA,
           selectivity: selectivityStudy(model, baseA),
+          generator: generatorStudy(model, st.ayarlar),
           arcFlash: arcFlashStudy(model, baseA, st.ayarlar),
           scenarioName: scenario?.ad,
           settings: st.ayarlar,

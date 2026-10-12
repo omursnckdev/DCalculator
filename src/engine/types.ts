@@ -58,6 +58,11 @@ export interface NodeResult {
   running?: boolean
   /** Kaynaktan bu düğüme toplam gerilim düşümü (%), canlı yol boyunca en kötü. */
   chainDropPct?: number
+  /** Jeneratör: yük altında yakıt tüketimi (L/saat) ve tank özerkliği (saat). */
+  fuelLph?: number
+  fuelHours?: number
+  /** Yük atma ile devre dışı bırakılan yük (jeneratör aşırı yükünü gidermek için). */
+  shed?: boolean
   /** Trafo: aşağı akıştaki yüklerin güç ağırlıklı K-faktörü. */
   kFactor?: number
   /** Trafo: harmonikli yük için kullanılabilir kapasite çarpanı (0..1). */

@@ -26,6 +26,8 @@ const KIND_STYLE: Record<string, string> = {
   cooling: 'bg-sky-50 text-sky-800',
   cleared: 'bg-green-100 text-green-800',
   genStop: 'bg-slate-100 text-slate-700',
+  shed: 'bg-red-50 text-red-700',
+  fuel: 'bg-red-50 text-red-700',
 }
 const KIND_ICON: Record<string, string> = {
   fault: '⚡',
@@ -42,6 +44,8 @@ const KIND_ICON: Record<string, string> = {
   cooling: '❄',
   cleared: '🔧',
   genStop: '■',
+  shed: '✂',
+  fuel: '⛽',
 }
 
 /** Alt şerit: ekipman arızasını adım adım oynatır; tuval seçili adımın durumunu gösterir. */

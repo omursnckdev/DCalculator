@@ -24,6 +24,10 @@ export interface SimOptions {
   studies?: boolean
   /** Bataryası tükenmiş UPS kimlikleri. */
   depleted?: string[]
+  /** Jeneratör aşırı yüklenirse öncelik sırasıyla (en düşük öncelik önce) yük at. */
+  shed?: boolean
+  /** Yük atma ile devre dışı bırakılmış yük kimlikleri (analiz içinde hesaplanır). */
+  shedIds?: string[]
 }
 
 export const FULL_AUTOMATION: SimOptions = { autoBypass: true, staging: true, genOnline: true, battery: false }

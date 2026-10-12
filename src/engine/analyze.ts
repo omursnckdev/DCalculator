@@ -173,7 +173,61 @@ export function analyze(
     res = analyzeCore(model, th, scenario, baseResult, opts, closed2, standby)
     for (const id of standby) res.nodes[id] = { ...res.nodes[id], energized: true, standby: true }
   }
+  if (opts.shed && opts.genOnline) res = shedOverload(model, th, scenario, baseResult, opts, res, standby)
   enrichStudies(model, res, th, scenario, opts.studies !== false)
+  return res
+}
+
+/** Jeneratör çıkışının altındaki (canlı hat üzerinden) düğümler. */
+function downstreamOf(model: Model, roots: string[], edgeStates: Record<string, string> | undefined): Set<string> {
+  const seen = new Set<string>()
+  const stack = [...roots]
+  while (stack.length) {
+    const cur = stack.pop()!
+    for (const e of model.edges) {
+      if (e.source !== cur || seen.has(e.target)) continue
+      if ((edgeStates?.[e.id] ?? e.durum) !== 'kapali') continue
+      seen.add(e.target)
+      stack.push(e.target)
+    }
+  }
+  return seen
+}
+
+/**
+ * Yük atma: çalışan jeneratör %100'ün üzerinde yüklenirse, aşağısındaki yükler öncelik sırasıyla (5 → 2; 1 = kritik, atılmaz)
+ * ve her öncelikte büyükten küçüğe, yüklenme %100'e inene kadar devre dışı bırakılır.
+ */
+function shedOverload(model: Model, th: Thresholds, scenario: Scenario | undefined, baseResult: Analysis | undefined, opts: SimOptions, first: Analysis, standby: Set<string>): Analysis {
+  const nodeById = new Map(model.nodes.map((n) => [n.id, n]))
+  const shedIds = new Set<string>()
+  let res = first
+  const prio = (id: string) => {
+    const n = nodeById.get(id)!
+    const v = n.params.oncelik ?? EQUIPMENT[n.type].defaults.oncelik
+    return Math.min(5, Math.max(1, Math.round(typeof v === 'number' ? v : 3)))
+  }
+  for (let iter = 0; iter < 60; iter++) {
+    const over = model.nodes.filter((n) => n.type === 'jenerator' && res.nodes[n.id]?.energized && (res.nodes[n.id].loadingPct ?? 0) > 100.0001)
+    if (over.length === 0) break
+    const down = downstreamOf(model, over.map((g) => g.id), scenario?.edgeStates)
+    const cand = [...down].filter((id) => {
+      const n = nodeById.get(id)
+      return n && LOAD_TYPES.includes(n.type) && res.nodes[id]?.energized && res.nodes[id].totalKw > 0 && !shedIds.has(id) && prio(id) > 1
+    })
+    if (cand.length === 0) break
+    cand.sort((a, b) => prio(b) - prio(a) || res.nodes[b].totalKw - res.nodes[a].totalKw)
+    shedIds.add(cand[0])
+    const o2 = { ...opts, shedIds: [...shedIds], shed: false }
+    const closed = resolveAutoClosed(model, scenario, o2, new Set())
+    res = analyzeCore(model, th, scenario, baseResult, o2, closed, new Set())
+    if (standby.size > 0) {
+      const closed2 = resolveAutoClosed(model, scenario, o2, standby)
+      res = analyzeCore(model, th, scenario, baseResult, o2, closed2, standby)
+      for (const id of standby) res.nodes[id] = { ...res.nodes[id], energized: true, standby: true }
+    }
+  }
+  for (const id of shedIds) res.nodes[id] = { ...res.nodes[id], shed: true }
   return res
 }
 
@@ -255,6 +309,7 @@ function analyzeCore(
   const dead = new Set<string>([...failed, ...openSwitches, ...standby])
   if (!opts.genOnline) for (const n of model.nodes) if (n.type === 'jenerator') dead.add(n.id)
   for (const id of opts.offGens ?? []) dead.add(id)
+  for (const id of opts.shedIds ?? []) dead.add(id)
   const { energized: energizedSet, onBattery } = energize({ nodes: model.nodes, edges, dead, battery: opts.battery, hold: opts.hold, depleted: opts.depleted ? new Set(opts.depleted) : undefined })
   const energized = new Map<string, boolean>()
   for (const id of order) energized.set(id, energizedSet.has(id))

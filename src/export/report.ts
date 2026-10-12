@@ -2,6 +2,7 @@ import { kwToTr } from '../engine'
 import { MONTH_NAMES } from '../engine/climate'
 import type { Analysis, EnergyReport, RedundancyReport, ReliabilityReport, SimStep } from '../engine'
 import { rideThroughMinutes } from '../engine/cooling'
+import type { GeneratorStudy } from '../engine/generator'
 import type { ArcFlashRow, SelectivityRow } from '../engine/protection'
 import { tr } from '../i18n/tr'
 import { EQUIPMENT } from '../library/equipment'
@@ -22,6 +23,7 @@ export interface ReportInput {
   reliability?: ReliabilityReport
   selectivity?: SelectivityRow[]
   arcFlash?: ArcFlashRow[]
+  generator?: GeneratorStudy
   /** Arıza simülasyonu adımları (varsa "Arıza raporu" bölümü eklenir). */
   steps?: SimStep[]
   /** Şema görüntüsü (PNG data URL). */
@@ -226,7 +228,19 @@ function reliabilitySection(r: ReliabilityReport): string {
   )}`
 }
 
-function electricalSection(sel: SelectivityRow[] | undefined, arc: ArcFlashRow[] | undefined): string {
+function generatorBlock(g: GeneratorStudy | undefined): string {
+  if (!g || g.rows.length === 0) return ''
+  const cls = { ok: 'ok', warn: 'warn', fail: 'fail' } as const
+  return (
+    '<h3>Jeneratör yakıt özerkliği (şebeke kaybı)</h3>' +
+    table(['Jeneratör', 'Yük (kW)', 'Yüklenme (%)', 'Tüketim (L/sa)', 'Tank (L)', 'Özerklik (sa)'], g.rows.map((r) => [esc(r.name), n0(r.loadKw), n0(r.loadingPct), n0(r.lph), n0(r.tankL), `<span class="${cls[r.status]}">${Number.isFinite(r.hours) ? n1(r.hours) : '∞'}</span>`]), [1, 2, 3, 4, 5]) +
+    '<h3>Sıralı yük alma ve gerilim çökmesi</h3>' +
+    table(['Adım', 't (sn)', 'Yükler', 'Kalkış (kVA)', 'Kümülatif (%)', 'Gerilim çökmesi (%)'], g.steps.map((x) => [String(x.step), n0(x.delaySec), esc(x.names.slice(0, 5).join(', ') + (x.names.length > 5 ? ` … (+${x.names.length - 5})` : '')), n0(x.surgeKva), n0(x.loadPct), `<span class="${x.ok ? 'ok' : 'fail'}">${n1(x.dipPct)}</span>`]), [3, 4, 5]) +
+    '<p class="small">Yakıt tüketimi tipik dizel özgül tüketim eğrisiyle; gerilim çökmesi S_kalkış/(S_kalkış+Σ Sn/Xd″) ön tahminidir.</p>'
+  )
+}
+
+function electricalSection(sel: SelectivityRow[] | undefined, arc: ArcFlashRow[] | undefined, gen?: GeneratorStudy): string {
   const lab = { total: 'Tam seçici', partial: 'Kısmi seçici', none: 'Seçici değil' } as const
   const ppe = (r: ArcFlashRow): string => (r.ppe === 5 ? '&gt; 40: tehlikeli' : r.ppe === 0 ? 'Kategori 0' : `Kategori ${r.ppe}`)
   return `
@@ -243,6 +257,7 @@ function electricalSection(sel: SelectivityRow[] | undefined, arc: ArcFlashRow[]
         table(['Pano', 'Ibf (kA)', 'Ia (kA)', 'Koruyan kesici', 't (sn)', 'E (cal/cm²)', 'PPE'], arc.slice(0, 15).map((r) => [esc(r.name), n1(r.ibfKa), n1(r.iaKa), esc(r.protectedBy ?? 'yok (2 sn varsayım)'), n2(r.clearingSec), n1(r.energy), `<span class="${r.ppe >= 4 ? 'fail' : r.ppe >= 2 ? 'warn' : 'ok'}">${ppe(r)}</span>`]), [1, 2, 4, 5])
       : ''
   }
+  ${generatorBlock(gen)}
   <p class="small">Açma eğrileri tipik ayarlardır; üretici eğrileri ve IEEE 1584-2018 ile doğrulanmalıdır.</p>`
 }
 
@@ -289,7 +304,7 @@ export function buildReportHtml(inp: ReportInput): string {
   if (sec.energy && inp.energy) parts.push(energySection(inp.energy, settings))
   if (sec.simulation && inp.steps && inp.steps.length > 1) parts.push(simulationSection(inp.steps, settings, names))
   if (sec.reliability && inp.reliability) parts.push(reliabilitySection(inp.reliability))
-  if (sec.electrical && (inp.selectivity || inp.arcFlash)) parts.push(electricalSection(inp.selectivity, inp.arcFlash))
+  if (sec.electrical && (inp.selectivity || inp.arcFlash || inp.generator)) parts.push(electricalSection(inp.selectivity, inp.arcFlash, inp.generator))
   const cool = a.cooling && a.cooling.deficitKw > 0.5 ? rideThroughMinutes(a.cooling.deficitKw, settings) : undefined
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>${esc(project.name)} — Rapor</title><style>${CSS}</style></head><body>${parts.join('\n')}${cool !== undefined ? `<p class="small">Soğutma açığı sürerse salon sıcaklığı ≈ ${n0(cool)} dk içinde izinli artışa ulaşır.</p>` : ''}</body></html>`
 }

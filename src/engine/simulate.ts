@@ -7,6 +7,7 @@ import type { ProjectSettings } from '../model/settings'
 import { DEFAULT_SETTINGS } from '../model/settings'
 import { analyze } from './analyze'
 import { AIR_RHO_CP, rideThroughMinutes } from './cooling'
+import { fuelLph, ratedKw, usableFuelL } from './generator'
 import { DEFAULT_THRESHOLDS } from './thresholds'
 import type { Analysis, Model, Thresholds } from './types'
 
@@ -16,6 +17,8 @@ export const SIM_TIMING = {
   bypass: 0.1,
   gen: 10,
   staging: 70,
+  /** Jeneratör aşırı yüklenince yük atma gecikmesi (sıralama sonrası). */
+  shed: 5,
   /** Normal kaynak döndükten sonra ATS/STS geri transfer gecikmesi (tipik 5 dk). */
   retransfer: 300,
   /** Jeneratör yüksüz soğutma süresi (tipik 5 dk). */
@@ -37,6 +40,8 @@ export type SimChangeKind =
   | 'cleared'
   | 'cooling'
   | 'genStop'
+  | 'shed'
+  | 'fuel'
 
 export interface SimChange {
   kind: SimChangeKind
@@ -44,7 +49,7 @@ export interface SimChange {
   nodeId?: string
 }
 
-export type SimStageId = 'normal' | 'fault' | 'sts' | 'bypass' | 'gen' | 'staging' | 'battery' | 'clear' | 'retransfer' | 'genStop' | 'temp' | 'tempOk'
+export type SimStageId = 'normal' | 'fault' | 'sts' | 'bypass' | 'gen' | 'staging' | 'battery' | 'clear' | 'retransfer' | 'genStop' | 'temp' | 'tempOk' | 'shed' | 'fuel'
 
 export interface SimStep {
   id: SimStageId
@@ -100,6 +105,7 @@ function timeLabel(s: number): string {
   if (s === 0) return tr.sim.t0
   if (s < 1) return tr.sim.ms(Math.round(s * 1000))
   if (s < 60) return tr.sim.sec(Math.round(s))
+  if (s >= 7200) return tr.sim.hour(Math.round((s / 3600) * 10) / 10)
   return tr.sim.min(Math.round(s / 60))
 }
 
@@ -488,6 +494,19 @@ function playFault(ctx: PlayCtx, t0: number, first: Partial<SimOptions>, opts0: 
   }
   if (!last) return
 
+  // Yük atma: jeneratör sıralamadan sonra hâlâ aşırı yüklüyse düşük öncelikli yükler atılır.
+  if (ctx.settings.yukAtma && last.opts.genOnline) {
+    const so: Partial<SimOptions> = { ...last.opts, shed: true }
+    const a = run(so)
+    const shed = model.nodes.filter((n) => a.nodes[n.id]?.shed)
+    if (shed.length > 0) {
+      markRunning(a, model.nodes.filter((n) => n.type === 'jenerator' && a.nodes[n.id]?.totalKw > 0.5).map((n) => n.id))
+      const def: StageDef = { id: 'shed', seconds: last.seconds + SIM_TIMING.shed, opts: so, gens: true }
+      pushStep(ctx, def, a, { changesPrefix: [{ kind: 'shed', text: tr.sim.changeShed(list(shed.map((n) => n.ad))) }] })
+      last = { a, opts: so, seconds: def.seconds }
+    }
+  }
+
   // Batarya tükenmeleri: bataryadaki UPS'lerin kalan süresi o anki yükle hesaplanır; en erken biten UPS için
   // yeni bir adım eklenir ve yük yeniden çözülür (birden çok UPS farklı zamanlarda tükenebilir).
   const dead = new Set(depleted)
@@ -511,7 +530,7 @@ function playFault(ctx: PlayCtx, t0: number, first: Partial<SimOptions>, opts0: 
         return Number.isFinite(rt) && Math.abs((ctx.soc.get(n.id) ?? 1) * rt * 60 - soonest!.dt) < 0.5
       })
     for (const u of batch) dead.add(u.id)
-    const opts: Partial<SimOptions> = { autoBypass: true, staging: true, genOnline: true, battery: true, depleted: [...dead] }
+    const opts: Partial<SimOptions> = { autoBypass: true, staging: true, genOnline: true, battery: true, depleted: [...dead], shed: ctx.settings.yukAtma }
     const def: StageDef = { id: 'battery', seconds: T, opts, gens: true }
     const a = run(opts)
     markRunning(a, model.nodes.filter((n) => n.type === 'jenerator' && a.nodes[n.id]?.totalKw > 0.5).map((n) => n.id))
@@ -524,6 +543,45 @@ function playFault(ctx: PlayCtx, t0: number, first: Partial<SimOptions>, opts0: 
     ctx.prevSeconds = T // advanceSoc pushStep içinde tekrar uygulanmasın
     ctx.prev = cur.a
     pushStepNoAdvance(ctx, def, a, batch.map((u) => u.ad))
+    cur = { a, opts, seconds: T }
+  }
+
+  if (ctx.settings.yakitSimulasyon) playFuel(ctx, cur, depleted)
+}
+
+/**
+ * Yakıt tükenmesi: çalışan jeneratörlerin tankı o anki yükle boşalana kadar geçen süre hesaplanır; en erken biten jeneratör
+ * devreden çıkar ve yük kalan kaynaklara yeniden dağıtılır (tank dolu ve kullanılabilir yakıt oranı uygulanmış varsayılır).
+ */
+function playFuel(ctx: PlayCtx, start: { a: Analysis; opts: Partial<SimOptions>; seconds: number }, depleted: string[]): void {
+  const { model, th, base, scenario } = ctx
+  const fuel = new Map<string, number>()
+  for (const n of model.nodes) if (n.type === 'jenerator') fuel.set(n.id, usableFuelL(n))
+  const off = new Set<string>(start.opts.offGens ?? [])
+  let cur = start
+  for (let guard = 0; guard < fuel.size; guard++) {
+    let soonest: { id: string; dt: number } | undefined
+    for (const n of model.nodes) {
+      if (n.type !== 'jenerator' || off.has(n.id) || !cur.a.nodes[n.id]?.energized) continue
+      const lph = fuelLph(ratedKw(n), cur.a.nodes[n.id].totalKw)
+      if (lph <= 0) continue
+      const dt = ((fuel.get(n.id) ?? 0) / lph) * 3600
+      if (!soonest || dt < soonest.dt) soonest = { id: n.id, dt }
+    }
+    if (!soonest || soonest.dt > 14 * 24 * 3600) break
+    const T = cur.seconds + soonest.dt
+    // Tüm çalışan jeneratörlerin yakıtı bu süre kadar azalır.
+    for (const n of model.nodes) {
+      if (n.type !== 'jenerator' || off.has(n.id)) continue
+      const lph = fuelLph(ratedKw(n), cur.a.nodes[n.id]?.totalKw ?? 0)
+      fuel.set(n.id, Math.max(0, (fuel.get(n.id) ?? 0) - (lph * soonest.dt) / 3600))
+    }
+    off.add(soonest.id)
+    const opts: Partial<SimOptions> = { ...cur.opts, offGens: [...off], depleted, shed: ctx.settings.yukAtma }
+    const a = analyze(model, th, scenario, base, opts)
+    markRunning(a, model.nodes.filter((n) => n.type === 'jenerator' && a.nodes[n.id]?.totalKw > 0.5).map((n) => n.id))
+    const name = model.nodes.find((n) => n.id === soonest!.id)?.ad ?? soonest.id
+    pushStep(ctx, { id: 'fuel', seconds: T, opts, gens: true }, a, { changesPrefix: [{ kind: 'fuel', text: tr.sim.changeFuel(name), nodeId: soonest.id }], markIds: [soonest.id] })
     cur = { a, opts, seconds: T }
   }
 }

@@ -108,6 +108,8 @@ const loadFields: FieldDef[] = [
   voltage,
   heatField,
   n('thd', A.thd, '%', { min: 0, max: 150, step: 1 }),
+  n('oncelik', A.oncelik, undefined, { min: 1, max: 5, step: 1 }),
+  n('kalkisKat', A.kalkisKat, '× In', { min: 1, max: 10, step: 0.5 }),
 ]
 
 const defs: EquipmentDef[] = [
@@ -159,8 +161,15 @@ const defs: EquipmentDef[] = [
     hasInput: false,
     hasOutput: true,
     color: '#d97706',
-    defaults: { nominalKva: 2000, gerilim: 400, pf: 0.8, xd: 15 },
-    fields: [n('nominalKva', A.nominalKva, 'kVA', { min: 0, step: 50 }), voltage, pf, n('xd', A.xd, '%', { min: 0, step: 0.5 })],
+    defaults: { nominalKva: 2000, gerilim: 400, pf: 0.8, xd: 15, yakitL: 5000, yakitKullanilabilir: 90 },
+    fields: [
+      n('nominalKva', A.nominalKva, 'kVA', { min: 0, step: 50 }),
+      voltage,
+      pf,
+      n('xd', A.xd, '%', { min: 0, step: 0.5 }),
+      n('yakitL', A.yakitL, 'L', { min: 0, step: 500 }),
+      n('yakitKullanilabilir', A.yakitKullanilabilir, '%', { min: 10, max: 100, step: 5 }),
+    ],
     summary: (p) => `${fmt(num(p, 'nominalKva'))} kVA · ${fmt(num(p, 'gerilim'))} V`,
   },
   {
@@ -388,7 +397,7 @@ const defs: EquipmentDef[] = [
     hasInput: true,
     hasOutput: false,
     color: '#dc2626',
-    defaults: { kuruluKw: 100, pf: 0.95, df: 1, kategori: 'IT', gerilim: 400, isiKonum: 'salon', thd: 0 },
+    defaults: { kuruluKw: 100, pf: 0.95, df: 1, kategori: 'IT', gerilim: 400, isiKonum: 'salon', thd: 0, oncelik: 1, kalkisKat: 1 },
     fields: loadFields,
     summary: loadSummary,
   },
@@ -399,7 +408,7 @@ const defs: EquipmentDef[] = [
     hasInput: true,
     hasOutput: false,
     color: '#ea580c',
-    defaults: { kuruluKw: 200, pf: 0.85, df: 0.8, kategori: 'Mekanik', gerilim: 400, isiKonum: 'dis', thd: 0, sogutmaKw: 0 },
+    defaults: { kuruluKw: 200, pf: 0.85, df: 0.8, kategori: 'Mekanik', gerilim: 400, isiKonum: 'dis', thd: 0, oncelik: 3, kalkisKat: 5, sogutmaKw: 0 },
     fields: [...loadFields, n('sogutmaKw', A.sogutmaKw, 'kW', { min: 0, step: 10 })],
     summary: loadSummary,
   },
@@ -411,7 +420,7 @@ const defs: EquipmentDef[] = [
     hasOutput: false,
     color: '#ca8a04',
     // Plan yalnız IT/Mekanik kategorisi tanımlıyor; yardımcı yükler şimdilik Mekanik (Açık Soru 6).
-    defaults: { kuruluKw: 20, pf: 0.9, df: 0.8, kategori: 'Mekanik', gerilim: 400, isiKonum: 'salon', thd: 0 },
+    defaults: { kuruluKw: 20, pf: 0.9, df: 0.8, kategori: 'Mekanik', gerilim: 400, isiKonum: 'salon', thd: 0, oncelik: 3, kalkisKat: 1 },
     fields: loadFields,
     summary: loadSummary,
   },
@@ -422,7 +431,7 @@ const defs: EquipmentDef[] = [
     hasInput: true,
     hasOutput: false,
     color: '#9333ea',
-    defaults: { kuruluKw: 50, pf: 0.9, df: 1, kategori: 'Mekanik', gerilim: 400, isiKonum: 'salon', thd: 0 },
+    defaults: { kuruluKw: 50, pf: 0.9, df: 1, kategori: 'Mekanik', gerilim: 400, isiKonum: 'salon', thd: 0, oncelik: 3, kalkisKat: 1 },
     fields: loadFields,
     summary: loadSummary,
   },
@@ -456,13 +465,16 @@ interface LoadSpec {
   /** Termal soğutma kapasitesi (kW); verilirse alan ve rol eklenir. */
   cool?: number
   role?: CoolingRole
+  /** Yük atma önceliği (1 = en kritik, 5 = ilk atılan) ve motor kalkış akımı katı (× In). */
+  onc: number
+  kat: number
   extra?: { defaults: Params; fields: FieldDef[] }
 }
 
 /** Soğutma, mekanik ve yardımcı yük ekipmanı: ortak yük alanları + (varsa) soğutma kapasitesi. */
 const LOAD_SPECS: LoadSpec[] = [
   {
-    type: 'chiller',
+    type: 'chiller', onc: 2, kat: 3,
     group: 'sogutma',
     color: '#0284c7',
     kw: 250,
@@ -481,14 +493,14 @@ const LOAD_SPECS: LoadSpec[] = [
       ],
     },
   },
-  { type: 'crah', group: 'sogutma', color: '#0891b2', kw: 12, pf: 0.9, isi: 'salon', cool: 80, role: 'air' },
-  { type: 'crac', group: 'sogutma', color: '#0e7490', kw: 30, pf: 0.85, isi: 'dis', cool: 90, role: 'direct', extra: copExtra },
-  { type: 'fanwall', group: 'sogutma', color: '#06b6d4', kw: 25, pf: 0.95, isi: 'salon', cool: 250, role: 'air' },
-  { type: 'inrow', group: 'sogutma', color: '#22d3ee', kw: 6, pf: 0.95, isi: 'salon', cool: 35, role: 'air' },
-  { type: 'rdhx', group: 'sogutma', color: '#38bdf8', kw: 1.5, pf: 0.95, isi: 'salon', cool: 30, role: 'air' },
-  { type: 'kuruSogutucu', group: 'sogutma', color: '#64748b', kw: 18, pf: 0.85, isi: 'dis', extra: { defaults: { gorev: 'asil' }, fields: [gorevField] } },
+  { type: 'crah', onc: 2, kat: 2, group: 'sogutma', color: '#0891b2', kw: 12, pf: 0.9, isi: 'salon', cool: 80, role: 'air' },
+  { type: 'crac', onc: 2, kat: 5, group: 'sogutma', color: '#0e7490', kw: 30, pf: 0.85, isi: 'dis', cool: 90, role: 'direct', extra: copExtra },
+  { type: 'fanwall', onc: 2, kat: 1.5, group: 'sogutma', color: '#06b6d4', kw: 25, pf: 0.95, isi: 'salon', cool: 250, role: 'air' },
+  { type: 'inrow', onc: 2, kat: 2, group: 'sogutma', color: '#22d3ee', kw: 6, pf: 0.95, isi: 'salon', cool: 35, role: 'air' },
+  { type: 'rdhx', onc: 2, kat: 1, group: 'sogutma', color: '#38bdf8', kw: 1.5, pf: 0.95, isi: 'salon', cool: 30, role: 'air' },
+  { type: 'kuruSogutucu', onc: 2, kat: 3, group: 'sogutma', color: '#64748b', kw: 18, pf: 0.85, isi: 'dis', extra: { defaults: { gorev: 'asil' }, fields: [gorevField] } },
   {
-    type: 'sogutmaKulesi',
+    type: 'sogutmaKulesi', onc: 3, kat: 4,
     group: 'sogutma',
     color: '#475569',
     kw: 22,
@@ -497,7 +509,7 @@ const LOAD_SPECS: LoadSpec[] = [
     extra: { defaults: { gorev: 'asil', isiPayi: 100, suTuketimi: 1.8 }, fields: [gorevField, n('isiPayi', A.isiPayi, '%', { min: 0, max: 100, step: 5 }), n('suTuketimi', A.suTuketimi, 'L/kWh', { min: 0, step: 0.1 })] },
   },
   {
-    type: 'pompa',
+    type: 'pompa', onc: 2, kat: 6,
     group: 'sogutma',
     color: '#2563eb',
     kw: 30,
@@ -521,16 +533,16 @@ const LOAD_SPECS: LoadSpec[] = [
       ],
     },
   },
-  { type: 'ahu', group: 'sogutma', color: '#0d9488', kw: 15, pf: 0.85, isi: 'dis' },
-  { type: 'fan', group: 'sogutma', color: '#94a3b8', kw: 5.5, pf: 0.85, isi: 'dis' },
-  { type: 'nemlendirici', group: 'sogutma', color: '#7dd3fc', kw: 10, pf: 1, isi: 'salon' },
-  { type: 'rack', group: 'yuk', color: '#b91c1c', kw: 80, pf: 0.95, kategori: 'IT', isi: 'salon' },
-  { type: 'depolama', group: 'yuk', color: '#c2410c', kw: 20, pf: 0.95, kategori: 'IT', isi: 'salon' },
-  { type: 'guvenlik', group: 'yuk', color: '#4f46e5', kw: 4, pf: 0.9, isi: 'elektrik' },
-  { type: 'yangin', group: 'yuk', color: '#e11d48', kw: 2, pf: 0.9, isi: 'elektrik' },
-  { type: 'asansor', group: 'yuk', color: '#78716c', kw: 18, pf: 0.8, df: 0.5, isi: 'elektrik' },
-  { type: 'yukBankasi', group: 'yuk', color: '#a16207', kw: 500, pf: 1, isi: 'dis' },
-  { type: 'ofis', group: 'yuk', color: '#7c3aed', kw: 30, pf: 0.9, df: 0.8, isi: 'dis' },
+  { type: 'ahu', onc: 3, kat: 5, group: 'sogutma', color: '#0d9488', kw: 15, pf: 0.85, isi: 'dis' },
+  { type: 'fan', onc: 3, kat: 6, group: 'sogutma', color: '#94a3b8', kw: 5.5, pf: 0.85, isi: 'dis' },
+  { type: 'nemlendirici', onc: 4, kat: 1, group: 'sogutma', color: '#7dd3fc', kw: 10, pf: 1, isi: 'salon' },
+  { type: 'rack', onc: 1, kat: 1, group: 'yuk', color: '#b91c1c', kw: 80, pf: 0.95, kategori: 'IT', isi: 'salon' },
+  { type: 'depolama', onc: 1, kat: 1, group: 'yuk', color: '#c2410c', kw: 20, pf: 0.95, kategori: 'IT', isi: 'salon' },
+  { type: 'guvenlik', onc: 1, kat: 1, group: 'yuk', color: '#4f46e5', kw: 4, pf: 0.9, isi: 'elektrik' },
+  { type: 'yangin', onc: 1, kat: 1, group: 'yuk', color: '#e11d48', kw: 2, pf: 0.9, isi: 'elektrik' },
+  { type: 'asansor', onc: 4, kat: 3, group: 'yuk', color: '#78716c', kw: 18, pf: 0.8, df: 0.5, isi: 'elektrik' },
+  { type: 'yukBankasi', onc: 5, kat: 1, group: 'yuk', color: '#a16207', kw: 500, pf: 1, isi: 'dis' },
+  { type: 'ofis', onc: 4, kat: 1, group: 'yuk', color: '#7c3aed', kw: 30, pf: 0.9, df: 0.8, isi: 'dis' },
 ]
 
 for (const sp of LOAD_SPECS) {
@@ -549,6 +561,8 @@ for (const sp of LOAD_SPECS) {
       gerilim: 400,
       isiKonum: sp.isi,
       thd: 0,
+      oncelik: sp.onc,
+      kalkisKat: sp.kat,
       ...(sp.cool !== undefined ? { sogutmaKw: sp.cool } : {}),
       ...(sp.extra?.defaults ?? {}),
     },

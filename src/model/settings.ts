@@ -24,10 +24,14 @@ export interface ProjectSettings {
   emisyon: number
   /** Jeneratör aşırı yüklenince öncelik sırasıyla yük at (simülasyon). */
   yukAtma: boolean
+  /** Simülasyonda arıza uzarsa jeneratör yakıtının tükenmesi de adım olarak gösterilir. */
+  yakitSimulasyon: boolean
   /** Jeneratör yakıt özerkliği hedefi, saat. */
   yakitHedefSaat: number
   /** Motor kalkışında jeneratör gerilim çökmesi sınırı, %. */
   gerilimCokmesiSiniri: number
+  /** Sıralı yük almada ardışık öncelik grupları arasındaki süre, sn. */
+  yukAlmaAraligi: number
   /** Kablo ve busbar hat arıza verisi (güvenilirlik): MTBF / MTTR, saat. */
   kabloMtbf: number
   kabloMttr: number
@@ -70,8 +74,10 @@ export const DEFAULT_SETTINGS: ProjectSettings = {
   },
   emisyon: 0.45,
   yukAtma: true,
+  yakitSimulasyon: false,
   yakitHedefSaat: 24,
   gerilimCokmesiSiniri: 20,
+  yukAlmaAraligi: 10,
   kabloMtbf: 1_500_000,
   kabloMttr: 24,
   busbarMtbf: 3_000_000,
@@ -121,8 +127,10 @@ export function parseSettings(raw: unknown): ProjectSettings {
     salonSetpoint: numIn(o.salonSetpoint, 10, 40, d.salonSetpoint),
     emisyon: numIn(o.emisyon, 0, 5, d.emisyon),
     yukAtma: typeof o.yukAtma === 'boolean' ? o.yukAtma : d.yukAtma,
+    yakitSimulasyon: typeof o.yakitSimulasyon === 'boolean' ? o.yakitSimulasyon : d.yakitSimulasyon,
     yakitHedefSaat: numIn(o.yakitHedefSaat, 0, 10000, d.yakitHedefSaat),
     gerilimCokmesiSiniri: numIn(o.gerilimCokmesiSiniri, 1, 60, d.gerilimCokmesiSiniri),
+    yukAlmaAraligi: numIn(o.yukAlmaAraligi, 1, 300, d.yukAlmaAraligi),
     kabloMtbf: numIn(o.kabloMtbf, 1, 1e9, d.kabloMtbf),
     kabloMttr: numIn(o.kabloMttr, 0.01, 1e5, d.kabloMttr),
     busbarMtbf: numIn(o.busbarMtbf, 1, 1e9, d.busbarMtbf),
