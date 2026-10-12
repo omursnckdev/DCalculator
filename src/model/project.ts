@@ -159,6 +159,7 @@ export function parseYerlesim3d(v: unknown): Yerlesim3D | undefined {
   const rot = optNum(v.rot)
   if (rot !== undefined) out.rot = rot
   if (typeof v.oda === 'string' && v.oda) out.oda = v.oda
+  if (v.mont === true) out.mont = true
   for (const k of ['g', 'd', 'y'] as const) {
     const n = pos(k)
     if (n !== undefined) out[k] = n

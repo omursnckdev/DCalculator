@@ -59,6 +59,8 @@ export interface Yerlesim3D {
   elev?: number
   rot?: number
   oda?: string
+  /** Küçük eleman (kesici/ölçü) ana ekipmanın ön yüzüne oturtulmuş (otomatik yerleşim veya "panoya oturt"). */
+  mont?: boolean
   g?: number
   d?: number
   y?: number

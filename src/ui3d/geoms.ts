@@ -25,13 +25,14 @@ const TONE_RGB: Record<Part['tone'], [number, number, number]> = (() => {
     const k = new THREE.Color(hex)
     return [k.r, k.g, k.b]
   }
-  return { body: [1, 1, 1], accent: [0.62, 0.62, 0.62], dark: c('#334155'), metal: c('#cbd5e1') }
+  return { body: [1, 1, 1], accent: [0.62, 0.62, 0.62], dark: c('#334155'), metal: c('#cbd5e1'), glass: c('#7dd3fc'), led: c('#22c55e'), warn: c('#f59e0b') }
 })()
 
 function partGeometry(p: Part): THREE.BufferGeometry {
   const g = (p.kind === 'box' ? unitBox : unitCyl).clone()
   g.deleteAttribute('uv')
-  g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(...p.pos), new THREE.Quaternion(), new THREE.Vector3(...p.size)))
+  const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(...(p.rot ?? [0, 0, 0])))
+  g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(...p.pos), q, new THREE.Vector3(...p.size)))
   const n = g.getAttribute('position').count
   const col = new Float32Array(n * 3)
   const [r, gg, b] = TONE_RGB[p.tone]
@@ -48,13 +49,13 @@ const merge = (parts: Part[]): THREE.BufferGeometry | null => {
   return out
 }
 
-export function equipGeometry(type: EquipmentType, g: number, d: number, h: number, count: number): EquipGeo {
-  const key = `${type}|${g.toFixed(2)}|${d.toFixed(2)}|${h.toFixed(2)}|${count}`
+export function equipGeometry(type: EquipmentType, g: number, d: number, h: number, count: number, variant = ''): EquipGeo {
+  const key = `${type}|${g.toFixed(2)}|${d.toFixed(2)}|${h.toFixed(2)}|${count}|${variant}`
   const hit = cache.get(key)
   if (hit) return hit
-  const parts = partsOf(type, { g, d, y: h }, count)
+  const parts = partsOf(type, { g, d, y: h }, count, variant)
   const main = merge(parts.filter((p) => p.tone === 'body' || p.tone === 'accent'))
-  const fixed = merge(parts.filter((p) => p.tone === 'dark' || p.tone === 'metal'))
+  const fixed = merge(parts.filter((p) => p.tone !== 'body' && p.tone !== 'accent'))
   const geo: EquipGeo = { main: main ?? new THREE.BufferGeometry(), fixed }
   if (cache.size >= MAX_CACHE) {
     // En eski kaydı at (kaynaklar GPU'dan bırakılır).

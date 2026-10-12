@@ -22,7 +22,7 @@ import { Toolbar } from './Toolbar'
 // 3D paketi (three.js) yalnız 3D sekmesi açılınca yüklenir.
 const View3D = lazy(() => import('../ui3d/View3D'))
 
-type View = 'diagram' | 'table' | 'summary' | 'scenario' | 'redundancy' | 'reliability' | 'electrical' | 'energy' | 'view3d'
+type View = 'diagram' | 'table' | 'summary' | 'scenario' | 'redundancy' | 'reliability' | 'electrical' | 'energy' | 'view3d' | 'sim'
 
 export function App() {
   const [view, setView] = useState<View>('diagram')
@@ -87,6 +87,11 @@ export function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+  // Başka bileşenlerden gelen sekme değiştirme istekleri (ör. simülasyon şeridi → ayrı sayfa).
+  const viewReq = useUiPrefs((s) => s.viewReq)
+  useEffect(() => {
+    if (viewReq) setView(viewReq.view as View)
+  }, [viewReq])
   const hasPalette = view === 'diagram' || view === 'view3d'
 
   return (
@@ -94,7 +99,7 @@ export function App() {
       <div className="flex h-full flex-col">
         <Toolbar />
         <div className="flex items-center border-b border-slate-200 bg-white">
-          {(['diagram', 'table', 'summary', 'scenario', 'redundancy', 'reliability', 'electrical', 'energy', 'view3d'] as const).map((v) => (
+          {(['diagram', 'table', 'summary', 'scenario', 'redundancy', 'reliability', 'electrical', 'energy', 'view3d', 'sim'] as const).map((v) => (
             <button
               key={v}
               type="button"
@@ -146,6 +151,8 @@ export function App() {
             <ReliabilityView />
           ) : view === 'energy' ? (
             <EnergyView />
+          ) : view === 'sim' ? (
+            <SimulationPanel variant="page" />
           ) : view === 'view3d' ? (
             <Suspense fallback={<div className="p-4 text-sm text-slate-500">{tr.v3d.loading}</div>}>
               <View3D />

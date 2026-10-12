@@ -36,7 +36,8 @@ import { DEFAULT_SETTINGS, cloneSettings } from '../model/settings'
 import type { ProjectSettings } from '../model/settings'
 import { simulateAdditionalFault, simulateFailure, simulateRecovery } from '../engine'
 import type { SimStep } from '../engine'
-import { autoLayout } from '../layout3d/autoLayout'
+import { autoLayout, mountPatches } from '../layout3d/autoLayout'
+import { isMinor } from '../layout3d/dims'
 import { lengthPatches } from '../layout3d/lengths'
 import { attachHistory } from './history'
 import { saveProjectToDb } from './persistence'
@@ -129,6 +130,8 @@ interface State {
   setLayout3d: (patches: Record<string, Partial<Yerlesim3D>>) => void
   /** Yerleşimi olmayan ekipmanı yerleştirir; hiçbiri yerleşik değilse tümünü diziler ve odaları üretir. */
   ensureLayout3d: () => void
+  /** Tüm küçük elemanları (kesici, ölçü) ana ekipmanlarının ön yüzüne oturtur. */
+  mountMinors3d: () => void
   /** Tüm ekipmanı yeniden dizer ve odaları yeniden üretir. */
   autoLayout3d: () => void
   /** 3D sahnede ekipman ekler (x,z metre); şemada ayrıca otomatik bir konum alır. */
@@ -305,13 +308,27 @@ export const useStore = create<State>((set, get) => ({
     const s = get()
     const model = { nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }
     const missing = model.nodes.filter((n) => !n.yerlesim3d)
-    if (missing.length === 0) return
-    const all = missing.length === model.nodes.length
-    const r = autoLayout(model, all ? 'all' : 'missing', s.odalar3d)
-    set((st) => {
-      const nodes = st.nodes.map((n) => (r.placements[n.id] && !n.data.yerlesim3d ? { ...n, data: { ...n.data, yerlesim3d: r.placements[n.id] } } : n))
-      return { nodes, edges: withLengths(nodes, st.edges), odalar3d: all ? r.rooms : st.odalar3d, dirty: true }
-    })
+    if (missing.length > 0) {
+      const all = missing.length === model.nodes.length
+      const r = autoLayout(model, all ? 'all' : 'missing', s.odalar3d)
+      set((st) => {
+        const nodes = st.nodes.map((n) => (r.placements[n.id] && !n.data.yerlesim3d ? { ...n, data: { ...n.data, yerlesim3d: r.placements[n.id] } } : n))
+        return { nodes, edges: withLengths(nodes, st.edges), odalar3d: all ? r.rooms : st.odalar3d, dirty: true }
+      })
+    }
+    // Göç: eski yerleşimlerdeki (panonun yanında duran) küçük elemanlar bir kez ana ekipmanın ön yüzüne oturtulur.
+    const cur = get()
+    const m2 = { nodes: toProjectNodes(cur.nodes), edges: toProjectEdges(cur.edges) }
+    const unmounted = new Set(m2.nodes.filter((n) => isMinor(n.type) && n.yerlesim3d && !n.yerlesim3d.mont).map((n) => n.id))
+    if (unmounted.size > 0) {
+      const patches = mountPatches(m2, unmounted)
+      if (Object.keys(patches).length > 0) get().setLayout3d(patches)
+    }
+  },
+  mountMinors3d: () => {
+    const s = get()
+    const patches = mountPatches({ nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) })
+    if (Object.keys(patches).length > 0) get().setLayout3d(patches)
   },
   autoLayout3d: () => {
     const s = get()

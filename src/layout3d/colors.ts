@@ -12,6 +12,8 @@ export const STATUS_HEX: Record<LoadStatus, string> = { none: '#94a3b8', ok: '#1
 export const FAILED_HEX = '#dc2626'
 export const DEAD_HEX = '#6b7280'
 export const SHED_HEX = '#f97316'
+/** Açık konumdaki anahtar/kesici. */
+export const OPEN_HEX = '#eab308'
 
 /** Düğümün bıraktığı ısı (kW): yükte kendi gücü, diğerlerinde kendi kaybı. */
 export function heatKwOf(n: ProjectNode, r: NodeResult | undefined): number {
@@ -40,6 +42,7 @@ export interface ColorContext {
 export function nodeColor(n: ProjectNode, r: NodeResult | undefined, ctx: ColorContext): string {
   if (r?.failed) return FAILED_HEX
   if (r?.shed) return SHED_HEX
+  if (r?.open) return OPEN_HEX
   if (r && !r.energized) return DEAD_HEX
   switch (ctx.mode) {
     case 'doluluk':

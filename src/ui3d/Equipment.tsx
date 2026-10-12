@@ -56,6 +56,8 @@ export interface EqProps {
   d: number
   h: number
   count: number
+  /** Kesici tipi (ACB / MCCB / Ayırıcı): modül görünümü. */
+  variant: string
   color: string
   selected: boolean
   overlap: boolean
@@ -69,7 +71,7 @@ export interface EqProps {
 const Equipment = memo(function Equipment(p: EqProps) {
   const hovered = use3dStore((s) => s.hoverId === p.id)
   const setHover = use3dStore((s) => s.setHover)
-  const geo = useMemo(() => equipGeometry(p.type, p.g, p.d, p.h, p.count), [p.type, p.g, p.d, p.h, p.count])
+  const geo = useMemo(() => equipGeometry(p.type, p.g, p.d, p.h, p.count, p.variant), [p.type, p.g, p.d, p.h, p.count, p.variant])
   const clearance = clearanceOf(p.type)
 
   const onDown = (e: ThreeEvent<PointerEvent>) => {
@@ -149,6 +151,7 @@ export function EquipmentLayer() {
             d={b.d}
             h={b.h}
             count={rackCount(n)}
+            variant={n.type === 'kesici' ? String(n.params.tip ?? 'ACB') : ''}
             color={nodeColor(n, r, sc.colorCtx)}
             selected={sc.selected.has(n.id)}
             overlap={sc.overlaps.has(n.id)}

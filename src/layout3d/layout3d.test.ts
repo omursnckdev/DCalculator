@@ -11,11 +11,12 @@ import { migrate, parseProject, serializeProject } from '../model/project'
 import type { Oda3D, Project } from '../model/types'
 import { autoLayout, boxesOf, levels } from './autoLayout'
 import { defaultDims, dimsOf, rackCount, zoneOf } from './dims'
-import { alignGuides, boxOf, bounds, findOverlaps, rectsOverlap, roomAt, snap } from './geometry'
+import { alignGuides, boxOf, bounds, findOverlaps, rectsOverlap, roomAt, rotateAbout, snap } from './geometry'
 import { alignPatches, distributePatches } from './arrange'
 import { heatGrid, heatRgb } from './heat'
 import { BODY_RADIUS, blockedAt, forwardOf, freeSpot, rightOf, walkStep } from './walk'
-import { followersOf } from './autoLayout'
+import { followersOf, mountPatches } from './autoLayout'
+import { mountOnFace } from './faceMount'
 import { defaultRoute, polylineLength, routeLengthM, routePoints } from './route'
 
 const hdc = parseProject(readFileSync(new URL('../../examples/hdc02-pl1.dcalc.json', import.meta.url), 'utf8'))
@@ -227,21 +228,46 @@ describe('renkler (2D ile tutarlı)', () => {
   })
 })
 
+/** Döndürülmüş parçanın eksen hizalı yarı boyutları (Euler XYZ: R = Rx·Ry·Rz). */
+function halfExtents(size: [number, number, number], rot?: [number, number, number]): [number, number, number] {
+  const h: [number, number, number] = [size[0] / 2, size[1] / 2, size[2] / 2]
+  if (!rot) return h
+  const [a, b, c] = rot
+  const ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(b), sb = Math.sin(b), cc = Math.cos(c), sc = Math.sin(c)
+  const R = [
+    [cb * cc, -cb * sc, sb],
+    [ca * sc + sa * sb * cc, ca * cc - sa * sb * sc, -sa * cb],
+    [sa * sc - ca * sb * cc, sa * cc + ca * sb * sc, ca * cb],
+  ]
+  return [0, 1, 2].map((i) => Math.abs(R[i][0]) * h[0] + Math.abs(R[i][1]) * h[1] + Math.abs(R[i][2]) * h[2]) as [number, number, number]
+}
+
 describe('ekipman şekilleri', () => {
-  it('her tür için en az bir parça ve parçalar ekipman kutusunun içinde kalır', () => {
+  it('her tür için en az bir parça; parçalar ekipman kutusundan en çok 0,7 m taşar ve zeminin altına inmez', () => {
+    const types = new Set<string>()
     for (const n of TEMPLATES[1].build().nodes.concat(hdc.nodes)) {
+      const variant = n.type === 'kesici' ? String(n.params.tip ?? 'ACB') : ''
       const dm = dimsOf(n)
-      const parts = partsOf(n.type, dm, rackCount(n))
+      const parts = partsOf(n.type, dm, rackCount(n), variant)
+      types.add(n.type)
       expect(parts.length, n.type).toBeGreaterThan(0)
       for (const q of parts) {
-        expect(Math.abs(q.pos[0]) - q.size[0] / 2, `${n.type} x`).toBeLessThanOrEqual(dm.g / 2 + 0.5)
-        expect(Math.abs(q.pos[2]) - q.size[2] / 2, `${n.type} z`).toBeLessThanOrEqual(dm.d / 2 + 0.5)
-        expect(q.pos[1] - q.size[1] / 2, `${n.type} y`).toBeGreaterThanOrEqual(-1e-6)
+        const [hx, hy, hz] = halfExtents(q.size, q.rot)
+        expect(Math.abs(q.pos[0]) - hx, `${n.type} x`).toBeLessThanOrEqual(dm.g / 2 + 0.7)
+        expect(Math.abs(q.pos[2]) - hz, `${n.type} z`).toBeLessThanOrEqual(dm.d / 2 + 0.7)
+        expect(q.pos[1] - hy, `${n.type} y`).toBeGreaterThanOrEqual(-0.05)
       }
     }
+    expect(types.size).toBeGreaterThan(8)
+  })
+  it('tüm ekipman türleri için ayrıntılı parça üretilir (sade kutudan fazla)', () => {
+    const rich = ['trafo', 'jenerator', 'ups', 'mdb', 'chiller', 'crah', 'rack', 'kuruSogutucu', 'sogutmaKulesi', 'pompa', 'fanwall'] as const
+    for (const t of rich) expect(partsOf(t, { g: 2, d: 1.2, y: 2 }, 3).length, t).toBeGreaterThan(5)
+    // kesici varyantları farklı model
+    expect(partsOf('kesici', { g: 0.4, d: 0.16, y: 0.5 }, 1, 'ACB').length).not.toBe(partsOf('kesici', { g: 0.2, d: 0.12, y: 0.26 }, 1, 'MCCB').length)
   })
   it('rack sırasında kabin sayısı kadar gövde', () => {
-    expect(partsOf('rack', { g: 6, d: 1.2, y: 2.2 }, 10).filter((q) => q.tone === 'dark')).toHaveLength(10)
+    expect(partsOf('rack', { g: 6, d: 1.2, y: 2.2 }, 10).filter((q) => q.tone === 'dark' && q.size[1] === 2.2)).toHaveLength(10)
   })
 })
 
@@ -316,5 +342,68 @@ describe('küçük elemanların takibi', () => {
     expect(new Set(all).size).toBe(all.length)
     const minors = hdc.nodes.filter((n) => n.type === 'kesici' || n.type === 'yardimci').length
     expect(all.length).toBeGreaterThan(minors * 0.8)
+  })
+})
+
+describe('şalterler panoya oturur', () => {
+  const anchor = { x: 10, z: 20, g: 4, d: 0.8, h: 2.2, rot: 0, elev: 0 }
+  const items = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `k${i}`, g: 0.42, d: 0.16, h: 0.55 }))
+  it('ön yüzde, panonun genişliği içinde ve aynı dönüşle dizilir; satır dolunca üst satıra çıkar', () => {
+    const m = mountOnFace(anchor, items(12))
+    for (const l of Object.values(m)) {
+      expect(l.mont).toBe(true)
+      expect(l.z).toBeCloseTo(20 + 0.4 + 0.08, 4) // ön yüz: z = merkez + d/2 + modül derinliği/2
+      expect(Math.abs(l.x - 10)).toBeLessThanOrEqual(2) // genişlik içinde
+    }
+    // 4 m × %92 = 3,68 m / (0,42+0,03) ≈ 8 modül; 12 modül → ikinci satır
+    expect(new Set(Object.values(m).map((l) => l.elev)).size).toBe(2)
+    // çakışma yok (aynı satırda x aralıkları ayrık)
+    const first = Object.values(m).filter((l) => l.elev === Math.min(...Object.values(m).map((q) => q.elev!)))
+    const xs = first.map((l) => l.x).sort((a, b) => a - b)
+    for (let i = 1; i < xs.length; i++) expect(xs[i] - xs[i - 1]).toBeGreaterThanOrEqual(0.42 - 1e-6)
+  })
+  it('pano 90° dönükse şalterler dönük ön yüzde durur', () => {
+    const m = mountOnFace({ ...anchor, rot: 90 }, items(1))
+    const l = m.k0
+    // rot 90: yerel +z dünyada +x yönüne gider
+    expect(l.x).toBeCloseTo(10 + 0.48, 4)
+    expect(l.rot).toBe(90)
+  })
+  it('ana ekipmanı döndürünce takipçi onunla aynı yörüngede döner', () => {
+    const p = rotateAbout(10.48, 20, 10, 20, 90)
+    // (0,48; 0) ofseti 90° → (0; -0,48)
+    expect(p.x).toBeCloseTo(10, 6)
+    expect(p.z).toBeCloseTo(20 - 0.48, 6)
+  })
+  it('HDC02: kesicilerin çoğu bir ana ekipmanın ön yüzünde (mont) ve ön yüz sınırları içindedir', () => {
+    const q = withLayout(hdc)
+    const byId = new Map(q.nodes.map((n) => [n.id, n]))
+    const follow = followersOf(q)
+    let total = 0
+    let onFace = 0
+    for (const [aid, ids] of follow) {
+      const a = byId.get(aid)!
+      const dm = dimsOf(a)
+      for (const id of ids) {
+        const n = byId.get(id)!
+        total++
+        if (!n.yerlesim3d?.mont) continue
+        // yerel koordinat
+        const r = ((a.yerlesim3d!.rot ?? 0) * Math.PI) / 180
+        const dx = n.yerlesim3d.x - a.yerlesim3d!.x
+        const dz = n.yerlesim3d.z - a.yerlesim3d!.z
+        const lz = dx * Math.sin(r) + dz * Math.cos(r)
+        const lx = dx * Math.cos(r) - dz * Math.sin(r)
+        if (lz > dm.d / 2 && Math.abs(lx) <= dm.g / 2 + 0.01) onFace++
+      }
+    }
+    expect(total).toBeGreaterThan(20)
+    expect(onFace / total).toBeGreaterThan(0.8)
+  })
+  it('mountPatches yalnız istenen elemanları oturtur', () => {
+    const q = withLayout(hdc)
+    const one = q.nodes.find((n) => n.type === 'kesici' && followersOf(q).size > 0)!
+    const patches = mountPatches(q, new Set([one.id]))
+    expect(Object.keys(patches).length).toBeLessThanOrEqual(1)
   })
 })

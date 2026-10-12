@@ -2,6 +2,7 @@ import { coolingKw } from '../engine/coolingUnits'
 import type { Model } from '../engine/types'
 import type { Oda3D, OdaTuru, ProjectNode, Yerlesim3D } from '../model/types'
 import { dimsOf, isMinor, zoneOf } from './dims'
+import { mountOnFace } from './faceMount'
 import { boxOf, bounds, roomAt } from './geometry'
 import type { Box } from './geometry'
 
@@ -164,24 +165,25 @@ export function autoLayout(model: Model, mode: 'all' | 'missing', rooms: Oda3D[]
     cursorZ += packed.d + 2 * margin + ZONE_GAP
   }
 
-  // Küçük elemanlar (kesici, ölçü): ana ekipmanın yanına dizilir.
-  const attached = new Map<string, number>()
-  const exist = (id: string): { x: number; z: number; g: number; rot: number; oda?: string } | undefined => {
-    const n = byId.get(id)
-    const l = placements[id] ?? n?.yerlesim3d
-    return n && l ? { x: l.x, z: l.z, g: dimsOf({ ...n, yerlesim3d: l }).g, rot: l.rot ?? 0, oda: l.oda } : undefined
-  }
+  // Küçük elemanlar (kesici, ölçü): bağlı oldukları ana ekipmanın ön yüzüne oturur (şalter MSB'nin üzerinde görünür).
+  const merged = new Map<string, Yerlesim3D>()
+  for (const n of model.nodes) if (n.yerlesim3d) merged.set(n.id, n.yerlesim3d)
+  for (const [id, l] of Object.entries(placements)) merged.set(id, l)
+  const layoutModel: Model = { nodes: model.nodes.map((n) => ({ ...n, yerlesim3d: merged.get(n.id) })), edges: model.edges }
+  const mounts = mountPatches(layoutModel, new Set(minor.map((n) => n.id)))
   const fallback = { x: originX, z: cursorZ }
   let fi = 0
   for (const n of minor) {
-    const a = anchorOf(model, n.id, byId)
-    const base = a ? exist(a) : undefined
-    const k = a ? attached.get(a) ?? 0 : fi++
-    if (a) attached.set(a, k + 1)
-    const dm = dimsOf(n)
-    placements[n.id] = base
-      ? { x: base.x + base.g / 2 + 0.4 + k * (dm.g + 0.15) + dm.g / 2, z: base.z, ...(base.oda ? { oda: base.oda } : {}) }
-      : { x: fallback.x + k * 0.6, z: fallback.z }
+    const m = mounts[n.id]
+    if (m) {
+      const anchorLayout = (() => {
+        const a = anchorOf(model, n.id, byId)
+        return a ? merged.get(a) : undefined
+      })()
+      placements[n.id] = { ...m, ...(anchorLayout?.oda ? { oda: anchorLayout.oda } : {}) }
+    } else {
+      placements[n.id] = { x: fallback.x + (fi++) * 0.6, z: fallback.z }
+    }
   }
 
   // Eksik kipinde: yerleşen ekipmana mevcut odalardan biri atanır.
@@ -215,6 +217,30 @@ export function followersOf(model: Model): Map<string, string[]> {
     if (!isMinor(n.type)) continue
     const a = anchorOf(model, n.id, byId)
     if (a) out.set(a, [...(out.get(a) ?? []), n.id])
+  }
+  return out
+}
+
+/**
+ * Küçük elemanları (kesici, ölçü) ana ekipmanlarının ön yüzüne oturtur. `only` verilirse yalnız o elemanlar; ana ekipmanın
+ * yerleşimi yoksa atlanır. Sonuç `yerlesim3d` (mont: true) biçimindedir.
+ */
+export function mountPatches(model: Model, only?: Set<string>): Record<string, Yerlesim3D> {
+  const byId = new Map(model.nodes.map((n) => [n.id, n]))
+  const out: Record<string, Yerlesim3D> = {}
+  for (const [anchorId, ids] of followersOf(model)) {
+    const a = byId.get(anchorId)
+    if (!a?.yerlesim3d) continue
+    const items = ids
+      .filter((id) => !only || only.has(id))
+      .map((id) => {
+        const n = byId.get(id)!
+        const d = dimsOf(n)
+        return { id, g: d.g, d: d.d, h: d.y }
+      })
+    if (items.length === 0) continue
+    const dm = dimsOf(a)
+    Object.assign(out, mountOnFace({ x: a.yerlesim3d.x, z: a.yerlesim3d.z, g: dm.g, d: dm.d, h: dm.y, rot: a.yerlesim3d.rot ?? 0, elev: a.yerlesim3d.elev ?? 0 }, items))
   }
   return out
 }

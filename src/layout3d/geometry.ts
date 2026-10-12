@@ -145,3 +145,13 @@ export function alignGuides(moving: Box, others: Box[], rooms: Oda3D[], tol = 0.
 export function roomAt(rooms: Oda3D[], x: number, z: number): Oda3D | undefined {
   return rooms.find((r) => x >= r.x && x <= r.x + r.g && z >= r.z && z <= r.z + r.d)
 }
+
+/** (px, pz) noktasını (cx, cz) etrafında `deg` derece döndürür (corners() ile aynı dönüş yönü: ekipman rot'u artınca takipçiler de aynı yönde döner). */
+export function rotateAbout(px: number, pz: number, cx: number, cz: number, deg: number): { x: number; z: number } {
+  const a = rad(deg)
+  const c = Math.cos(a)
+  const s = Math.sin(a)
+  const dx = px - cx
+  const dz = pz - cz
+  return { x: cx + dx * c + dz * s, z: cz - dx * s + dz * c }
+}

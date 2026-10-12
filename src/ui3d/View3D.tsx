@@ -6,7 +6,7 @@ import { runInWorker } from '../ui/useWorker'
 import { useBaseModel } from '../store/useModel'
 import { fmtNum } from '../ui/status'
 import { useAnalysis } from '../store/useAnalysis'
-import { COLOR_MODES, DEAD_HEX, FAILED_HEX, SHED_HEX, STATUS_HEX, groupHex, heatKwOf } from '../layout3d/colors'
+import { COLOR_MODES, DEAD_HEX, FAILED_HEX, OPEN_HEX, SHED_HEX, STATUS_HEX, groupHex, heatKwOf } from '../layout3d/colors'
 import type { ColorMode } from '../layout3d/colors'
 import { boxesOf } from '../layout3d/autoLayout'
 import { findOverlaps } from '../layout3d/geometry'
@@ -245,6 +245,7 @@ function ArrangeMenu() {
   const nodes = useStore((st) => st.nodes)
   const setLayout = useStore((st) => st.setLayout3d)
   const duplicate = useStore((st) => st.duplicateSelected3d)
+  const mountMinors = useStore((st) => st.mountMinors3d)
   const sel = nodes.filter((n) => n.selected && n.data.yerlesim3d)
   const boxesOfSel = () => {
     const pn = toProjectNodes(sel)
@@ -270,6 +271,9 @@ function ArrangeMenu() {
           {A.distZ}
         </button>
       </div>
+      <button type="button" className={b} onClick={() => mountMinors()} title={A.mountHint}>
+        ▤ {A.mount}
+      </button>
       <button type="button" className={b} disabled={sel.length < 1} onClick={() => duplicate()}>
         ⧉ {A.duplicate} (Ctrl+D)
       </button>
@@ -308,6 +312,7 @@ function Legend3D({ data }: { data: SceneData }) {
       <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 border-t border-slate-200 pt-0.5">
         {dot(FAILED_HEX, L.failed)}
         {dot(SHED_HEX, L.shed)}
+        {dot(OPEN_HEX, L.open)}
         {dot('#22c55e', L.running)}
         {dot('#facc15', L.battery)}
       </div>

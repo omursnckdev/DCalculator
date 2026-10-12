@@ -128,7 +128,7 @@ describe('kopyalama ve panel tercihleri', () => {
     const { useUiPrefs } = await import('./uiPrefs')
     useUiPrefs.getState().setLeft(false)
     useUiPrefs.getState().setRight(false)
-    expect(JSON.parse(mem.get('dcalculator:uiPrefs')!)).toEqual({ leftOpen: false, rightOpen: false })
+    expect(JSON.parse(mem.get('dcalculator:uiPrefs')!)).toMatchObject({ leftOpen: false, rightOpen: false })
     useUiPrefs.getState().setLeft(true)
     useUiPrefs.getState().setRight(true)
     vi.unstubAllGlobals()

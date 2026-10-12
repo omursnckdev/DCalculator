@@ -4,6 +4,7 @@ import { tr } from '../i18n/tr'
 import { EQUIPMENT } from '../library/equipment'
 import { modelSignature } from '../store/modelSig'
 import { useStore } from '../store/useStore'
+import { useUiPrefs } from '../store/uiPrefs'
 import { analyze } from '../engine'
 import { buildReportHtml, printHtml } from '../export/report'
 import { toProjectEdges, toProjectNodes } from '../model/project'
@@ -49,7 +50,7 @@ const KIND_ICON: Record<string, string> = {
 }
 
 /** Alt şerit: ekipman arızasını adım adım oynatır; tuval seçili adımın durumunu gösterir. */
-export function SimulationPanel() {
+export function SimulationPanel({ variant = 'dock' }: { variant?: 'dock' | 'page' }) {
   const sim = useStore((s) => s.sim)
   const nodes = useStore((s) => s.nodes)
   const edges = useStore((s) => s.edges)
@@ -68,6 +69,25 @@ export function SimulationPanel() {
   const [clearPick, setClearPick] = useState('')
   const [addPick, setAddPick] = useState('')
   const [pane, setPane] = useState<'detail' | 'chart'>('detail')
+  const page = variant === 'page'
+  const simHeight = useUiPrefs((u) => u.simHeight)
+  const setSimHeight = useUiPrefs((u) => u.setSimHeight)
+  const requestView = useUiPrefs((u) => u.requestView)
+  const maxH = () => Math.floor(window.innerHeight * 0.75)
+  // Üst kenardan sürükleyerek yükseklik ayarı (yukarı çekince büyür).
+  const startResize = (e: React.PointerEvent) => {
+    e.preventDefault()
+    const y0 = e.clientY
+    const h0 = simHeight
+    const move = (ev: PointerEvent) => setSimHeight(Math.min(maxH(), h0 + (y0 - ev.clientY)))
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+  const bodyStyle = page ? undefined : { height: simHeight }
 
   // Silinen ekipman arıza listesinde kalmasın.
   useEffect(() => {
@@ -105,11 +125,31 @@ export function SimulationPanel() {
   const step = sim?.steps[index]
 
   return (
-    <section className="shrink-0 border-t border-slate-300 bg-white" aria-label={tr.sim.title}>
+    <section className={`relative border-t border-slate-300 bg-white ${page ? 'flex min-h-0 flex-1 flex-col overflow-y-auto' : 'shrink-0'}`} aria-label={tr.sim.title}>
+      {!page && open && (
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label={tr.sim.resize}
+          title={tr.sim.resize}
+          className="absolute inset-x-0 top-0 z-10 h-1.5 cursor-ns-resize bg-transparent hover:bg-blue-300/60"
+          onPointerDown={startResize}
+          onDoubleClick={() => setSimHeight(230)}
+        />
+      )}
       <div className="flex items-center gap-3 px-3 py-1.5">
-        <button type="button" className="text-sm font-semibold" onClick={() => setOpen(!open)}>
-          {open ? '▾' : '▸'} {tr.sim.title}
-        </button>
+        {page ? (
+          <span className="text-sm font-semibold">{tr.sim.title}</span>
+        ) : (
+          <>
+            <button type="button" className="text-sm font-semibold" onClick={() => setOpen(!open)}>
+              {open ? '▾' : '▸'} {tr.sim.title}
+            </button>
+            <button type="button" className="rounded border border-slate-300 px-1.5 text-xs text-slate-600 hover:bg-slate-50" title={tr.sim.openPage} aria-label={tr.sim.openPage} onClick={() => requestView('sim')}>
+              ⤢ {tr.sim.pageShort}
+            </button>
+          </>
+        )}
         {!sim && (
           <>
             <select
@@ -282,7 +322,7 @@ export function SimulationPanel() {
 
       {open && sim && step && (
         <div className="flex gap-4 border-t border-slate-100 px-3 py-2">
-          <ol className="flex w-80 shrink-0 flex-col gap-1 overflow-y-auto" style={{ maxHeight: 230 }}>
+          <ol className={`flex shrink-0 flex-col gap-1 overflow-y-auto ${page ? "w-96" : "w-80"}`} style={bodyStyle}>
             {sim.steps.map((st, i) => (
               <li key={`${i}-${st.phase}-${st.id}`}>
                 {st.phase === 'recovery' && sim.steps[i - 1]?.phase !== 'recovery' && (
@@ -302,12 +342,12 @@ export function SimulationPanel() {
               </li>
             ))}
           </ol>
-          {pane === 'chart' ? (
-            <div className="min-w-0 flex-1 overflow-y-auto" style={{ maxHeight: 230 }}>
+          {pane === 'chart' && !page ? (
+            <div className="min-w-0 flex-1 overflow-y-auto" style={bodyStyle}>
               <StepChart steps={sim.steps} index={index} />
             </div>
           ) : (
-          <div className="min-w-0 flex-1 overflow-y-auto" style={{ maxHeight: 230 }}>
+          <div className="min-w-0 flex-1 overflow-y-auto" style={bodyStyle}>
             <div className="mb-1 flex items-baseline gap-2">
               <h3 className="text-sm font-semibold">{step.title}</h3>
               <span className="font-mono text-xs text-slate-500">{step.timeLabel}</span>
@@ -352,8 +392,14 @@ export function SimulationPanel() {
             <p className="mt-2 text-[10px] text-slate-400">{tr.sim.typicalNote}</p>
           </div>
           )}
+          {page && (
+            <div className="min-w-0 flex-1 overflow-y-auto">
+              <StepChart steps={sim.steps} index={index} />
+            </div>
+          )}
         </div>
       )}
+      {page && !sim && <p className="px-3 py-6 text-sm text-slate-500">{tr.sim.pageEmpty}</p>}
     </section>
   )
 }

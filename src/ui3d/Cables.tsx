@@ -84,7 +84,7 @@ function FlowDots({ cables }: { cables: Cable[] }) {
   })
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, Math.max(1, live.length * per)]} frustumCulled={false}>
-      <sphereGeometry args={[0.09, 8, 8]} />
+      <sphereGeometry args={[0.06, 8, 8]} />
       <meshBasicMaterial color="#fde047" />
     </instancedMesh>
   )

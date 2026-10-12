@@ -24,6 +24,13 @@ export function rackCount(n: Pick<ProjectNode, 'type' | 'params'>): number {
   return clamp(Math.round(num(n.params, 'kuruluKw', n.type) / 7), 1, 30)
 }
 
+/** Kesici modülü boyutu (tipe göre, panoya oturan ön plaka): [genişlik, derinlik, yükseklik] m. */
+function breakerDims(tip: string): Dims {
+  if (tip === 'MCCB') return { g: 0.2, d: 0.12, y: 0.26 }
+  if (tip === 'Ayırıcı') return { g: 0.26, d: 0.14, y: 0.34 }
+  return { g: 0.42, d: 0.16, y: 0.55 }
+}
+
 export function defaultDims(n: Pick<ProjectNode, 'type' | 'params'>): Dims {
   const p = n.params
   const t = n.type
@@ -52,9 +59,9 @@ export function defaultDims(n: Pick<ProjectNode, 'type' | 'params'>): Dims {
     case 'rpp':
       return { g: 0.8, d: 0.6, y: 2 }
     case 'kesici':
-      return { g: 0.4, d: 0.4, y: 0.6 }
+      return breakerDims(String(p.tip ?? EQUIPMENT.kesici.defaults.tip ?? 'ACB'))
     case 'yardimci':
-      return { g: 0.3, d: 0.3, y: 0.3 }
+      return { g: 0.16, d: 0.1, y: 0.16 }
     case 'senkron':
       return { g: 2.4, d: 0.8, y: 2.2 }
     case 'itYuku':

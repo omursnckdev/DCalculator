@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { alignGuides, boxOf, roomAt, snap } from '../layout3d/geometry'
+import { alignGuides, boxOf, roomAt, rotateAbout, snap } from '../layout3d/geometry'
 import type { Box } from '../layout3d/geometry'
 import { dimsOf } from '../layout3d/dims'
 import { followersOf } from '../layout3d/autoLayout'
@@ -122,12 +122,30 @@ export function endDrag(): void {
   if (Object.keys(patches).length) st.setLayout3d(patches as never)
 }
 
-/** Seçili ekipmanı Y ekseni etrafında döndürür (derece). */
+/**
+ * Seçili ekipmanı Y ekseni etrafında döndürür (derece). Ana ekipmanın ön yüzüne oturan küçük elemanlar (şalterler) de ana
+ * ekipmanın merkezi etrafında birlikte döner (seçili değillerse).
+ */
 export function rotateSelected(deg: number): void {
   const st = useStore.getState()
-  const patches: Record<string, { rot: number }> = {}
-  for (const n of st.nodes) if (n.selected && n.data.yerlesim3d) patches[n.id] = { rot: (((n.data.yerlesim3d.rot ?? 0) + deg) % 360 + 360) % 360 }
-  if (Object.keys(patches).length) st.setLayout3d(patches)
+  const sel = st.nodes.filter((n) => n.selected && n.data.yerlesim3d)
+  if (sel.length === 0) return
+  const selIds = new Set(sel.map((n) => n.id))
+  const follow = followersOf({ nodes: toProjectNodes(st.nodes), edges: toProjectEdges(st.edges) })
+  const norm = (v: number) => ((v % 360) + 360) % 360
+  const patches: Record<string, { x?: number; z?: number; rot: number }> = {}
+  for (const n of sel) {
+    const l = n.data.yerlesim3d!
+    patches[n.id] = { rot: norm((l.rot ?? 0) + deg) }
+    for (const f of follow.get(n.id) ?? []) {
+      if (selIds.has(f)) continue
+      const fl = st.nodes.find((x) => x.id === f)?.data.yerlesim3d
+      if (!fl) continue
+      const p = rotateAbout(fl.x, fl.z, l.x, l.z, deg)
+      patches[f] = { x: Math.round(p.x * 1e4) / 1e4, z: Math.round(p.z * 1e4) / 1e4, rot: norm((fl.rot ?? 0) + deg) }
+    }
+  }
+  st.setLayout3d(patches)
 }
 
 export type EdgeLike = Pick<ProjectEdge, 'id'>
