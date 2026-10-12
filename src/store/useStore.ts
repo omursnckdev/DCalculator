@@ -25,6 +25,8 @@ import type {
   Scenario,
   EdgeState,
 } from '../model/types'
+import { DEFAULT_SETTINGS, cloneSettings } from '../model/settings'
+import type { ProjectSettings } from '../model/settings'
 import { simulateFailure, simulateRecovery } from '../engine'
 import type { SimStep } from '../engine'
 import { saveProjectToDb } from './persistence'
@@ -94,6 +96,9 @@ interface State {
   edges: LineEdge[]
   dirty: boolean
   scenarios: Scenario[]
+  /** Yük profili, tarife ve soğutma ayarları (projeyle kaydedilir). */
+  ayarlar: ProjectSettings
+  setAyarlar: (patch: Partial<ProjectSettings>) => void
   /** Canvas ve tüm sonuçların gösterdiği senaryo; null = temel durum (kaydedilmez). */
   activeScenarioId: string | null
   /** loadProject her çağrıldığında artar; canvas görünümü sığdırmak için dinler. */
@@ -213,6 +218,8 @@ export const useStore = create<State>((set, get) => ({
   },
   dirty: false,
   scenarios: [],
+  ayarlar: cloneSettings(DEFAULT_SETTINGS),
+  setAyarlar: (patch) => set((s) => ({ ayarlar: { ...s.ayarlar, ...patch }, dirty: true })),
   activeScenarioId: null,
   viewTick: 0,
 
@@ -456,6 +463,7 @@ export const useStore = create<State>((set, get) => ({
       nodes: toProjectNodes(s.nodes),
       edges: toProjectEdges(s.edges),
       scenarios: s.scenarios,
+      ayarlar: s.ayarlar,
     }
   },
 
@@ -468,6 +476,7 @@ export const useStore = create<State>((set, get) => ({
       nodes: fromProjectNodes(p.nodes),
       edges: fromProjectEdges(p.edges),
       scenarios: p.scenarios,
+      ayarlar: cloneSettings(p.ayarlar),
       activeScenarioId: null,
       sim: null,
       simPicked: [],

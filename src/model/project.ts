@@ -1,4 +1,5 @@
 import { EQUIPMENT } from '../library/equipment'
+import { DEFAULT_SETTINGS, cloneSettings, parseSettings } from './settings'
 import { EDGE_STATES, EQUIPMENT_TYPES, HEAT_LOCATIONS, LINE_TYPES } from './types'
 import type {
   EquipmentNode,
@@ -16,7 +17,7 @@ import type {
  * Proje dosyası şema sürümü. Şema değiştiğinde artır ve `migrate` içine
  * bir dönüşüm adımı ekle (plan §12).
  */
-export const SCHEMA_VERSION = 6
+export const SCHEMA_VERSION = 7
 
 export function newId(prefix = 'id'): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`
@@ -33,6 +34,7 @@ export function emptyProject(name = 'Yeni proje'): Project {
     nodes: [],
     edges: [],
     scenarios: [],
+    ayarlar: cloneSettings(DEFAULT_SETTINGS),
   }
 }
 
@@ -245,6 +247,11 @@ function parseScenario(raw: unknown, nodeIds: Set<string>, edgeIds: Set<string>)
 }
 
 /** v5 -> v6: hatlara `ad`/`aciklama`, senaryolara `nodeStates` (kesici durumu) eklendi. */
+/** v6 -> v7: proje ayarları (yük profili, tarife, soğutma) eklendi. */
+function v6ToV7(raw: Record<string, unknown>): Record<string, unknown> {
+  return { ...raw, schemaVersion: 7, ayarlar: parseSettings(raw.ayarlar) }
+}
+
 function v5ToV6(raw: Record<string, unknown>): Record<string, unknown> {
   const edges = Array.isArray(raw.edges) ? raw.edges : []
   const scenarios = Array.isArray(raw.scenarios) ? raw.scenarios : []
@@ -307,6 +314,7 @@ export function migrate(input: unknown): Project {
   if (typeof version === 'number' && version < 4) raw = v3ToV4(raw)
   if (typeof version === 'number' && version < 5) raw = v4ToV5(raw)
   if (typeof version === 'number' && version < 6) raw = v5ToV6(raw)
+  if (typeof version === 'number' && version < 7) raw = v6ToV7(raw)
   if (!Array.isArray(raw.nodes) || !Array.isArray(raw.edges)) {
     throw new ProjectFormatError('nodes/edges listeleri eksik.')
   }
@@ -336,6 +344,7 @@ export function migrate(input: unknown): Project {
     nodes,
     edges,
     scenarios,
+    ayarlar: parseSettings(raw.ayarlar),
   }
 }
 

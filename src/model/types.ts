@@ -115,6 +115,8 @@ export interface Scenario {
   nodeStates: Record<string, EdgeState>
 }
 
+import type { ProjectSettings } from './settings'
+
 export interface Project {
   schemaVersion: number
   id: string
@@ -124,4 +126,6 @@ export interface Project {
   nodes: ProjectNode[]
   edges: ProjectEdge[]
   scenarios: Scenario[]
+  /** Yük profili, tarife ve soğutma ayarları. */
+  ayarlar: ProjectSettings
 }

@@ -173,6 +173,8 @@ export function TableView() {
     { header: tr.results.total, unit: 'kW', kind: 'readonly', get: (n) => fmtNum(res(n)?.totalKw ?? 0) },
     { header: 'kVA', kind: 'readonly', get: (n) => fmtNum(res(n)?.kva ?? 0) },
     { header: tr.results.current, unit: 'A', kind: 'readonly', get: (n) => fmtNum(res(n)?.currentA ?? 0, 0) },
+    { header: tr.results.isc, unit: 'kA', kind: 'readonly', get: (n) => (res(n)?.iscKa === undefined ? '' : fmtNum(res(n)!.iscKa!, 1)) },
+    { header: tr.results.chainDrop, unit: '%', kind: 'readonly', get: (n) => ((res(n)?.chainDropPct ?? 0) > 0 ? fmtNum(res(n)!.chainDropPct!, 2) : '') },
     { header: tr.results.ownLoss, unit: 'kW', kind: 'readonly', get: (n) => ((res(n)?.ownLossKw ?? 0) > 0 ? fmtNum(res(n)!.ownLossKw, 3) : '') },
     {
       header: tr.results.loading,

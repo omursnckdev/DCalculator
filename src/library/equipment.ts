@@ -146,8 +146,8 @@ const defs: EquipmentDef[] = [
     hasInput: false,
     hasOutput: true,
     color: '#d97706',
-    defaults: { nominalKva: 2000, gerilim: 400, pf: 0.8 },
-    fields: [n('nominalKva', A.nominalKva, 'kVA', { min: 0, step: 50 }), voltage, pf],
+    defaults: { nominalKva: 2000, gerilim: 400, pf: 0.8, xd: 15 },
+    fields: [n('nominalKva', A.nominalKva, 'kVA', { min: 0, step: 50 }), voltage, pf, n('xd', A.xd, '%', { min: 0, step: 0.5 })],
     summary: (p) => `${fmt(num(p, 'nominalKva'))} kVA · ${fmt(num(p, 'gerilim'))} V`,
   },
   {
@@ -215,7 +215,7 @@ const defs: EquipmentDef[] = [
     hasOutput: true,
     color: '#b91c1c',
     // Açık kesici hattı keser (normalde açık bypass/kuplaj/load bank gibi). Kapalıysa geçirgendir.
-    defaults: { tip: 'ACB', nominalAkim: 1600, kutup: '4P', durum: 'kapali', otomatik: 'yok', gerilim: 400 },
+    defaults: { tip: 'ACB', nominalAkim: 1600, kutup: '4P', durum: 'kapali', otomatik: 'yok', gerilim: 400, kesmeKa: 0 },
     fields: [
       { kind: 'select', key: 'tip', label: A.kesiciTip, options: [
         { value: 'ACB', label: 'ACB' },
@@ -236,6 +236,7 @@ const defs: EquipmentDef[] = [
         { value: 'otomatik', label: A.otoVar },
       ] },
       voltage,
+      n('kesmeKa', A.kesmeKa, 'kA', { min: 0, step: 1 }),
     ],
     summary: (p) => `${p.tip ?? 'ACB'} ${fmt(num(p, 'nominalAkim'))} A ${p.kutup ?? ''} · ${p.durum === 'acik' ? tr.senaryo.acik : tr.senaryo.kapali}`,
   },
@@ -304,6 +305,7 @@ const defs: EquipmentDef[] = [
       verim75: 96.5,
       verim100: 96.3,
       bataryaDk: 10,
+      kisaDevreKati: 1.5,
       isiKonum: 'elektrik',
     },
     fields: [
@@ -327,6 +329,7 @@ const defs: EquipmentDef[] = [
       n('verim75', A.verim75, '%', { min: 50, max: 100, step: 0.1 }),
       n('verim100', A.verim100, '%', { min: 50, max: 100, step: 0.1 }),
       n('bataryaDk', A.bataryaDk, 'dk', { min: 0, step: 1 }),
+      n('kisaDevreKati', A.kisaDevreKati, '× In', { min: 0, step: 0.1 }),
       heatField,
     ],
     summary: (p) =>

@@ -236,6 +236,8 @@ export const tr = {
     loading: 'Doluluk',
     input: 'Giriş gücü',
     ownLoss: 'Kayıp (kendi)',
+    isc: 'Kısa devre akımı',
+    chainDrop: 'Toplam gerilim düşümü (kaynaktan)',
     drop: 'Gerilim düşümü',
     flow: 'Güç (P)',
   },
@@ -272,6 +274,8 @@ export const tr = {
     nearLimit: (ad: string, pct: string) => `${ad}: kapasiteye yakın (%${pct}).`,
     lineOverload: (a: string, b: string, pct: string) => `${a} → ${b} hattı aşırı yüklü (%${pct}).`,
     lineNearLimit: (a: string, b: string, pct: string) => `${a} → ${b} hattı kapasiteye yakın (%${pct}).`,
+    chainDrop: (n: string, v: string, lim: string) => `${n}: kaynaktan toplam gerilim düşümü %${v} (sınır %${lim})`,
+    breakingCapacity: (n: string, ka: string, rating: string) => `${n}: kısa devre akımı ${ka} kA, kesme kapasitesi ${rating} kA'yı aşıyor`,
     voltageDrop: (a: string, b: string, pct: string, limit: string) =>
       `${a} → ${b} hattı gerilim düşümü %${pct} (sınır %${limit}).`,
     shareSum: (ad: string, sum: string) => `${ad}: besleme paylarının toplamı %${sum}; %100 olmalı.`,
@@ -375,6 +379,9 @@ export const tr = {
     genelYuk: 'Genel yük',
   },
   alan: {
+    xd: 'Alt-geçici reaktans Xd\'\' (kısa devre)',
+    kesmeKa: 'Kesme kapasitesi (0 = belirtilmedi)',
+    kisaDevreKati: 'Evirici kısa devre katı (× In)',
     genislik: 'Şemada genişlik (0 = otomatik)',
     baraUzunluk: 'İç bara uzunluğu',
     baraDirenc: 'Bara direnci (faz başı; 0 = otomatik)',

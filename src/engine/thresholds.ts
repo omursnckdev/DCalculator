@@ -5,6 +5,7 @@ export const DEFAULT_THRESHOLDS: Thresholds = {
   warnPct: 80,
   overPct: 100,
   voltageDropPct: 3,
+  chainDropPct: 5,
 }
 
 export function statusOf(pct: number | undefined, th: Thresholds): LoadStatus {

@@ -54,6 +54,10 @@ export interface NodeResult {
   onBattery: boolean
   /** Simülasyon: jeneratör motoru çalışıyor (yüksüz de olabilir). */
   running?: boolean
+  /** Kaynaktan bu düğüme toplam gerilim düşümü (%), canlı yol boyunca en kötü. */
+  chainDropPct?: number
+  /** Üç faz simetrik kısa devre akımı (kA), tüm kaynak katkıları. */
+  iscKa?: number
   /** Bir kaynaktan canlı bir yolla besleniyor mu (arıza ve açık anahtarlar dahil). */
   energized: boolean
   /** Yük düğümü enerjisizse kaybedilen peak yük, kW (yoksa 0). */
@@ -172,4 +176,6 @@ export interface Thresholds {
   overPct: number
   /** Hat gerilim düşümü uyarı sınırı, %. */
   voltageDropPct: number
+  /** Yük ucunda izin verilen toplam gerilim düşümü, %. */
+  chainDropPct: number
 }

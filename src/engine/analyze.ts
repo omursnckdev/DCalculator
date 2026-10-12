@@ -5,6 +5,7 @@ import type { EquipmentType, HeatLocation, ProjectEdge, ProjectNode, Scenario } 
 import { resolveAutoClosed, stagingStandby, withDefaults } from './automation'
 import type { SimOptions } from './automation'
 import { energize } from './energize'
+import { enrichStudies } from './networkStudies'
 import { switchState } from './switches'
 import { DEFAULT_THRESHOLDS, statusOf } from './thresholds'
 import type {
@@ -165,6 +166,7 @@ export function analyze(
     res = analyzeCore(model, th, scenario, baseResult, opts, closed2, standby)
     for (const id of standby) res.nodes[id] = { ...res.nodes[id], energized: true, standby: true }
   }
+  enrichStudies(model, res, th, scenario)
   return res
 }
 

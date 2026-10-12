@@ -57,6 +57,8 @@ export async function buildWorkbook(project: Project, a: Analysis, scenarioName?
     head(tr.results.current, 'A'),
     head(tr.results.loading, '%'),
     head(tr.results.input, 'kW'),
+    head(tr.results.isc, 'kA'),
+    head(tr.results.chainDrop, '%'),
     tr.props.notlar,
   ]
   ws.addRow(equipHeaders)
@@ -82,11 +84,13 @@ export async function buildWorkbook(project: Project, a: Analysis, scenarioName?
       r.currentA,
       r.loadingPct ?? null,
       r.inputKw,
+      r.iscKa ?? null,
+      r.chainDropPct ?? null,
       n.notlar,
     ])
   }
   const firstResult = 5 + paramCols.length
-  for (let c = firstResult; c < firstResult + 8; c++) ws.getColumn(c).numFmt = '#,##0.00'
+  for (let c = firstResult; c < firstResult + 10; c++) ws.getColumn(c).numFmt = '#,##0.00'
 
   // --- Hatlar --------------------------------------------------------------
   const wl = wb.addWorksheet(tr.export.sheetLines, { views: [{ state: 'frozen', ySplit: 1 }] })

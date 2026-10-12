@@ -238,3 +238,26 @@ describe('migrate / doğrulama', () => {
     expect(out.edges[0].uzunluk).toBeGreaterThan(0)
   })
 })
+
+describe('v7: proje ayarları', () => {
+  it('v6 dosyası varsayılan ayarlarla açılır; bozuk değerler düzeltilir', () => {
+    const p = parseProject(JSON.stringify({ schemaVersion: 6, id: 'x', name: 'x', nodes: [], edges: [], scenarios: [] }))
+    expect(p.schemaVersion).toBe(SCHEMA_VERSION)
+    expect(p.ayarlar.profilIt).toHaveLength(24)
+    expect(p.ayarlar.tarife).toBeGreaterThan(0)
+    const q = parseProject(JSON.stringify({ schemaVersion: 7, id: 'x', name: 'x', nodes: [], edges: [], scenarios: [], ayarlar: { profilIt: [1, 2], tarife: -5, hedefPue: 'a' } }))
+    expect(q.ayarlar.profilIt).toHaveLength(24)
+    expect(q.ayarlar.profilIt[0]).toBe(100)
+    expect(q.ayarlar.tarife).toBe(0)
+    expect(q.ayarlar.hedefPue).toBe(1.5)
+  })
+
+  it('ayarlar serileştirmede korunur', () => {
+    const p = emptyProject()
+    p.ayarlar.tarife = 7.25
+    p.ayarlar.profilMek[3] = 42
+    const back = parseProject(serializeProject(p))
+    expect(back.ayarlar.tarife).toBe(7.25)
+    expect(back.ayarlar.profilMek[3]).toBe(42)
+  })
+})
