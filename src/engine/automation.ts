@@ -20,6 +20,8 @@ export interface SimOptions {
   keepClosed?: string[]
   /** Onarılmış ama henüz çalıştırılmamış jeneratörler: devrede sayılmaz. */
   offGens?: string[]
+  /** false: kısa devre ve toplam gerilim düşümü hesaplanmaz (ağır taramalarda hız için). */
+  studies?: boolean
 }
 
 export const FULL_AUTOMATION: SimOptions = { autoBypass: true, staging: true, genOnline: true, battery: false }

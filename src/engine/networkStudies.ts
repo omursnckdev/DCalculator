@@ -168,8 +168,15 @@ function trafoDropPct(n: ProjectNode, a: Analysis): number {
  * Sonuçlara toplam gerilim düşümü (kaynaktan o düğüme kadar, canlı yol boyunca en kötü) ve kısa devre
  * akımı yazar; sınır aşımlarını doğrulama listesine ekler. `a` yerinde güncellenir.
  */
-export function enrichStudies(model: Model, a: Analysis, th: Thresholds, scenario?: Scenario): void {
+export function enrichStudies(model: Model, a: Analysis, th: Thresholds, scenario?: Scenario, studies = true): void {
   const byId = new Map(model.nodes.map((n) => [n.id, n]))
+  const issues: Issue[] = []
+  if (studies) studyBlock(model, a, th, scenario, byId, issues)
+  coolingBlock(model, a, issues)
+  a.issues.push(...issues)
+}
+
+function studyBlock(model: Model, a: Analysis, th: Thresholds, scenario: Scenario | undefined, byId: Map<string, ProjectNode>, issues: Issue[]): void {
   // 1) Toplam gerilim düşümü: topolojik sıra için canlı hatlar üzerinden yinelemeli.
   const drop = new Map<string, number>()
   const live = model.edges.filter((e) => {
@@ -208,7 +215,6 @@ export function enrichStudies(model: Model, a: Analysis, th: Thresholds, scenari
   for (const [id, ka] of Object.entries(isc)) if (a.nodes[id]) a.nodes[id].iscKa = ka
 
   // 3) Doğrulama: yük uçlarında toplam düşüm; kesici kesme kapasitesi.
-  const issues: Issue[] = []
   for (const n of model.nodes) {
     const r = a.nodes[n.id]
     if (!r) continue
@@ -223,7 +229,10 @@ export function enrichStudies(model: Model, a: Analysis, th: Thresholds, scenari
       }
     }
   }
-  // 4) Soğutma yeterliliği (soğutma kapasitesi tanımlı birim varsa).
+}
+
+/** Soğutma yeterliliği (soğutma kapasitesi tanımlı birim varsa). */
+function coolingBlock(model: Model, a: Analysis, issues: Issue[]): void {
   const units = model.nodes
     .filter((n) => n.type === 'mekanikYuk' && num(n, 'sogutmaKw') > 0)
     .map((n) => ({ id: n.id, name: n.ad, kw: num(n, 'sogutmaKw'), energized: !!a.nodes[n.id]?.energized && !a.nodes[n.id]?.failed }))
@@ -236,5 +245,4 @@ export function enrichStudies(model: Model, a: Analysis, th: Thresholds, scenari
       issues.push({ severity: 'warning', message: tr.analiz.coolingShort(Math.round(demandKw).toLocaleString('tr-TR'), Math.round(capacityKw).toLocaleString('tr-TR')) })
     }
   }
-  a.issues.push(...issues)
 }

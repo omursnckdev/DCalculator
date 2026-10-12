@@ -172,7 +172,7 @@ export function analyze(
     res = analyzeCore(model, th, scenario, baseResult, opts, closed2, standby)
     for (const id of standby) res.nodes[id] = { ...res.nodes[id], energized: true, standby: true }
   }
-  enrichStudies(model, res, th, scenario)
+  enrichStudies(model, res, th, scenario, opts.studies !== false)
   return res
 }
 
