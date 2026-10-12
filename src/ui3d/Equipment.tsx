@@ -100,6 +100,8 @@ export function Equipment({ n }: { n: ProjectNode }) {
       position={[box.x, box.elev, box.z]}
       rotation={[0, rad(box.rot), 0]}
       onPointerDown={onDown}
+      // Tıklama zemine ulaşıp seçimi temizlemesin (özellikler paneli açık kalsın).
+      onClick={(e) => e.stopPropagation()}
       onPointerOver={(e) => {
         e.stopPropagation()
         if (!drag.current) setHover(n.id)

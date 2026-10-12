@@ -1,4 +1,10 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import type { MaintenanceReport } from '../engine'
+import { EQUIPMENT } from '../library/equipment'
+import { SimulationPanel } from '../ui/SimulationPanel'
+import { runInWorker } from '../ui/useWorker'
+import { useBaseModel } from '../store/useModel'
+import { fmtNum } from '../ui/status'
 import { useAnalysis } from '../store/useAnalysis'
 import { COLOR_MODES, heatKwOf } from '../layout3d/colors'
 import type { ColorMode } from '../layout3d/colors'
@@ -41,6 +47,8 @@ function Toolbar3D() {
   const saveView = useStore((st) => st.saveGorunum3d)
   const removeView = useStore((st) => st.removeGorunum3d)
   const autoLayout3d = useStore((st) => st.autoLayout3d)
+  const flowAnim = useStore((st) => st.flowAnim)
+  const setFlowAnim = useStore((st) => st.setFlowAnim)
   const [q, setQ] = useState('')
   const matches = q.trim() ? nodes.filter((n) => `${n.data.ad} ${n.data.etiket} ${n.data.grup}`.toLocaleLowerCase('tr').includes(q.trim().toLocaleLowerCase('tr'))).slice(0, 8) : []
   const check = (label: string, on: boolean, set: (v: boolean) => void) => (
@@ -72,6 +80,7 @@ function Toolbar3D() {
       {check(tr.v3d.heat, s.showHeat, (v) => s.setPrefs({ showHeat: v }))}
       {check(tr.v3d.cables, s.showCables, (v) => s.setPrefs({ showCables: v }))}
       {check(tr.v3d.labels, s.showLabels, (v) => s.setPrefs({ showLabels: v }))}
+      {check(tr.v3d.flow, flowAnim, setFlowAnim)}
       <label className="flex items-center gap-1 text-xs">
         {tr.v3d.snap}
         <select className="rounded border border-slate-300 px-1 py-0.5" value={s.snapStep} onChange={(e) => s.setPrefs({ snapStep: Number(e.target.value) })}>
@@ -205,6 +214,126 @@ function RoomsPanel() {
             </button>
           </div>
         ))}
+    </div>
+  )
+}
+
+/** Senaryo seçimi, seçili ekipmanı arızalı/bakımda işaretleme ve bakım analizi (3D'den). Dinamik simülasyon alttaki şerittedir. */
+function ScenarioPanel3D() {
+  const scenarios = useStore((s) => s.scenarios)
+  const activeId = useStore((s) => s.activeScenarioId)
+  const setActive = useStore((s) => s.setActiveScenario)
+  const addScenario = useStore((s) => s.addScenario)
+  const updateScenario = useStore((s) => s.updateScenario)
+  const setNodeFailed = useStore((s) => s.setNodeFailed)
+  const nodes = useStore((s) => s.nodes)
+  const model = useBaseModel()
+  const [open, setOpen] = useState(true)
+  const [maint, setMaint] = useState<{ id: string; name: string; rep: MaintenanceReport } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const active = scenarios.find((x) => x.id === activeId)
+  const selected = nodes.filter((n) => n.selected)
+  const node = selected.length === 1 && EQUIPMENT[selected[0].data.kind].hasOutput ? selected[0] : undefined
+  const failed = !!node && !!active?.failedNodes.includes(node.id)
+  const nameOf = (id: string) => nodes.find((n) => n.id === id)?.data.ad ?? id
+  const toggleFail = () => {
+    if (!node) return
+    if (!active) addScenario({ ad: tr.v3d.scen.newFail(node.data.ad), failedNodes: [node.id] })
+    else setNodeFailed(node.id, !failed)
+  }
+  const runMaint = () => {
+    if (!node) return
+    setBusy(true)
+    const id = node.id
+    const name = node.data.ad
+    void runInWorker<MaintenanceReport>({ task: 'maintenance', model, maintId: id })
+      .then((rep) => setMaint({ id, name, rep }))
+      .finally(() => setBusy(false))
+  }
+  const sc = tr.v3d.scen
+  return (
+    <div className="absolute left-2 top-2 z-10 max-h-[70%] w-80 max-w-[90%] overflow-y-auto rounded border border-slate-300 bg-white/95 p-2 text-xs shadow">
+      <button type="button" className="font-semibold" onClick={() => setOpen(!open)}>
+        {open ? '▾' : '▸'} {sc.title}
+      </button>
+      {open && (
+        <div className="mt-1 space-y-2">
+          <div className="flex items-center gap-1">
+            <label className="flex flex-1 items-center gap-1">
+              {sc.active}
+              <select className="min-w-0 flex-1 rounded border border-slate-300 px-1 py-0.5" value={activeId ?? ''} onChange={(e) => setActive(e.target.value || null)}>
+                <option value="">{sc.base}</option>
+                {scenarios.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.ad}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="button" className={btn} onClick={() => addScenario()}>
+              + {sc.newOne}
+            </button>
+          </div>
+          {active && (
+            <div>
+              <div className="mb-0.5 text-slate-500">{sc.failed}</div>
+              <div className="flex flex-wrap gap-1">
+                {active.failedNodes.length === 0 && <span className="text-slate-400">{sc.none}</span>}
+                {active.failedNodes.map((id) => (
+                  <span key={id} className="inline-flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-red-800">
+                    {nameOf(id)}
+                    <button type="button" aria-label={`${nameOf(id)} ${tr.senaryo.remove}`} onClick={() => updateScenario(active.id, { failedNodes: active.failedNodes.filter((x) => x !== id) })}>
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="border-t border-slate-100 pt-1">
+            <div className="mb-1 text-slate-500">
+              {sc.selected}: <b className="text-slate-800">{node ? node.data.ad : '—'}</b>
+            </div>
+            {!node ? (
+              <p className="text-slate-400">{sc.pickOne}</p>
+            ) : (
+              <div className="flex flex-wrap gap-1">
+                <button type="button" className={failed ? btnOn : btn} onClick={toggleFail}>
+                  {failed ? `✓ ${sc.unfail}` : `⚡ ${sc.fail}`}
+                </button>
+                <button type="button" className={btn} disabled={busy} onClick={runMaint}>
+                  🔧 {busy ? sc.maintRunning : sc.maint}
+                </button>
+              </div>
+            )}
+          </div>
+          {maint && (
+            <div className="space-y-1 border-t border-slate-100 pt-1">
+              <p className={maint.rep.maintenanceLostKw > 0.5 ? 'font-semibold text-red-700' : 'text-green-700'}>
+                {maint.name}: {maint.rep.maintenanceLostKw > 0.5 ? sc.maintLost(fmtNum(maint.rep.maintenanceLostKw, 0)) : sc.maintOk}
+              </p>
+              <p className="text-slate-600">{sc.maintSafe(maint.rep.safe, maint.rep.total)}</p>
+              {maint.rep.risky.length > 0 && (
+                <>
+                  <div className="text-slate-500">{sc.maintRisk}</div>
+                  <ul className="max-h-24 overflow-y-auto">
+                    {maint.rep.risky.map((r) => (
+                      <li key={`${r.kind}-${r.id}`} className="flex justify-between border-t border-slate-100 py-0.5">
+                        <span>{r.label}</span>
+                        <span className="tabular-nums text-red-700">{fmtNum(r.lostKw, 0)} kW</span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              <button type="button" className={btn} onClick={() => addScenario({ ad: sc.newName(maint.name), failedNodes: [maint.id] })}>
+                {sc.maintApply}
+              </button>
+            </div>
+          )}
+          <p className="text-[11px] text-slate-500">{sc.simHint}</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -364,6 +493,7 @@ export function View3D() {
           <Suspense fallback={<div className="p-4 text-sm text-slate-500">{tr.v3d.loading}</div>}>
             <Scene3D data={data} frameloopAlways={flowAnim || !!simStep} />
           </Suspense>
+          <ScenarioPanel3D />
           <RoomsPanel />
           <EdgeTools data={data} />
           <div className="pointer-events-none absolute bottom-2 right-2 z-10 max-w-md rounded bg-white/85 px-2 py-1 text-[11px] text-slate-600">
@@ -373,6 +503,7 @@ export function View3D() {
             <div>{tr.v3d.approx}</div>
           </div>
         </div>
+        <SimulationPanel />
       </div>
     </div>
   )

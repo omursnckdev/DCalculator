@@ -133,6 +133,7 @@ function RouteEditor() {
         <mesh
           key={i}
           position={[p.x, p.y, p.z]}
+          onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => {
             e.stopPropagation()
             if (e.button !== 0) return

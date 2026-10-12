@@ -151,7 +151,7 @@ Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmele
   (2D'de eklenen 3D'de, 3D'de eklenen 2D'de görünür; geri al/yinele ikisini de kapsar). Eski projeler 3D açılınca otomatik yerleşir. Odalar (elektrik odası, veri salonu...), çakışma uyarısı, servis boşluğu,
   **renk modları** (tür / doluluk / ısı yükü / enerjili-arızalı / grup), salon **ısı haritası** (yaklaşık, CFD değil), kablo/busbar hatları (kalınlık = doluluk, akan enerji noktaları), kayıtlı kamera görünümleri,
   ölçüm aracı ve **3D PNG** vardır. **Canlı simülasyon 3D'de de izlenir** (arıza, enerjisiz, atılan yük, çalışan jeneratör, batarya, salon sıcaklığı). Hat seçilince **kablo güzergâhı** (ara noktalar sürüklenir) ve
-  **"Uzunluk kaynağı: 3D güzergâhtan"** seçeneği vardır: uzunluk güzergâhtan hesaplanıp kayıp, gerilim düşümü, kablo seçimi ve ark flaşı hesaplarına yansır. Ekipman boyutları tipik yer tutucudur; özellik panelindeki "Konum (3D)" bölümünden değiştirilir.
+  **"Uzunluk kaynağı: 3D güzergâhtan"** seçeneği vardır: uzunluk güzergâhtan hesaplanıp kayıp, gerilim düşümü, kablo seçimi ve ark flaşı hesaplarına yansır. 3D sekmesinde ayrıca **Senaryo ve bakım** paneli (senaryo seç, seçili ekipmanı arızalı işaretle, **bakım analizi** ve "bakımı senaryoya uygula") ve alttaki **Canlı simülasyon** şeridi vardır: bakım senaryosu açıkken üstüne dinamik arıza uygulanabilir. Ekipman boyutları tipik yer tutucudur; özellik panelindeki "Konum (3D)" bölümünden değiştirilir.
 
 ## Ekipman kütüphanesi
 
