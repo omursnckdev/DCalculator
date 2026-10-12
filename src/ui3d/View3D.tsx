@@ -9,6 +9,7 @@ import { useAnalysis } from '../store/useAnalysis'
 import { COLOR_MODES, DEAD_HEX, FAILED_HEX, OPEN_HEX, SHED_HEX, STATUS_HEX, groupHex, heatKwOf } from '../layout3d/colors'
 import type { ColorMode } from '../layout3d/colors'
 import { boxesOf } from '../layout3d/autoLayout'
+import type { FloorFilter } from '../layout3d/floors'
 import { findOverlaps } from '../layout3d/geometry'
 import { laneMap, polylineLength, routePoints, defaultRoute } from '../layout3d/route'
 import { tr } from '../i18n/tr'
@@ -110,6 +111,14 @@ function Toolbar3D({ gpu }: { gpu: GpuInfo | null }) {
               {tr.v3d.modes[m]}
             </option>
           ))}
+        </select>
+      </label>
+      <label className="flex items-center gap-1 text-xs" title={tr.v3d.floorHint}>
+        {tr.v3d.floor}
+        <select className={sel} value={s.floor} onChange={(e) => s.setFloor(e.target.value as FloorFilter)}>
+          <option value="tum">{tr.v3d.floorAll}</option>
+          <option value="zemin">{tr.v3d.floorGround}</option>
+          <option value="kat1">{tr.v3d.floor1}</option>
         </select>
       </label>
       <Menu label={tr.v3d.show}>
@@ -367,6 +376,10 @@ function RoomsPanel() {
                 <input type="number" className={inp} value={r.d} min={1} onChange={(e) => update(r.id, { d: Math.max(1, Number(e.target.value) || 1) })} />
                 <input type="number" className={inp} value={r.y} min={0.5} step={0.5} onChange={(e) => update(r.id, { y: Math.max(0.5, Number(e.target.value) || 1) })} />
               </span>
+              <label className="flex items-center gap-1" title={tr.v3d.roomElev}>
+                {tr.v3d.roomElevShort}
+                <input type="number" className={inp} value={r.elev ?? 0} min={0} step={0.5} onChange={(e) => update(r.id, { elev: Math.max(0, Number(e.target.value) || 0) || undefined })} />
+              </label>
             </div>
             <button type="button" className="text-red-600" onClick={() => remove(r.id)}>
               {tr.v3d.remove}
@@ -569,6 +582,7 @@ export function View3D() {
   const quality = use3dStore((s) => s.quality)
   const measure = use3dStore((s) => s.measure)
   const walk = use3dStore((s) => s.walk)
+  const walkH = use3dStore((s) => s.walkH)
   const marquee = use3dStore((s) => s.marquee)
   const [ok] = useState(webglOk)
   const [gpu] = useState<GpuInfo | null>(detectGpu)
@@ -671,8 +685,9 @@ export function View3D() {
           <Legend3D data={data} />
           {overlapCount > 0 && <div className="pointer-events-none absolute bottom-16 right-2 z-10 rounded bg-red-600 px-2 py-0.5 text-[11px] font-semibold text-white">⚠ {tr.v3d.overlap}: {overlapCount}</div>}
           {walk && (
-            <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3 rounded bg-slate-900/85 px-3 py-1.5 text-xs text-white shadow">
+            <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded bg-slate-900/85 px-3 py-1.5 text-xs text-white shadow">
               <span>🚶 {tr.v3d.walkHud}</span>
+              <span className="rounded bg-white/15 px-1.5 py-0.5 font-semibold">{tr.v3d.floorLabel(walkH)}</span>
               <button type="button" className="rounded border border-white/40 px-2 py-0.5 hover:bg-white/10" onClick={() => use3dStore.getState().setWalk(false)}>
                 {tr.v3d.walkExit} (Esc)
               </button>

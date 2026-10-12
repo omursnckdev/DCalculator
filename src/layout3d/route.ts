@@ -11,6 +11,7 @@ export const TRAY_MIN = 3
 export function defaultRoute(a: Box, b: Box, lane = 0): Nokta3D[] {
   const A = anchorOf(a)
   const B = anchorOf(b)
+  if (Math.abs(a.elev - b.elev) > 2) return floorRoute(a, b, lane)
   const y = Math.max(TRAY_MIN, A.y + 0.5, B.y + 0.5) + lane * 0.12
   const pts: Nokta3D[] = [
     { x: A.x, y, z: A.z },
@@ -51,4 +52,32 @@ export function laneMap(edges: Pick<ProjectEdge, 'id' | 'source'>[]): Map<string
     out.set(e.id, k % 6)
   }
   return out
+}
+
+/**
+ * Katlar arası güzergâh: alt kattaki ekipmandan çıkıp alt kat tavan altından (kat kotu + 3,2 m) üst kattaki ekipmanın arkasına
+ * gider, kablo şaftı gibi 0,35 m arkasından yukarı çıkar, üstten ekipmana iner. Sıra a→b yönündedir.
+ */
+function floorRoute(a: Box, b: Box, lane: number): Nokta3D[] {
+  const flip = a.elev > b.elev
+  const lo = flip ? b : a
+  const hi = flip ? a : b
+  const L = anchorOf(lo)
+  const H = anchorOf(hi)
+  const yL = Math.max(lo.elev + 3.2, L.y + 0.5) + lane * 0.12
+  const yH = H.y + 0.5 + lane * 0.12
+  // Üst ekipmanın yerel -z (arka) yönünde 0,35 m dışarıda
+  const back = hi.d / 2 + 0.35
+  const rr = (hi.rot * Math.PI) / 180
+  const R = { x: hi.x - back * Math.sin(rr), z: hi.z - back * Math.cos(rr) }
+  const pts: Nokta3D[] = [
+    { x: L.x, y: yL, z: L.z },
+    { x: R.x, y: yL, z: L.z },
+    { x: R.x, y: yL, z: R.z },
+    { x: R.x, y: yH, z: R.z },
+    { x: H.x, y: yH, z: R.z },
+    { x: H.x, y: yH, z: H.z },
+  ]
+  const out = pts.filter((p, i) => i === 0 || Math.hypot(p.x - pts[i - 1].x, p.y - pts[i - 1].y, p.z - pts[i - 1].z) > 1e-9)
+  return flip ? out.reverse() : out
 }

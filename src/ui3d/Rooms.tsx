@@ -2,15 +2,20 @@ import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { coolingKw, coolingRole } from '../engine/coolingUnits'
 import { heatKwOf } from '../layout3d/colors'
+import { DOSEME, floorVisible } from '../layout3d/floors'
 import { roomAt } from '../layout3d/geometry'
 import { heatGrid, heatRgb } from '../layout3d/heat'
 import type { Oda3D } from '../model/types'
 import { useScene } from './sceneData'
+import { Stairs } from './Stairs'
 import { use3dStore } from './use3dStore'
 
-const FLOOR: Record<Oda3D['tur'], string> = { elektrik: '#fde68a', salon: '#bfdbfe', jenerator: '#fecaca', dis: '#d9f99d' }
+/** Zemin kat döşemesi gri, 1. kat beyaz; avlu (jeneratör/dış alan) taş/çim tonu. */
+const FLOOR: Record<Oda3D['tur'], string> = { elektrik: '#9ca3af', salon: '#e5e7eb', jenerator: '#a8a29e', dis: '#bcd5a0' }
+const UPPER = '#ffffff'
 
 function Heat({ room }: { room: Oda3D }) {
+  const elev = room.elev ?? 0
   const sc = useScene()
   // Kaynaklar (ısı/soğutma) ve konumları: yalnız bunlar değişince doku yeniden üretilir.
   const src = useMemo(() => {
@@ -21,7 +26,7 @@ function Heat({ room }: { room: Oda3D }) {
     for (const n of sc.nodes) {
       const l = n.yerlesim3d
       if (!l) continue
-      const inRoom = l.oda ? l.oda === room.id : roomAt([room], l.x, l.z) !== undefined
+      const inRoom = l.oda ? l.oda === room.id : roomAt([room], l.x, l.z) !== undefined && Math.abs((l.elev ?? 0) - elev) < 2
       if (!inRoom) continue
       const r = sc.analysis.nodes[n.id]
       const c = coolingKw(n)
@@ -75,7 +80,7 @@ function Heat({ room }: { room: Oda3D }) {
   }, [key])
   useEffect(() => () => tex.dispose(), [tex])
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[room.x + room.g / 2, 0.03, room.z + room.d / 2]} raycast={() => null}>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[room.x + room.g / 2, elev + 0.03, room.z + room.d / 2]} raycast={() => null}>
       <planeGeometry args={[Math.ceil(room.g / 0.5) * 0.5, Math.ceil(room.d / 0.5) * 0.5]} />
       <meshBasicMaterial map={tex} transparent opacity={0.6} depthWrite={false} />
     </mesh>
@@ -86,18 +91,31 @@ export function Rooms() {
   const sc = useScene()
   const hideWalls = use3dStore((s) => s.hideWalls)
   const showHeat = use3dStore((s) => s.showHeat)
+  const floor = use3dStore((s) => s.floor)
   return (
     <>
       {sc.rooms.map((r) => {
+        const elev = r.elev ?? 0
+        if (!floorVisible(floor, elev)) return null
         const hot = r.tur === 'salon' && sc.tempC !== undefined && sc.tempShift >= 1
         const wallColor = hot ? '#ef4444' : '#64748b'
-        const walls = !hideWalls && r.tur !== 'dis'
+        // Avlu (jeneratör, dış alan) açıktır: duvarsız.
+        const walls = !hideWalls && r.tur !== 'dis' && r.tur !== 'jenerator'
+        const upper = elev > 0.01
         return (
           <group key={r.id}>
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[r.x + r.g / 2, 0, r.z + r.d / 2]}>
-              <planeGeometry args={[r.g, r.d]} />
-              <meshStandardMaterial color={FLOOR[r.tur]} transparent opacity={0.5} />
-            </mesh>
+            {upper ? (
+              // Üst kat döşemesi: üst yüzü oda kotunda, beyaz. Tüm katlar görünürken yarı saydam (alttaki kat görünsün).
+              <mesh position={[r.x + r.g / 2, elev - DOSEME / 2, r.z + r.d / 2]} raycast={() => null}>
+                <boxGeometry args={[r.g, DOSEME, r.d]} />
+                <meshStandardMaterial color={UPPER} transparent opacity={floor === 'tum' ? 0.5 : 1} depthWrite={floor !== 'tum'} />
+              </mesh>
+            ) : (
+              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[r.x + r.g / 2, 0, r.z + r.d / 2]}>
+                <planeGeometry args={[r.g, r.d]} />
+                <meshStandardMaterial color={FLOOR[r.tur]} transparent opacity={0.85} />
+              </mesh>
+            )}
             {walls && (
               <>
                 {[
@@ -106,7 +124,7 @@ export function Rooms() {
                   [r.x, r.z + r.d / 2, 0.08, r.d],
                   [r.x + r.g, r.z + r.d / 2, 0.08, r.d],
                 ].map(([x, z, w, d], i) => (
-                  <mesh key={i} position={[x, r.y / 2, z]} raycast={() => null}>
+                  <mesh key={i} position={[x, elev + r.y / 2, z]} raycast={() => null}>
                     <boxGeometry args={[w, r.y, d]} />
                     <meshStandardMaterial color={wallColor} transparent opacity={0.1} depthWrite={false} />
                   </mesh>
@@ -117,6 +135,7 @@ export function Rooms() {
           </group>
         )
       })}
+      <Stairs />
     </>
   )
 }

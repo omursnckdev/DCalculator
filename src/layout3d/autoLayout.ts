@@ -2,6 +2,7 @@ import { coolingKw } from '../engine/coolingUnits'
 import type { Model } from '../engine/types'
 import type { Oda3D, OdaTuru, ProjectNode, Yerlesim3D } from '../model/types'
 import { dimsOf, isMinor, zoneOf } from './dims'
+import { KAT_YUKSEKLIGI } from './floors'
 import { mountOnFace } from './faceMount'
 import { boxOf, bounds, roomAt } from './geometry'
 import type { Box } from './geometry'
@@ -15,6 +16,7 @@ const MAX_ROW = 36 // m
 const GAP = 0.5 // yan yana ekipman arası, m
 const ROOM_PAD = 1.5
 const ZONE_GAP = 5
+const YARD_GAP = 14 // bina ile avlu (jeneratör, dış ekipman) arası, m
 
 export interface LayoutResult {
   placements: Record<string, Yerlesim3D>
@@ -128,10 +130,10 @@ export function autoLayout(model: Model, mode: 'all' | 'missing', rooms: Oda3D[]
     }
   }
 
-  let cursorZ = originZ
-  for (const zone of ZONE_ORDER) {
+  // Bölge başına satır paketleme (ekipman yok → bölge atlanır).
+  const packOf = (zone: OdaTuru) => {
     const inZone = major.filter((n) => zoneOf(n) === zone)
-    if (!inZone.length) continue
+    if (!inZone.length) return undefined
     // Grup anahtarı: soğutma birimleri -1 (salonda ilk satır), diğerleri şema seviyesi.
     const keyOf = (n: ProjectNode) => (zone === 'salon' && coolingKw(n) > 0 ? -1 : lv.get(n.id) ?? 0)
     const keys = [...new Set(inZone.map(keyOf))].sort((a, b) => a - b)
@@ -145,24 +147,46 @@ export function autoLayout(model: Model, mode: 'all' | 'missing', rooms: Oda3D[]
       const row = groups[Math.max(0, gi)] ?? []
       return row.some((r) => r.node.type === 'rack' || r.node.type === 'itYuku') ? 2.4 : 2.2
     }
-    const packed = packGroups(groups, aisleFor)
-    const margin = mode === 'all' ? ROOM_PAD : 0
-    const room: Oda3D = {
-      id: `oda-${zone}`,
-      ad: ZONE_NAME[zone],
-      tur: zone,
-      x: originX - margin,
-      z: cursorZ - margin,
-      g: packed.w + 2 * margin,
-      d: packed.d + 2 * margin,
-      y: ZONE_HEIGHT[zone],
-    }
-    for (const n of inZone) {
-      const p = packed.pos.get(n.id)!
-      placements[n.id] = { x: originX + p.x, z: cursorZ + p.z, ...(mode === 'all' ? { oda: room.id } : {}) }
+    return { inZone, packed: packGroups(groups, aisleFor) }
+  }
+  const margin = mode === 'all' ? ROOM_PAD : 0
+  const place = (zone: OdaTuru, pk: NonNullable<ReturnType<typeof packOf>>, ox: number, oz: number, w: number, d: number, elev: number) => {
+    const room: Oda3D = { id: `oda-${zone}`, ad: ZONE_NAME[zone], tur: zone, x: ox - margin, z: oz - margin, g: w + 2 * margin, d: d + 2 * margin, y: ZONE_HEIGHT[zone], ...(elev > 0 ? { elev } : {}) }
+    for (const n of pk.inZone) {
+      const p = pk.packed.pos.get(n.id)!
+      placements[n.id] = { x: ox + p.x, z: oz + p.z, ...(elev > 0 ? { elev } : {}), ...(mode === 'all' ? { oda: room.id } : {}) }
     }
     if (mode === 'all') outRooms.push(room)
-    cursorZ += packed.d + 2 * margin + ZONE_GAP
+    return room
+  }
+
+  let cursorZ = originZ
+  if (mode === 'all') {
+    // Katlı bina: elektrik odası zemin katta, veri salonu 1. katta (aynı ayak izi); jeneratör ve dış ekipman bina dışında (avlu, doğuda).
+    const pe = packOf('elektrik')
+    const ps = packOf('salon')
+    const upper = !!pe && !!ps
+    const bw = Math.max(pe?.packed.w ?? 0, ps?.packed.w ?? 0)
+    const bd = Math.max(pe?.packed.d ?? 0, ps?.packed.d ?? 0)
+    if (pe) place('elektrik', pe, originX, originZ, bw, bd, 0)
+    if (ps) place('salon', ps, originX, originZ, bw, bd, upper ? KAT_YUKSEKLIGI : 0)
+    let yardZ = originZ
+    // Bina yoksa avlu sol kenardan başlar.
+    const yardX = pe || ps ? originX + bw + 2 * margin + YARD_GAP : originX
+    for (const zone of ['jenerator', 'dis'] as const) {
+      const pk = packOf(zone)
+      if (!pk) continue
+      place(zone, pk, yardX, yardZ, pk.packed.w, pk.packed.d, 0)
+      yardZ += pk.packed.d + 2 * margin + ZONE_GAP
+    }
+    cursorZ = Math.max(yardZ, originZ + bd + 2 * margin + ZONE_GAP)
+  } else {
+    for (const zone of ZONE_ORDER) {
+      const pk = packOf(zone)
+      if (!pk) continue
+      place(zone, pk, originX, cursorZ, pk.packed.w, pk.packed.d, 0)
+      cursorZ += pk.packed.d + 2 * margin + ZONE_GAP
+    }
   }
 
   // Küçük elemanlar (kesici, ölçü): bağlı oldukları ana ekipmanın ön yüzüne oturur (şalter MSB'nin üzerinde görünür).

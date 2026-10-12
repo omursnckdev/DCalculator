@@ -2,6 +2,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { isMinor } from '../layout3d/dims'
+import { floorVisible } from '../layout3d/floors'
 import { polylineLength, routePoints } from '../layout3d/route'
 import { tr } from '../i18n/tr'
 import { fmtNum } from '../ui/status'
@@ -29,6 +30,7 @@ export function LabelLayer() {
   const { gl, camera, size } = useThree()
   const hoverId = use3dStore((s) => s.hoverId)
   const showLabels = use3dStore((s) => s.showLabels)
+  const floor = use3dStore((s) => s.floor)
   const measurePts = use3dStore((s) => s.measurePts)
   const layer = useRef<HTMLDivElement | null>(null)
   const els = useRef(new Map<string, HTMLDivElement>())
@@ -38,7 +40,7 @@ export function LabelLayer() {
     const out: Spec[] = []
     for (const n of sc.nodes) {
       const b = sc.boxById.get(n.id)
-      if (!b) continue
+      if (!b || !floorVisible(floor, b.elev)) continue
       const sel = sc.selected.has(n.id)
       const hov = hoverId === n.id
       if (!(sel || hov || (showLabels && !isMinor(n.type)))) continue
@@ -55,12 +57,13 @@ export function LabelLayer() {
       out.push({ key: `n:${n.id}`, lines, x: b.x, y: b.elev + b.h + 0.8, z: b.z, cls: DARK })
     }
     for (const r of sc.rooms) {
+      if (!floorVisible(floor, r.elev ?? 0)) continue
       const hot = r.tur === 'salon' && sc.tempC !== undefined && sc.tempShift >= 1
       out.push({
         key: `r:${r.id}`,
         lines: [r.tur === 'salon' && sc.tempC !== undefined ? `${r.ad} · ${fmtNum(sc.tempC, 1)} °C` : r.ad],
         x: r.x + 0.2,
-        y: 0.1,
+        y: (r.elev ?? 0) + 0.1,
         z: r.z + 0.2,
         cls: `${BASE} ${hot ? 'bg-red-600 text-white' : 'bg-white/80 text-slate-700'}`,
       })
@@ -78,7 +81,7 @@ export function LabelLayer() {
       out.push({ key: 'measure', lines: [`${Math.hypot(q[0] - p[0], q[1] - p[1]).toFixed(2)} m`], x: (p[0] + q[0]) / 2, y: 0.6, z: (p[1] + q[1]) / 2, cls: `${BASE} bg-sky-600 text-white font-medium` })
     }
     return out
-  }, [sc, hoverId, showLabels, measurePts])
+  }, [sc, hoverId, showLabels, measurePts, floor])
 
   // Katman (Canvas'ın kardeşi olarak, elle)
   useEffect(() => {

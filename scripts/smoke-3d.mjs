@@ -121,6 +121,31 @@ await page.keyboard.press('Escape')
 await page.waitForTimeout(600)
 check('Esc ile yürümeden çıkıldı', (await page.locator('text=/Yürüme modu:/').count()) === 0)
 
+// Katlı bina: veri salonu 1. katta; dış merdivenden yürüyerek çıkılır
+{
+  const rooms = await page.evaluate(() => window.__v3d.boxes().filter((b) => b.type === 'rack' || b.type === 'itYuku' || b.type === 'crah').map((b) => b.elev))
+  check('veri salonu ekipmanı 1. kat kotunda (4,5 m)', rooms.length > 0 && rooms.every((e) => Math.abs(e - 4.5) < 0.01))
+  const st = (await page.evaluate(() => window.__v3d.stairs()))[0]
+  check('dış merdiven var', !!st)
+  // Merdivenin 3 m gerisinden, merdivene (çıkış yönü +x) bakarak başla
+  await page.evaluate(([x, z]) => window.__v3d.setCam([x - 6, 8, z], [x - 3, 1, z]), [st.x, st.z])
+  await page.waitForTimeout(600)
+  await page.keyboard.press('y')
+  await page.waitForTimeout(1200)
+  await page.keyboard.down('ArrowUp')
+  let top = 0
+  for (let i = 0; i < 120 && top < 5.5; i++) {
+    await page.waitForTimeout(500)
+    top = (await page.evaluate(() => window.__v3d.camPos())).y
+  }
+  await page.keyboard.up('ArrowUp')
+  check('merdivenden 1. kata çıkıldı (göz ≈ 6,2 m)', top > 5.5)
+  check('HUD 1. kat gösteriyor', (await page.locator('text=/^1\\. kat$/').count()) > 0)
+  await page.screenshot({ path: process.env.SHOT_DIR ? `${process.env.SHOT_DIR}/walk-upstairs.png` : '/tmp/walk-upstairs.png' })
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(500)
+}
+
 // Seçim kutusu (Shift+sürükle, zeminde; sol üst köşede senaryo paneli olduğundan sağ alttan başlanır)
 await page.getByRole('button', { name: 'Üst (plan)', exact: true }).click()
 await page.waitForTimeout(1200)

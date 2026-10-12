@@ -18,7 +18,7 @@ Bu bir **mimari tasarım aracı değil**; ekipman yerleşimi ve mühendislik gö
 
 | Kapsamda | Kapsam DIŞI |
 |---|---|
-| Ekipmanın 3D'de yerleştirilmesi, döndürülmesi, hizalanması | Duvar/kapı/pencere çizimi, kat planı, çatı, merdiven |
+| Ekipmanın 3D'de yerleştirilmesi, döndürülmesi, hizalanması | Duvar/kapı/pencere çizimi, çatı (**güncelleme:** sonradan istenen basit iki katlı bina ve dış merdiven eklendi; bkz. PLAN 90–91) |
 | Basit "oda" kutusu (zemin + yarı saydam duvar) — ekipmanın bağlamı için | İç mekân dekorasyonu, mobilya, malzeme/doku kütüphanesi, fotogerçekçi render |
 | Ekipman boyutları (G × D × Y), servis/erişim boşluğu | İnşaat metrajı, mimari ölçülendirme, DWG/BIM tam desteği |
 | Kablo/busbar güzergâhı ve gerçek uzunluğu | Yapısal hesap, HVAC kanal tasarımı |

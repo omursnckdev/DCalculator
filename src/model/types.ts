@@ -85,6 +85,8 @@ export interface Oda3D {
   g: number
   d: number
   y: number
+  /** Zemin kotu (m): 0 = zemin kat; veri salonu 1. katta ≈ 4,5. Yoksa 0. */
+  elev?: number
 }
 
 export const TAVA_TURLERI = ['guc', 'veri'] as const

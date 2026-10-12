@@ -3,6 +3,7 @@ import { invalidate, useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
+import { autoStairs } from '../layout3d/floors'
 import { bounds } from '../layout3d/geometry'
 import { routePoints } from '../layout3d/route'
 import { useStore } from '../store/useStore'
@@ -66,13 +67,23 @@ export function Controllers() {
         return { x: r.left + ((m.x + 1) / 2) * r.width, y: r.top + ((1 - m.y) / 2) * r.height }
       },
       marqState: () => ({ ...marq }),
+      stairs: () => autoStairs(scRef.current.rooms),
+      boxes: () => [...scRef.current.boxById.values()].map((b) => ({ ...b, ad: scRef.current.byId.get(b.id)?.ad })),
+      setCam: (pos: [number, number, number], target: [number, number, number]) => {
+        camera.position.set(...pos)
+        if (ctl) {
+          ctl.target.set(...target)
+          ctl.update()
+        }
+        invalidate()
+      },
       camPos: () => ({ x: camera.position.x, y: camera.position.y, z: camera.position.z, ry: camera.rotation.y }),
       stats: () => {
         gl.render(scene, camera)
         return { calls: gl.info.render.calls, triangles: gl.info.render.triangles, geometries: gl.info.memory.geometries, textures: gl.info.memory.textures, programs: gl.info.programs?.length ?? 0 }
       },
     }
-  }, [camera, gl, scene])
+  }, [camera, gl, scene, ctl])
 
   // --- yakalama (PNG) ve kamera durumu
   useEffect(() => {
@@ -145,8 +156,9 @@ export function Controllers() {
     const dir = camera.position.clone().sub(ctl.target)
     if (dir.length() < 1e-3) dir.set(1, 1, 1)
     dir.normalize()
-    const dist = Math.max(b.g, b.d, b.h) * 2.5 + 6
-    ctl.target.set(b.x, b.h / 2, b.z)
+    // Küçük elemanlar (şalter) yakından, büyükler uzaktan bakılır.
+    const dist = Math.max(2.2, Math.max(b.g, b.d, b.h) * 2.5 + (b.h < 1 ? 0 : 3))
+    ctl.target.set(b.x, b.elev + b.h / 2, b.z)
     camera.position.copy(ctl.target.clone().add(dir.multiplyScalar(camMode === 'top' ? 0 : dist)))
     if (camMode === 'top') camera.position.set(b.x, 200, b.z)
     ctl.update()
@@ -181,8 +193,8 @@ export function Controllers() {
         return
       }
       const d = drag.current
-      const g = groundOf(e, d?.kind === 'wp' ? d.y : 0)
-      if (g) drag.last = g
+      const g = groundOf(e, d?.kind === 'wp' || d?.kind === 'nodes' ? d.y : 0)
+      if (g && !d) drag.last = g
       if (!d || !g) return
       if (ctl) ctl.enabled = false
       const s = scRef.current
@@ -276,7 +288,7 @@ export function Controllers() {
       else if (k === 'g') {
         const id = selectedIds()[0]
         if (id && drag.last) {
-          beginNodeDrag(id, drag.last, false, true)
+          beginNodeDrag(id, drag.last, false, true, scRef.current.boxById.get(id)?.elev ?? 0)
           if (ctl) ctl.enabled = false
         }
       } else if (k === 'escape') {

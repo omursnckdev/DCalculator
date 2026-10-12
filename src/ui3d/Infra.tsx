@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { floorVisible } from '../layout3d/floors'
 import { pipeLive } from '../layout3d/pipes'
 import { tick } from './anim'
 import { beginObjectPointDrag, setSelection } from './drag'
@@ -28,9 +29,10 @@ export function Trays() {
   const sc = useScene()
   const selObj = use3dStore((s) => s.selObj)
   const draw = use3dStore((s) => s.draw)
+  const floor = use3dStore((s) => s.floor)
   return (
     <>
-      {sc.trays.map((t) => (
+      {sc.trays.filter((t) => floorVisible(floor, t.y)).map((t) => (
         <TrayMesh key={t.id} t={t} status={sc.trayFill.get(t.id)?.status ?? 'ok'} selected={selObj?.kind === 'tray' && selObj.id === t.id} />
       ))}
       {selObj?.kind === 'tray' && <PointHandles kind="tray" />}
@@ -63,10 +65,11 @@ function TrayMesh({ t, status, selected }: { t: import('../model/types').Tava3D;
 export function Pipes() {
   const sc = useScene()
   const selObj = use3dStore((s) => s.selObj)
+  const floor = use3dStore((s) => s.floor)
   const live = useMemo(() => new Map(sc.pipes.map((p) => [p.id, pipeLive(p, sc.analysis)])), [sc.pipes, sc.analysis])
   return (
     <>
-      {sc.pipes.map((p) => {
+      {sc.pipes.filter((p) => floorVisible(floor, p.noktalar[0]?.y ?? 0)).map((p) => {
         const on = live.get(p.id) ?? false
         const selected = selObj?.kind === 'pipe' && selObj.id === p.id
         const color = selected ? '#7c3aed' : on ? PIPE_COLOR[p.tur][p.yon] : '#9ca3af'

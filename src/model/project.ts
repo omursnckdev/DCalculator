@@ -196,6 +196,7 @@ function parseOdalar(v: unknown): Oda3D[] | undefined {
       g,
       d,
       y: Math.max(0.5, optNum(r.y) ?? 3.5),
+      ...(optNum(r.elev) !== undefined && optNum(r.elev)! > 0 ? { elev: Math.min(50, optNum(r.elev)!) } : {}),
     })
   }
   return out

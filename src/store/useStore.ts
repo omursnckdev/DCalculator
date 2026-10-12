@@ -44,7 +44,7 @@ import { lengthPatches } from '../layout3d/lengths'
 import { autoPipes, dnFor, flowLps } from '../layout3d/pipes'
 import { TrayNet } from '../layout3d/trays'
 import { anchorOf as bboxAnchor } from '../layout3d/route'
-import { boxOf } from '../layout3d/geometry'
+import { boxOf, roomAt } from '../layout3d/geometry'
 import { dimsOf } from '../layout3d/dims'
 import { attachHistory } from './history'
 import { saveProjectToDb } from './persistence'
@@ -352,9 +352,11 @@ export const useStore = create<State>((set, get) => ({
       const a = byId.get(e.source)
       const b = byId.get(e.target)
       if (!a?.yerlesim3d || !b?.yerlesim3d) continue
-      total++
       const ba = boxOf(a.id, a.type, a.yerlesim3d, dimsOf(a))
       const bb = boxOf(b.id, b.type, b.yerlesim3d, dimsOf(b))
+      // Katlar arası hatlar kat şaftından (varsayılan güzergâh) geçer; tavaya bağlanmaz ve toplama girmez.
+      if (Math.abs(ba.elev - bb.elev) > 2) continue
+      total++
       const r = net.route(bboxAnchor(ba), bboxAnchor(bb))
       if (r) patches.set(e.id, r.points)
     }
@@ -427,7 +429,7 @@ export const useStore = create<State>((set, get) => ({
     // Şemada üst üste binmemesi için mevcut ekipmanın altına dizilir.
     const maxY = s.nodes.reduce((m, n) => Math.max(m, n.position.y), -200)
     const id = get().addNode(type, (s.nodes.length % 8) * 240, maxY + 200, init)
-    const room = s.odalar3d.find((o) => x >= o.x && x <= o.x + o.g && z >= o.z && z <= o.z + o.d)
+    const room = roomAt(s.odalar3d, x, z, 0)
     set((st) => ({
       nodes: st.nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, yerlesim3d: { x, z, ...(room ? { oda: room.id } : {}) } } } : n)),
     }))

@@ -141,9 +141,16 @@ export function alignGuides(moving: Box, others: Box[], rooms: Oda3D[], tol = 0.
   return { dx: bx?.d ?? 0, dz: bz?.d ?? 0, guides }
 }
 
-/** Noktayı içeren oda (ilk eşleşen). */
-export function roomAt(rooms: Oda3D[], x: number, z: number): Oda3D | undefined {
-  return rooms.find((r) => x >= r.x && x <= r.x + r.g && z >= r.z && z <= r.z + r.d)
+/**
+ * Noktayı içeren oda. `elev` (ekipman tabanı) verilirse üst üste katlardan, kotu `elev + 0,5` m'yi aşmayan en yüksek oda
+ * seçilir (1. kattaki ekipman 1. kat odasına, zemindeki zemin odasına aittir); verilmezse ilk eşleşen.
+ */
+export function roomAt(rooms: Oda3D[], x: number, z: number, elev?: number): Oda3D | undefined {
+  const hit = rooms.filter((r) => x >= r.x && x <= r.x + r.g && z >= r.z && z <= r.z + r.d)
+  if (elev === undefined || hit.length <= 1) return hit[0]
+  const ok = hit.filter((r) => (r.elev ?? 0) <= elev + 0.5)
+  const pool = ok.length ? ok : hit
+  return pool.reduce((a, b) => ((b.elev ?? 0) > (a.elev ?? 0) ? b : a))
 }
 
 /** (px, pz) noktasını (cx, cz) etrafında `deg` derece döndürür (corners() ile aynı dönüş yönü: ekipman rot'u artınca takipçiler de aynı yönde döner). */

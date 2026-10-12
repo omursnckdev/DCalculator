@@ -3,6 +3,7 @@ import { alignGuides, boxOf, roomAt, rotateAbout, snap } from '../layout3d/geome
 import type { Box } from '../layout3d/geometry'
 import { dimsOf } from '../layout3d/dims'
 import { followersOf } from '../layout3d/autoLayout'
+import { floorOf } from '../layout3d/floors'
 import { toProjectEdges, toProjectNodes } from '../model/project'
 import type { Nokta3D, Oda3D, ProjectEdge } from '../model/types'
 import { useStore } from '../store/useStore'
@@ -10,7 +11,7 @@ import { use3dStore } from './use3dStore'
 
 /** Sürükleme durumu (modül düzeyi: pointer olayları sahne bileşenleri arasında paylaşılır). */
 type Drag =
-  | { kind: 'nodes'; ids: string[]; start: Record<string, { x: number; z: number }>; startGround: { x: number; z: number }; primary: string; grab: boolean }
+  | { kind: 'nodes'; ids: string[]; start: Record<string, { x: number; z: number }>; startGround: { x: number; z: number }; primary: string; grab: boolean; /** Sürükleme düzleminin kotu (birincil ekipman tabanı). */ y: number; /** G ile tutuldu, ilk harekette başlangıç yeniden alınır. */ fresh: boolean }
   | { kind: 'wp'; edgeId: string; index: number; y: number; pts: Nokta3D[] }
   | { kind: 'pt'; obj: 'tray' | 'pipe'; id: string; index: number; y: number }
 
@@ -44,7 +45,7 @@ export function setSelection(ids: string[], edgeId?: string): void {
 }
 
 /** Ekipman üzerinde pointerdown: seçimi günceller ve (grab=false ise) sürüklemeyi başlatır. */
-export function beginNodeDrag(id: string, ground: { x: number; z: number } | null, shift: boolean, grab = false): void {
+export function beginNodeDrag(id: string, ground: { x: number; z: number } | null, shift: boolean, grab = false, planeY = 0): void {
   const sel = new Set(selectedIds())
   if (shift) {
     if (sel.has(id)) sel.delete(id)
@@ -66,7 +67,7 @@ export function beginNodeDrag(id: string, ground: { x: number; z: number } | nul
   const start: Record<string, { x: number; z: number }> = {}
   const moving = new Set(ids)
   for (const n of nodes) if (moving.has(n.id) && n.data.yerlesim3d) start[n.id] = { x: n.data.yerlesim3d.x, z: n.data.yerlesim3d.z }
-  drag.current = { kind: 'nodes', ids: ids.filter((i) => start[i]), start, startGround: ground, primary: id, grab }
+  drag.current = { kind: 'nodes', ids: ids.filter((i) => start[i]), start, startGround: ground, primary: id, grab, y: planeY, fresh: grab }
 }
 
 /** Tava/boru köşe noktası sürükleme (x, z; kot sabit). */
@@ -102,6 +103,11 @@ export function moveDrag(ground: { x: number; z: number }, boxes: Box[], rooms: 
     }
     return
   }
+  if (d.fresh) {
+    d.startGround = ground
+    d.fresh = false
+    return
+  }
   const step = use3dStore.getState().snapStep
   const p0 = d.start[d.primary]
   if (!p0) return
@@ -114,7 +120,8 @@ export function moveDrag(ground: { x: number; z: number }, boxes: Box[], rooms: 
     const pn = toProjectNodes([prim])[0]
     const l = prim.data.yerlesim3d
     const moving = boxOf(prim.id, pn.type, { x: nx, z: nz, rot: l.rot, elev: l.elev }, dimsOf(pn))
-    const others = boxes.filter((b) => !d.ids.includes(b.id))
+    // Hizalama yalnız aynı kattaki ekipmana.
+    const others = boxes.filter((b) => !d.ids.includes(b.id) && floorOf(b.elev) === floorOf(moving.elev))
     const g = alignGuides(moving, others, rooms)
     nx += g.dx
     nz += g.dz
@@ -136,7 +143,7 @@ export function endDrag(): void {
   for (const id of d.ids) {
     const l = st.nodes.find((n) => n.id === id)?.data.yerlesim3d
     if (!l) continue
-    const room = roomAt(st.odalar3d, l.x, l.z)
+    const room = roomAt(st.odalar3d, l.x, l.z, l.elev ?? 0)
     if (room?.id !== l.oda) patches[id] = { oda: room?.id }
   }
   if (Object.keys(patches).length) st.setLayout3d(patches as never)

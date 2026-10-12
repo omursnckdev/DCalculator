@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { ColorMode } from '../layout3d/colors'
+import type { FloorFilter } from '../layout3d/floors'
 import type { Guide } from '../layout3d/geometry'
 
 /** 3D görünüm tercihleri ve geçici durum (kişisel; projeye yazılmaz). Tercihler localStorage'da saklanır. */
@@ -60,6 +61,11 @@ interface View3DState extends Prefs {
   setGuides: (g: Guide[]) => void
   hoverId: string | null
   setHover: (id: string | null) => void
+  /** Kat süzgeci: yalnız zemin kat, yalnız 1. kat veya tümü (geçici; kaydedilmez). */
+  floor: FloorFilter
+  setFloor: (f: FloorFilter) => void
+  /** Yürürken ayak kotu (HUD'da kat göstergesi için; yalnız kat değişince güncellenir). */
+  walkH: number
   /** Yürüme (birinci şahıs) modu. */
   walk: boolean
   setWalk: (on: boolean) => void
@@ -105,6 +111,9 @@ export const use3dStore = create<View3DState>((set, get) => ({
   setGuides: (guides) => set({ guides }),
   hoverId: null,
   setHover: (hoverId) => set({ hoverId }),
+  floor: 'tum',
+  walkH: 0,
+  setFloor: (floor) => set({ floor }),
   walk: false,
   setWalk: (walk) => set({ walk, measure: false }),
   marquee: null,

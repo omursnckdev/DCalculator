@@ -1,7 +1,8 @@
 import { invalidate, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { BODY_RADIUS, EYE_HEIGHT, forwardOf, freeSpot, rightOf, walkStep } from '../layout3d/walk'
+import { autoStairs, floorAt } from '../layout3d/floors'
+import { BODY_RADIUS, EYE_HEIGHT, forwardOf, freeSpot, rightOf, walkStepFloors } from '../layout3d/walk'
 import { useScene } from './sceneData'
 import { use3dStore } from './use3dStore'
 
@@ -30,7 +31,11 @@ export function Walk() {
   const boxes = useMemo(() => [...sc.boxById.values()], [sc.boxById])
   const boxesRef = useRef(boxes)
   boxesRef.current = boxes
-  const st = useRef({ x: 0, z: 0, yaw: 0, pitch: 0, keys: new Set<string>(), look: false })
+  const stairs = useMemo(() => autoStairs(sc.rooms), [sc.rooms])
+  const floorsRef = useRef({ rooms: sc.rooms, stairs })
+  floorsRef.current = { rooms: sc.rooms, stairs }
+  // h: ayak kotu (zemin/üst kat/merdiven); eye: kameranın yumuşatılmış göz kotu
+  const st = useRef({ x: 0, z: 0, h: 0, eye: EYE_HEIGHT, yaw: 0, pitch: 0, keys: new Set<string>(), look: false })
 
   useEffect(() => {
     if (!walk) return
@@ -53,15 +58,22 @@ export function Walk() {
     // Hedefin (seçili ekipmanın) 3 m önünde başla, ona bakarak; engelliyse en yakın boş noktaya kay.
     const len = Math.hypot(fx, fz)
     const back = len > 0.1 ? { x: -fx / len, z: -fz / len } : { x: 0, z: 1 }
-    const spot = freeSpot(boxesRef.current, ctl.target.x + back.x * 3, ctl.target.z + back.z * 3)
+    const sx = ctl.target.x + back.x * 3
+    const sz = ctl.target.z + back.z * 3
+    // Hedef (ör. 1. kattaki ekipman) hangi katta ise orada başla.
+    const fl = floorsRef.current
+    const h0 = floorAt(fl.rooms, fl.stairs, ctl.target.x, ctl.target.z, ctl.target.y)
+    const spot = freeSpot(boxesRef.current, sx, sz, BODY_RADIUS, h0)
     s.x = spot.x
     s.z = spot.z
+    s.h = floorAt(fl.rooms, fl.stairs, s.x, s.z, h0 + 0.3)
+    s.eye = s.h + EYE_HEIGHT
     s.keys.clear()
     cam.fov = FOV
     cam.near = 0.05
     cam.updateProjectionMatrix()
     ctl.enabled = false
-    cam.position.set(s.x, EYE_HEIGHT, s.z)
+    cam.position.set(s.x, s.eye, s.z)
     cam.rotation.set(s.pitch, s.yaw, 0, 'YXZ')
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -121,7 +133,7 @@ export function Walk() {
       cam.near = 0.1
       cam.updateProjectionMatrix()
       const f = forwardOf(s.yaw)
-      ctl.target.set(s.x + f.x * 6, 1, s.z + f.z * 6)
+      ctl.target.set(s.x + f.x * 6, s.h + 1, s.z + f.z * 6)
       ctl.enabled = true
       ctl.update()
       invalidate()
@@ -144,13 +156,21 @@ export function Walk() {
       const len = Math.hypot(fwd, strafe) || 1
       const dx = ((f.x * fwd + r.x * strafe) / len) * v
       const dz = ((f.z * fwd + r.z * strafe) / len) * v
-      const p = walkStep(boxesRef.current, s.x, s.z, dx, dz, BODY_RADIUS)
+      const fl = floorsRef.current
+      const p = walkStepFloors(boxesRef.current, fl.rooms, fl.stairs, { x: s.x, z: s.z, h: s.h }, dx, dz, BODY_RADIUS)
       s.x = p.x
       s.z = p.z
+      s.h = p.h
     }
-    camera.position.set(s.x, EYE_HEIGHT, s.z)
+    // Göz kotu merdivende/kat geçişinde yumuşak izler.
+    const want = s.h + EYE_HEIGHT
+    const settling = Math.abs(want - s.eye) > 0.002
+    s.eye = settling ? s.eye + (want - s.eye) * Math.min(1, dt * 14) : want
+    const wh = s.h > 2.2 ? 4.5 : 0
+    if (use3dStore.getState().walkH !== wh) use3dStore.setState({ walkH: wh })
+    camera.position.set(s.x, s.eye, s.z)
     camera.rotation.set(s.pitch, s.yaw, 0, 'YXZ')
-    if (turn !== 0 || fwd !== 0 || strafe !== 0 || s.look) invalidate()
+    if (turn !== 0 || fwd !== 0 || strafe !== 0 || s.look || settling) invalidate()
   })
   return null
 }

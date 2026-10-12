@@ -25,7 +25,7 @@ const TONE_RGB: Record<Part['tone'], [number, number, number]> = (() => {
     const k = new THREE.Color(hex)
     return [k.r, k.g, k.b]
   }
-  return { body: [1, 1, 1], accent: [0.62, 0.62, 0.62], dark: c('#334155'), metal: c('#cbd5e1'), glass: c('#7dd3fc'), led: c('#22c55e'), warn: c('#f59e0b') }
+  return { body: [1, 1, 1], accent: [0.62, 0.62, 0.62], dark: c('#334155'), metal: c('#cbd5e1'), glass: c('#7dd3fc'), led: c('#22c55e'), warn: c('#f59e0b'), red: c('#dc2626'), white: c('#f1f5f9'), copper: c('#b45309') }
 })()
 
 function partGeometry(p: Part): THREE.BufferGeometry {

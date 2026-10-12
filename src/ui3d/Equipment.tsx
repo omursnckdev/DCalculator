@@ -4,6 +4,7 @@ import { memo, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { isCoolingSystem } from '../engine/coolingUnits'
 import { nodeColor } from '../layout3d/colors'
+import { floorVisible } from '../layout3d/floors'
 import { clearanceOf, rackCount } from '../layout3d/dims'
 import type { EquipmentType } from '../model/types'
 import { tick } from './anim'
@@ -92,7 +93,7 @@ const Equipment = memo(function Equipment(p: EqProps) {
       beginNodeDrag(p.id, null, e.shiftKey || e.ctrlKey)
       return
     }
-    beginNodeDrag(p.id, groundFromRay(e.ray), e.shiftKey || e.ctrlKey)
+    beginNodeDrag(p.id, groundFromRay(e.ray, p.elev), e.shiftKey || e.ctrlKey, false, p.elev)
     document.body.style.cursor = 'grabbing'
   }
 
@@ -136,11 +137,12 @@ const Equipment = memo(function Equipment(p: EqProps) {
 /** Tüm ekipman: sahne verisinden ilkel prop'lar üretir. */
 export function EquipmentLayer() {
   const sc = useScene()
+  const floor = use3dStore((s) => s.floor)
   return (
     <>
       {sc.nodes.map((n) => {
         const b = sc.boxById.get(n.id)
-        if (!b) return null
+        if (!b || !floorVisible(floor, b.elev)) return null
         const r = sc.analysis.nodes[n.id]
         const cooling = sc.analysis.cooling
         return (
@@ -156,7 +158,8 @@ export function EquipmentLayer() {
             d={b.d}
             h={b.h}
             count={rackCount(n)}
-            variant={n.type === 'kesici' ? String(n.params.tip ?? 'ACB') : ''}
+            // Kesici türü + açık konum: modelde ON/OFF göstergesi ve kol konumu değişir.
+            variant={n.type === 'kesici' ? `${String(n.params.tip ?? 'ACB')}${r?.open ? '|acik' : ''}` : ''}
             color={nodeColor(n, r, sc.colorCtx)}
             selected={sc.selected.has(n.id)}
             overlap={sc.overlaps.has(n.id)}

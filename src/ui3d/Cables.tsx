@@ -8,6 +8,7 @@ import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js'
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js'
 import { tick } from './anim'
 import { STATUS_HEX } from '../layout3d/colors'
+import { floorVisible } from '../layout3d/floors'
 import { defaultRoute, routePoints } from '../layout3d/route'
 import type { Nokta3D, ProjectEdge } from '../model/types'
 import { useStore } from '../store/useStore'
@@ -27,12 +28,14 @@ interface Cable {
 function useCables(): Cable[] {
   const sc = useScene()
   const mode = use3dStore((s) => s.colorMode)
+  const floor = use3dStore((s) => s.floor)
   return useMemo(() => {
     const out: Cable[] = []
     for (const e of sc.edges) {
       const a = sc.boxById.get(e.source)
       const b = sc.boxById.get(e.target)
       if (!a || !b) continue
+      if (!floorVisible(floor, a.elev) || !floorVisible(floor, b.elev)) continue
       const r = sc.analysis.edges[e.id]
       const pts = routePoints(e, a, b, sc.lanes.get(e.id) ?? 0)
       const live = !!r?.live && (r?.share ?? 0) > 1e-9
@@ -43,7 +46,7 @@ function useCables(): Cable[] {
       out.push({ edge: e, pts, color: open ? '#f59e0b' : color, width: e.tip === 'busbar' ? width + 1 : width, live, open })
     }
     return out
-  }, [sc.edges, sc.boxById, sc.analysis, sc.lanes, mode])
+  }, [sc.edges, sc.boxById, sc.analysis, sc.lanes, mode, floor])
 }
 
 /** Enerji akış noktaları: tüm canlı hatlar tek InstancedMesh ile çizilir. */
@@ -84,7 +87,7 @@ function FlowDots({ cables }: { cables: Cable[] }) {
   })
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, Math.max(1, live.length * per)]} frustumCulled={false}>
-      <sphereGeometry args={[0.06, 8, 8]} />
+      <sphereGeometry args={[0.04, 8, 8]} />
       <meshBasicMaterial color="#fde047" />
     </instancedMesh>
   )
