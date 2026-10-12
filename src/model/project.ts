@@ -227,7 +227,23 @@ export function parsePlan(v: unknown): Plan3D | undefined {
     const d = optNum(e.d)
     if (x === undefined || z === undefined || g === undefined || d === undefined || g <= 0 || d <= 0) continue
     const rot = optNum(e.rot)
-    ekipman.push({ etiket: e.etiket, x, z, g, d, ...(rot !== undefined ? { rot } : {}) })
+    const h = optNum(e.h)
+    const tur = EQUIPMENT_TYPES.includes(e.tur as never) ? (e.tur as PlanEkipman['tur']) : undefined
+    const pr: Record<string, number> = {}
+    if (isObj(e.p)) for (const [k, val] of Object.entries(e.p)) if (typeof val === 'number' && Number.isFinite(val)) pr[k] = val
+    ekipman.push({
+      etiket: e.etiket,
+      x,
+      z,
+      g,
+      d,
+      ...(rot !== undefined ? { rot } : {}),
+      ...(h !== undefined && h > 0 ? { h } : {}),
+      ...(tur ? { tur } : {}),
+      ...(typeof e.aile === 'string' ? { aile: e.aile } : {}),
+      ...(Object.keys(pr).length ? { p: pr } : {}),
+      ...(e.etiketsiz === true ? { etiketsiz: true } : {}),
+    })
   }
   const sinir = isObj(v.sinir) ? v.sinir : v
   const g = optNum(sinir.g) ?? Math.max(1, ...duvarlar.map((w) => Math.max(w[0], w[2])))

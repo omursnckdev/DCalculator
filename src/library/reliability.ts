@@ -26,6 +26,7 @@ export const RELIABILITY_DEFAULTS: Partial<Record<EquipmentType, ReliabilityDefa
   sts: { mtbf: 300_000, mttr: 4 },
   senkron: { mtbf: 150_000, mttr: 12 },
   kesici: { mtbf: 300_000, mttr: 4 },
+  rmu: { mtbf: 1_000_000, mttr: 12 },
 }
 
 /** Jeneratörün talepte çalışmama olasılığı (%): arıza durumuna ek eklenir. */

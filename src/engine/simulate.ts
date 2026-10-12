@@ -1,4 +1,5 @@
 import { tr } from '../i18n/tr'
+import { fmtLocale } from '../util/numfmt'
 import { EQUIPMENT } from '../library/equipment'
 import type { ProjectNode, Scenario } from '../model/types'
 import { FULL_AUTOMATION } from './automation'
@@ -96,7 +97,7 @@ export interface BatteryInfo {
   depleted: boolean
 }
 
-const fmt = (v: number, d = 0): string => v.toLocaleString('tr-TR', { maximumFractionDigits: d })
+const fmt = (v: number, d = 0): string => fmtLocale(v, d)
 const major = (n: ProjectNode) => n.type !== 'kesici' && n.type !== 'yardimci'
 const isLoad = (n: ProjectNode) => !EQUIPMENT[n.type].hasOutput && n.type !== 'yardimci'
 const list = (names: string[]) => (names.length > 6 ? `${names.slice(0, 6).join(', ')} … (+${names.length - 6})` : names.join(', '))

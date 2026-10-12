@@ -1,4 +1,5 @@
 import type { LoadStatus } from '../engine'
+import { fmtLocale } from '../util/numfmt'
 
 export const STATUS_COLOR: Record<LoadStatus, string> = {
   none: '#94a3b8',
@@ -14,4 +15,4 @@ export const STATUS_BG: Record<LoadStatus, string> = {
   over: '#fee2e2',
 }
 
-export const fmtNum = (v: number, d = 1): string => v.toLocaleString('tr-TR', { maximumFractionDigits: d })
+export const fmtNum = (v: number, d = 1): string => fmtLocale(v, d)

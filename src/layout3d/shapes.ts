@@ -256,6 +256,65 @@ export function partsOf(type: EquipmentType, dm: Dims, count = 1, variant = ''):
       return [box(0, 0.04, 0, g, 0.08, d, 'dark'), cyl(0, y / 2, 0, Math.min(g, d), y, 'accent', AX_Z), cyl(0, y / 2, d / 2 + 0.01, Math.min(g, d) * 0.9, 0.02, 'dark', AX_Z), cyl(0, y / 2, d / 2 + 0.03, 0.14, 0.05, 'metal', AX_Z)]
     case 'nemlendirici':
       return [box(0, 0.04, 0, g, 0.08, d, 'dark'), box(0, y * 0.45, 0, g * 0.96, y * 0.9, d * 0.96), cyl(g * 0.2, y + 0.15, 0, 0.08, 0.3, 'metal'), box(0, y * 0.7, d / 2 + 0.01, 0.2, 0.1, 0.012, 'glass')]
+    case 'rmu': {
+      // OG halka ana birimi: kaide, 3 hücre (kapak, mimik şema, kol girişi, topraklama kolu), gösterge, kablo bölmesi kapağı
+      const cells = Math.max(2, Math.min(4, Math.round(g / 0.45)))
+      const w = g / cells
+      const out: Part[] = [box(0, 0.06, 0, g, 0.12, d, 'dark'), box(0, y + 0.03, 0, g, 0.06, d, 'dark')]
+      for (let i = 0; i < cells; i++) {
+        const cx = -g / 2 + (i + 0.5) * w
+        out.push(
+          box(cx, 0.12 + (y - 0.12) / 2, 0, w * 0.98, y - 0.12, d),
+          box(cx, y * 0.62, d / 2 + 0.008, w * 0.88, y * 0.52, 0.016, 'accent'),
+          box(cx, y * 0.68, d / 2 + 0.02, w * 0.5, 0.14, 0.012, 'glass'),
+          cyl(cx - w * 0.2, y * 0.5, d / 2 + 0.03, 0.06, 0.04, 'metal', AX_Z),
+          cyl(cx + w * 0.2, y * 0.5, d / 2 + 0.03, 0.06, 0.04, 'red', AX_Z),
+          box(cx, y * 0.4, d / 2 + 0.02, w * 0.7, 0.04, 0.012, 'warn'),
+          box(cx, y * 0.2, d / 2 + 0.012, w * 0.86, y * 0.22, 0.016, 'dark'),
+          box(cx + w * 0.3, y * 0.88, d / 2 + 0.02, 0.04, 0.04, 0.012, 'led'),
+        )
+      }
+      return out
+    }
+    case 'batarya': {
+      // Akü dolabı: iki kanatlı kapı, havalandırma yarıkları, durum ışıkları, plaka
+      const half = g / 2
+      return [
+        box(0, 0.05, 0, g * 0.98, 0.1, d * 0.98, 'dark'),
+        box(0, 0.1 + (y - 0.1) / 2, 0, g, y - 0.1, d),
+        box(-half / 2, y * 0.52, d / 2 + 0.008, half * 0.9, y * 0.86, 0.016, 'accent'),
+        box(half / 2, y * 0.52, d / 2 + 0.008, half * 0.9, y * 0.86, 0.016, 'accent'),
+        box(0, y * 0.52, d / 2 + 0.012, 0.01, y * 0.86, 0.016, 'dark'),
+        ...[0, 1, 2, 3, 4].map((k) => box(-half / 2, 0.25 + k * 0.045, d / 2 + 0.018, half * 0.6, 0.014, 0.008, 'dark')),
+        ...[0, 1, 2, 3, 4].map((k) => box(half / 2, 0.25 + k * 0.045, d / 2 + 0.018, half * 0.6, 0.014, 0.008, 'dark')),
+        box(-0.06, y * 0.86, d / 2 + 0.02, 0.04, 0.04, 0.012, 'led'),
+        box(0.06, y * 0.86, d / 2 + 0.02, 0.04, 0.04, 0.012, 'warn'),
+        box(0, y * 0.72, d / 2 + 0.02, g * 0.4, 0.06, 0.008, 'white'),
+        box(g * 0.38, y * 0.5, d / 2 + 0.028, 0.025, 0.2, 0.025, 'metal'),
+      ]
+    }
+    case 'bcp':
+    case 'dcPanel': {
+      // Küçük kontrol/DC panosu: ekran, ölçü, butonlar, LED'ler, kol
+      return [
+        box(0, 0.05, 0, g * 0.98, 0.1, d * 0.98, 'dark'),
+        box(0, 0.1 + (y - 0.1) / 2, 0, g, y - 0.1, d),
+        box(0, y * 0.52, d / 2 + 0.008, g * 0.88, y * 0.86, 0.016, 'accent'),
+        box(0, y * 0.78, d / 2 + 0.02, g * 0.6, 0.18, 0.012, 'glass'),
+        ...[-1, 0, 1].map((k) => box(k * 0.18, y * 0.62, d / 2 + 0.02, 0.08, 0.05, 0.012, k === 1 ? 'red' : 'metal')),
+        ...[-1, 0, 1].map((k) => box(k * 0.12, y * 0.55, d / 2 + 0.02, 0.04, 0.04, 0.012, k === 0 ? 'warn' : 'led')),
+        box(0, y * 0.35, d / 2 + 0.02, g * 0.5, 0.08, 0.008, 'white'),
+        box(g * 0.36, y * 0.45, d / 2 + 0.03, 0.025, 0.24, 0.025, 'metal'),
+      ]
+    }
+    case 'telekomDolap': {
+      // Telekom/ODF dolabı: delikli kapı, yama paneli şeritleri, LED'ler, kilit
+      const out: Part[] = [box(0, 0.04, 0, g, 0.08, d, 'dark'), box(0, 0.08 + (y - 0.08) / 2, 0, g, y - 0.08, d, 'dark'), box(0, y * 0.5, d / 2 + 0.01, g * 0.9, y * 0.92, 0.02)]
+      const rows = Math.max(3, Math.round(y / 0.18))
+      for (let k = 0; k < rows; k++) out.push(box(0, 0.2 + k * ((y - 0.4) / rows), d / 2 + 0.022, g * 0.74, 0.03, 0.01, k % 3 === 2 ? 'metal' : 'dark'))
+      out.push(box(g * 0.36, y * 0.5, d / 2 + 0.03, 0.02, 0.2, 0.02, 'metal'), box(-g * 0.3, y * 0.95, d / 2 + 0.022, 0.03, 0.03, 0.01, 'led'), box(-g * 0.18, y * 0.95, d / 2 + 0.022, 0.03, 0.03, 0.01, 'warn'))
+      return out
+    }
     case 'yukBankasi': {
       const fans = Math.max(1, Math.round(g / 0.9))
       const out: Part[] = [box(0, 0.08, 0, g, 0.16, d, 'dark'), box(0, 0.16 + (y - 0.16) / 2, 0, g * 0.98, y - 0.16, d * 0.98)]

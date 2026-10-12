@@ -106,6 +106,15 @@ export function defaultDims(n: Pick<ProjectNode, 'type' | 'params'>): Dims {
       return { g: 1.5, d: 1.5, y: 2.5 }
     case 'yukBankasi':
       return { g: 2, d: 1, y: 1.5 }
+    case 'rmu':
+      return { g: 1, d: 1.3, y: 1.8 }
+    case 'batarya':
+      return { g: 1.5, d: 0.8, y: 2 }
+    case 'bcp':
+    case 'dcPanel':
+      return { g: 0.8, d: 0.8, y: 2 }
+    case 'telekomDolap':
+      return { g: 0.6, d: 1.2, y: 2.2 }
     case 'ofis':
       return { g: 2, d: 1.5, y: 2.2 }
     default:

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { tr } from '../i18n/tr'
-import { parsePlan } from '../model/project'
+import { canClonePl1 } from '../model/clonePlan'
+import { parsePlan, toProjectNodes } from '../model/project'
 import type { Plan3D } from '../model/types'
 import { useStore } from '../store/useStore'
 import hdcPlanUrl from '../../examples/hdc02-gf.plan.json?url'
@@ -15,6 +16,12 @@ export function PlanPanel() {
   const removePlan = useStore((s) => s.removePlan3d)
   const [open, setOpen] = useState(false)
   const [msg, setMsg] = useState('')
+  const [ekle, setEkle] = useState(true)
+  const [kopya, setKopya] = useState(true)
+  const nodes = useStore((st) => st.nodes)
+  const edges = useStore((st) => st.edges)
+  const kopyalanabilir = canClonePl1({ nodes: toProjectNodes(nodes) })
+  void edges
   const fileRef = useRef<HTMLInputElement>(null)
   const A = tr.v3d.plan
 
@@ -23,9 +30,9 @@ export function PlanPanel() {
       setMsg(A.invalid)
       return
     }
-    if (!confirm(A.confirm(p.ad))) return
-    const r = importPlan(p)
-    setMsg(A.done(r.matched, r.unmatched, r.unused.length))
+    if (!confirm(A.confirm(p.ad, ekle, kopya && kopyalanabilir))) return
+    const r = importPlan(p, { ekle, kopyaPl2: kopya && kopyalanabilir })
+    setMsg(A.done(r.matched, r.unmatched, r.unused.length, r.eklenen, r.klonlanan))
     use3dStore.getState().setPrefs({ showLabels: true })
     use3dStore.getState().requestView('fit')
   }
@@ -56,6 +63,14 @@ export function PlanPanel() {
       {open && (
         <div className="mt-1 space-y-1">
           <p className="text-slate-500">{A.hint}</p>
+          <label className="flex items-center gap-1" title={A.ekleHint}>
+            <input type="checkbox" checked={ekle} onChange={(e) => setEkle(e.target.checked)} />
+            {A.ekle}
+          </label>
+          <label className={`flex items-center gap-1 ${kopyalanabilir ? '' : 'text-slate-400'}`} title={A.kopyaHint}>
+            <input type="checkbox" checked={kopya && kopyalanabilir} disabled={!kopyalanabilir} onChange={(e) => setKopya(e.target.checked)} />
+            {A.kopya}
+          </label>
           <div className="flex flex-wrap gap-1">
             <button type="button" className={btn} onClick={() => void loadExample()}>
               {A.example}

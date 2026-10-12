@@ -28,6 +28,48 @@ export function Symbol({ type, color, size = 28 }: { type: EquipmentType; color:
         </>
       )
       break
+    case 'rmu':
+      body = (
+        <>
+          <rect {...common} x="3" y="6" width="18" height="12" rx="1" />
+          <path {...common} d="M7 6v12M12 6v12M17 6v12M5 12h2M10 12h2M15 12h2" />
+          <path {...common} d="M12 3v3" />
+        </>
+      )
+      break
+    case 'batarya':
+      body = (
+        <>
+          <rect {...common} x="4" y="8" width="16" height="11" rx="1" />
+          <path {...common} d="M8 8V5h2v3M14 8V5h2v3M9 13h4M11 11v4" />
+        </>
+      )
+      break
+    case 'bcp':
+      body = (
+        <>
+          <rect {...common} x="5" y="3" width="14" height="18" rx="1" />
+          <path {...common} d="M8 7h8M8 11h3M13 11h3M9 16l1.5 2L14 14" />
+        </>
+      )
+      break
+    case 'dcPanel':
+      body = (
+        <>
+          <rect {...common} x="3" y="5" width="18" height="14" rx="1" />
+          <path {...common} d="M6 10h5M6 14h5M14 10h4M14 14h4M16 8v4" />
+        </>
+      )
+      break
+    case 'telekomDolap':
+      body = (
+        <>
+          <rect {...common} x="6" y="3" width="12" height="18" rx="1" />
+          <path {...common} d="M9 7h6M9 10h6M9 13h6M9 16h6" />
+          <circle {...common} cx="15" cy="7" r="0.6" />
+        </>
+      )
+      break
     case 'mdb':
     case 'dagitimPanosu':
     case 'upsPanosu':

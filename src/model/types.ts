@@ -43,6 +43,12 @@ export const EQUIPMENT_TYPES = [
   'ofis',
   // Dağıtım
   'rpp',
+  // Plan (DXF) ile gelen: OG pano (RMU), batarya/DC/telekom ekipmanı
+  'rmu',
+  'batarya',
+  'bcp',
+  'dcPanel',
+  'telekomDolap',
 ] as const
 export type EquipmentType = (typeof EQUIPMENT_TYPES)[number]
 
@@ -94,9 +100,20 @@ export interface PlanEkipman {
   etiket: string
   x: number
   z: number
+  /** Dünya (x, z) eksenlerinde ayak izi: x boyunca ve z boyunca uzunluk (dönüş uygulanmış). */
   g: number
   d: number
   rot?: number
+  /** Yükseklik, m (DXF aile adından). */
+  h?: number
+  /** Eklenecek düğümün ekipman türü (DXF'ten: bloğun ailesi); yoksa yalnız mevcut düğümle eşleşir. */
+  tur?: EquipmentType
+  /** Aile (blok) adı, bilgi için. */
+  aile?: string
+  /** Anma değerleri (kW, kVA, A) ipuçları: yeni düğümün parametrelerine yazılır. */
+  p?: Record<string, number>
+  /** DXF'te etiketi bulunamadı, otomatik adlandırıldı. */
+  etiketsiz?: boolean
 }
 
 /**

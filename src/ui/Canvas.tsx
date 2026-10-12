@@ -164,6 +164,18 @@ function CanvasInner() {
   const { screenToFlowPosition, getViewport, fitView } = useReactFlow()
   const [selectBox, setSelectBox] = useState(false)
   const [showGroups, setShowGroups] = useState(true)
+  // Plandan (DXF) gelen, hiçbir hatla bağlı olmayan nesneler (batarya, telekom dolabı...) yüzlercedir ve şemayı çok yavaşlatır:
+  // varsayılan olarak 2D'de gizlenir (tablo ve 3D'de görünür); düğmeyle gösterilir.
+  const [showPlanObjs, setShowPlanObjs] = useState(false)
+  const planHidden = useMemo(() => {
+    const linked = new Set<string>()
+    for (const e of edges) {
+      linked.add(e.source)
+      linked.add(e.target)
+    }
+    return new Set(nodes.filter((n) => n.data.grup === 'Plan' && !linked.has(n.id)).map((n) => n.id))
+  }, [nodes, edges])
+  const shownNodes = useMemo(() => (showPlanObjs || planHidden.size === 0 ? nodes : nodes.map((n) => (planHidden.has(n.id) ? { ...n, hidden: true } : n))), [nodes, planHidden, showPlanObjs])
 
   // Proje yüklenince çizimi görünür alana sığdır. fitView kimliği değişebildiği
   // için ref üzerinden çağrılır; yoksa her düğüm eklemede görünüm kayar.
@@ -212,7 +224,7 @@ function CanvasInner() {
       <Palette onAdd={(t) => addAtCenter(t)} onAddCatalog={addCatalog} />
       <div className="relative min-w-0 flex-1">
         <ReactFlow
-          nodes={nodes}
+          nodes={shownNodes}
           edges={edges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
@@ -276,6 +288,17 @@ function CanvasInner() {
             >
               {tr.canvas.groups}
             </button>
+            {planHidden.size > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowPlanObjs(!showPlanObjs)}
+                aria-pressed={showPlanObjs}
+                title={tr.canvas.planObjsHint}
+                className={`ml-2 rounded border px-2.5 py-1 text-xs shadow-sm ${showPlanObjs ? 'border-teal-600 bg-teal-600 text-white' : 'border-slate-300 bg-white text-slate-700'}`}
+              >
+                {tr.canvas.planObjs(planHidden.size)}
+              </button>
+            )}
             <NodeSearch />
             </div>
           </Panel>

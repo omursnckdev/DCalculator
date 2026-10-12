@@ -1,4 +1,5 @@
 import { tr } from '../i18n/tr'
+import { fmtLocale } from '../util/numfmt'
 import { GEN_START_FAILURE_PCT, RELIABILITY_DEFAULTS } from './reliability'
 import type { EquipmentType, Params } from '../model/types'
 
@@ -71,7 +72,7 @@ const num = (p: Params, k: string): number => {
   const v = p[k]
   return typeof v === 'number' ? v : 0
 }
-const fmt = (v: number): string => v.toLocaleString('tr-TR', { maximumFractionDigits: 2 })
+const fmt = (v: number): string => fmtLocale(v, 2)
 const panelSummary = (p: Params) => `${fmt(num(p, 'nominalAkim'))} A · ${fmt(num(p, 'gerilim'))} V`
 const loadSummary = (p: Params) => `${fmt(num(p, 'kuruluKw'))} kW · DF ${fmt(num(p, 'df'))}`
 
@@ -543,6 +544,11 @@ const LOAD_SPECS: LoadSpec[] = [
   { type: 'asansor', onc: 4, kat: 3, group: 'yuk', color: '#78716c', kw: 18, pf: 0.8, df: 0.5, isi: 'elektrik' },
   { type: 'yukBankasi', onc: 5, kat: 1, group: 'yuk', color: '#a16207', kw: 500, pf: 1, isi: 'dis' },
   { type: 'ofis', onc: 4, kat: 1, group: 'yuk', color: '#7c3aed', kw: 30, pf: 0.9, df: 0.8, isi: 'dis' },
+  // Plan (DXF) ile gelen yardımcı ekipman: tipik, küçük bekleme güçleri; gerçek değerler girilene kadar yer tutucudur.
+  { type: 'batarya', onc: 1, kat: 1, group: 'yuk', color: '#65a30d', kw: 0, pf: 1, isi: 'elektrik' },
+  { type: 'bcp', onc: 1, kat: 1, group: 'yuk', color: '#4d7c0f', kw: 0.3, pf: 0.9, isi: 'elektrik' },
+  { type: 'dcPanel', onc: 1, kat: 1, group: 'yuk', color: '#0369a1', kw: 0, pf: 1, isi: 'elektrik' },
+  { type: 'telekomDolap', onc: 1, kat: 1, group: 'yuk', color: '#0f766e', kw: 2, pf: 0.95, kategori: 'IT', isi: 'elektrik' },
 ]
 
 for (const sp of LOAD_SPECS) {
@@ -581,6 +587,19 @@ defs.push({
   hasOutput: true,
   color: '#0f766e',
   defaults: { gerilim: 400, nominalAkim: 250, diversity: 1, baraUzunluk: 1.5, baraDirenc: 0, isiKonum: 'elektrik' },
+  fields: [voltage, rating, diversity, busLength, busResistance, heatField],
+  summary: panelSummary,
+})
+
+// OG pano (RMU / MVTB): giriş-çıkış panosu; gerilim OG, kayıp panel kaybı gibi hesaplanır.
+defs.push({
+  type: 'rmu',
+  label: tr.ekipman.rmu,
+  group: 'dagitim',
+  hasInput: true,
+  hasOutput: true,
+  color: '#7c2d12',
+  defaults: { gerilim: 34500, nominalAkim: 630, diversity: 1, baraUzunluk: 1, baraDirenc: 0, isiKonum: 'elektrik' },
   fields: [voltage, rating, diversity, busLength, busResistance, heatField],
   summary: panelSummary,
 })
@@ -629,6 +648,11 @@ const PORT_DEFAULTS: Record<EquipmentType, { in: number; out: number }> = {
   yukBankasi: { in: 1, out: 0 },
   ofis: { in: 1, out: 0 },
   rpp: { in: 2, out: 12 },
+  rmu: { in: 1, out: 2 },
+  batarya: { in: 1, out: 0 },
+  bcp: { in: 1, out: 0 },
+  dcPanel: { in: 1, out: 0 },
+  telekomDolap: { in: 1, out: 0 },
 }
 for (const d of defs) {
   // Alan dizileri tipler arasında paylaşılabilir (ör. yükler); kopyalayıp ekle.

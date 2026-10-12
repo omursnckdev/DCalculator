@@ -163,7 +163,7 @@ export interface ArcFlashRow {
   ppe: 0 | 1 | 2 | 3 | 4 | 5
 }
 
-const PANEL_TYPES = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu', 'rpp', 'ats', 'sts', 'senkron']
+const PANEL_TYPES = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu', 'rpp', 'rmu', 'ats', 'sts', 'senkron']
 
 export function ppeCategory(cal: number): ArcFlashRow['ppe'] {
   return cal <= 1.2 ? 0 : cal <= 4 ? 1 : cal <= 8 ? 2 : cal <= 25 ? 3 : cal <= 40 ? 4 : 5

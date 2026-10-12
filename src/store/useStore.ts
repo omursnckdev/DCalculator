@@ -47,6 +47,7 @@ import { TrayNet } from '../layout3d/trays'
 import { anchorOf as bboxAnchor } from '../layout3d/route'
 import { boxOf, roomAt } from '../layout3d/geometry'
 import { applyPlan } from '../layout3d/plan'
+import { canClonePl1, clonePl1ToPl2 } from '../model/clonePlan'
 import { dimsOf } from '../layout3d/dims'
 import { attachHistory } from './history'
 import { saveProjectToDb } from './persistence'
@@ -137,7 +138,7 @@ interface State {
   /** Kat planı (PDF/DXF'ten): duvarlar, odalar, ekipman dikdörtgenleri. */
   plan3d: Plan3D | null
   /** Planı uygular: etiket eşleşen ekipman plana oturur, odalar/duvarlar yazılır. Eşleşen/eşleşmeyen sayısı döner. */
-  importPlan3d: (plan: Plan3D) => { matched: number; unmatched: number; unused: string[] }
+  importPlan3d: (plan: Plan3D, opts?: { ekle?: boolean; kopyaPl2?: boolean }) => { matched: number; unmatched: number; unused: string[]; eklenen: number; klonlanan: number }
   removePlan3d: () => void
   gorunumler3d: Gorunum3D[]
   /** Kablo tavaları ve boru hatları (geri alınabilir). */
@@ -321,14 +322,43 @@ export const useStore = create<State>((set, get) => ({
 
   odalar3d: [],
   plan3d: null,
-  importPlan3d: (plan) => {
+  importPlan3d: (plan, opts = {}) => {
     const s = get()
-    const r = applyPlan({ nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }, plan)
+    let model = { nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }
+    // PL1 zinciri PL2'ye kopyalanır (şemada yan yana, sağda)
+    let klonlanan = 0
+    let clone: ReturnType<typeof clonePl1ToPl2> | null = null
+    if (opts.kopyaPl2 && canClonePl1(model)) {
+      const xs = model.nodes.map((n) => n.x)
+      clone = clonePl1ToPl2(model, Math.max(...xs) - Math.min(...xs) + 400)
+      model = { nodes: [...model.nodes, ...clone.nodes], edges: [...model.edges, ...clone.edges] }
+      klonlanan = clone.nodes.length
+    }
+    const r = applyPlan(model, plan, { ekle: opts.ekle })
+    // Plandaki, şemada olmayan nesneler: yeni düğümler (şemanın altında ızgara)
+    const baseX = Math.min(0, ...model.nodes.map((n) => n.x))
+    const baseY = Math.max(0, ...model.nodes.map((n) => n.y)) + 300
+    const eklenen: ProjectNode[] = r.yeni.map((y, i) => ({
+      id: newId('p'),
+      type: y.tur,
+      ad: y.ad,
+      etiket: '',
+      grup: 'Plan',
+      notlar: y.aile ? `DXF: ${y.aile}` : '',
+      x: baseX + (i % 12) * 220,
+      y: baseY + Math.floor(i / 12) * 140,
+      params: y.params,
+      yerlesim3d: y.yerlesim,
+    }))
     set((st) => {
-      const nodes = st.nodes.map((n) => (r.placements[n.id] ? { ...n, data: { ...n.data, yerlesim3d: r.placements[n.id] } } : n))
-      return { nodes, edges: withLengths(nodes, st.edges), odalar3d: r.rooms, plan3d: plan, dirty: true }
+      const cNodes = clone ? fromProjectNodes(clone.nodes) : []
+      const cEdges = clone ? fromProjectEdges(clone.edges) : []
+      const all = [...st.nodes, ...cNodes, ...fromProjectNodes(eklenen)]
+      const nodes = all.map((n) => (r.placements[n.id] ? { ...n, data: { ...n.data, yerlesim3d: r.placements[n.id] } } : n))
+      const edges = [...st.edges, ...cEdges]
+      return { nodes, edges: withLengths(nodes, edges), odalar3d: r.rooms, plan3d: plan, dirty: true }
     })
-    return { matched: r.matched, unmatched: r.unmatched, unused: r.unused }
+    return { matched: r.matched, unmatched: r.unmatched, unused: r.unused, eklenen: eklenen.length, klonlanan }
   },
   removePlan3d: () => set({ plan3d: null, dirty: true }),
   gorunumler3d: [],

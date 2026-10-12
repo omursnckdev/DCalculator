@@ -30,8 +30,10 @@ const SQRT3 = Math.sqrt(3)
 /** Yük tipleri: girişi var, çıkışı yok (ölçü elemanı hariç). Yeni yük ekipmanı kütüphaneye eklenince otomatik dahil olur. */
 const LOAD_TYPES: EquipmentType[] = EQUIPMENT_TYPES.filter((t) => EQUIPMENT[t].hasInput && !EQUIPMENT[t].hasOutput && t !== 'yardimci')
 /** İç bara kaybı hesaplanan pano tipleri (kesici ve ölçü elemanları hariç). */
-const PANEL_LOSS_TYPES: EquipmentType[] = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu', 'rpp', 'ats', 'sts', 'senkron']
-const PANEL_TYPES: EquipmentType[] = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu', 'rpp', 'ats', 'sts', 'kesici', 'senkron']
+/** Şemaya bağlanmasa da "bağlı değil" uyarısı vermeyen yardımcı ekipman (DXF planından gelir). */
+const PASSIVE_TYPES: EquipmentType[] = ['batarya', 'bcp', 'dcPanel', 'telekomDolap']
+const PANEL_LOSS_TYPES: EquipmentType[] = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu', 'rpp', 'rmu', 'ats', 'sts', 'senkron']
+const PANEL_TYPES: EquipmentType[] = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu', 'rpp', 'rmu', 'ats', 'sts', 'kesici', 'senkron']
 const TRANSFER_TYPES: EquipmentType[] = ['ats', 'sts']
 
 // --- küçük yardımcılar -----------------------------------------------------
@@ -729,7 +731,8 @@ function analyzeCore(
     const nOut = allOut.get(n.id) ?? 0
     const res = nodeResults[n.id]
     if (nIn + nOut === 0) {
-      if (model.nodes.length > 1) issues.push({ severity: 'warning', nodeId: n.id, message: tr.analiz.disconnected(n.ad) })
+      // Plandan gelen yardımcı ekipman (batarya, BCP, DC pano, telekom dolabı) çoğu zaman şemaya bağlanmaz: uyarı üretmez.
+      if (model.nodes.length > 1 && !PASSIVE_TYPES.includes(n.type)) issues.push({ severity: 'warning', nodeId: n.id, message: tr.analiz.disconnected(n.ad) })
     } else if (def.hasInput && !reach.has(n.id) && !res.cyclic && !failed.has(n.id)) {
       issues.push({ severity: 'error', nodeId: n.id, message: tr.analiz.unreachable(n.ad) })
     } else if (!def.hasInput && nOut === 0) {

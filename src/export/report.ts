@@ -1,4 +1,5 @@
 import { kwToTr } from '../engine'
+import { fmtLocale } from '../util/numfmt'
 import { MONTH_NAMES } from '../engine/climate'
 import type { Analysis, EnergyReport, RedundancyReport, ReliabilityReport, SimStep } from '../engine'
 import { rideThroughMinutes } from '../engine/cooling'
@@ -42,10 +43,10 @@ export interface ReportInput {
 export const esc = (v: unknown): string =>
   String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string)
 
-const n0 = (v: number): string => v.toLocaleString('tr-TR', { maximumFractionDigits: 0 })
-const n1 = (v: number): string => v.toLocaleString('tr-TR', { maximumFractionDigits: 1 })
-const n2 = (v: number): string => v.toLocaleString('tr-TR', { maximumFractionDigits: 2 })
-const n3 = (v: number): string => v.toLocaleString('tr-TR', { maximumFractionDigits: 3 })
+const n0 = (v: number): string => fmtLocale(v, 0)
+const n1 = (v: number): string => fmtLocale(v, 1)
+const n2 = (v: number): string => fmtLocale(v, 2)
+const n3 = (v: number): string => fmtLocale(v, 3)
 
 const CSS = `
   @page { size: A4; margin: 14mm; }

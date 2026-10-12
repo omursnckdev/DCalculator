@@ -207,6 +207,15 @@
   "y": 4.5
  },
  {
+  "ad": "LBSB odası",
+  "tur": "elektrik",
+  "x": 58.24,
+  "z": 4.54,
+  "g": 5.5,
+  "d": 3.1,
+  "y": 4.5
+ },
+ {
   "ad": "Veri salonu",
   "tur": "salon",
   "x": 0.2,

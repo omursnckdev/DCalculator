@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { fmtLocale } from '../util/numfmt'
 import { BORU_TURLERI, TAVA_TURLERI } from '../model/types'
 import type { Boru3D, Tava3D } from '../model/types'
 import { STD_DN, boruLength, hydraulicsOf } from '../layout3d/pipes'
@@ -13,7 +14,7 @@ const btn = 'rounded border border-slate-300 bg-white px-2 py-1 text-xs hover:bg
 const btnOn = 'rounded border border-blue-600 bg-blue-600 px-2 py-1 text-xs text-white'
 const inp = 'w-full rounded border border-slate-300 px-1 py-0.5 text-xs'
 const FILL = { ok: 'bg-green-500', warn: 'bg-amber-400', over: 'bg-red-500' } as const
-const f1 = (v: number) => v.toLocaleString('tr-TR', { maximumFractionDigits: 1 })
+const f1 = (v: number) => fmtLocale(v, 1)
 
 function Num({ label, value, onChange, step = 0.1, min = 0 }: { label: string; value: number; onChange: (v: number) => void; step?: number; min?: number }) {
   return (
