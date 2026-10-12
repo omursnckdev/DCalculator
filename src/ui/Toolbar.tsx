@@ -14,6 +14,7 @@ import { useAnalysis } from '../store/useAnalysis'
 import { redo, undo } from '../store/history'
 import { downloadProject, readProjectFile, safeName, saveBlob } from './fileio'
 import { TEMPLATES } from '../library/templates'
+import { ImportDialog } from './ImportDialog'
 import { OpenDialog } from './OpenDialog'
 
 const btn = 'rounded border border-slate-300 bg-white px-3 py-1 text-sm hover:bg-slate-50'
@@ -27,6 +28,7 @@ export function Toolbar() {
   const getProject = useStore((s) => s.getProject)
   const loadProject = useStore((s) => s.loadProject)
   const [showOpen, setShowOpen] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const hist = useStore((s) => s.history)
   const [showTpl, setShowTpl] = useState(false)
   const [reportBusy, setReportBusy] = useState(false)
@@ -157,6 +159,9 @@ export function Toolbar() {
         <button type="button" className={btn} onClick={() => setShowOpen(true)}>
           {tr.toolbar.open}
         </button>
+        <button type="button" className={btn} onClick={() => setShowImport(true)}>
+          {tr.ice.button}
+        </button>
         <button type="button" className={btn} onClick={() => void exportExcel()}>
           {tr.export.excel}
         </button>
@@ -190,6 +195,7 @@ export function Toolbar() {
         />
       </div>
       {showOpen && <OpenDialog onClose={() => setShowOpen(false)} />}
+      {showImport && <ImportDialog onClose={() => setShowImport(false)} />}
     </header>
   )
 }

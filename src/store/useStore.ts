@@ -21,7 +21,10 @@ import type {
   LineData,
   LineEdge,
   ParamValue,
+  Params,
   Project,
+  ProjectEdge,
+  ProjectNode,
   Scenario,
   EdgeState,
 } from '../model/types'
@@ -114,7 +117,9 @@ interface State {
   onConnect: (c: Connection) => void
   isValidConnection: (c: Connection | LineEdge) => boolean
 
-  addNode: (type: EquipmentType, x: number, y: number) => string
+  addNode: (type: EquipmentType, x: number, y: number, init?: { ad?: string; params?: Params }) => string
+  /** Excel/CSV içe aktarmadan gelen ekipman ve hatları şemaya ekler (yeni düğümler seçili olur). */
+  importEquipment: (nodes: ProjectNode[], edges: ProjectEdge[]) => void
   updateNodeData: (id: string, patch: Partial<Omit<EquipmentData, 'params' | 'kind'>>) => void
   updateNodeParam: (id: string, key: string, value: ParamValue) => void
   updateEdgeData: (id: string, patch: Partial<LineData>) => void
@@ -298,7 +303,7 @@ export const useStore = create<State>((set, get) => ({
     }))
   },
 
-  addNode: (type, x, y) => {
+  addNode: (type, x, y, init) => {
     const def = EQUIPMENT[type]
     const id = newId('d')
     const count = get().nodes.filter((n) => n.data.kind === type).length + 1
@@ -308,11 +313,11 @@ export const useStore = create<State>((set, get) => ({
       position: { x, y },
       data: {
         kind: type,
-        ad: `${def.label.split(" (")[0]} ${count}`, // parantez içi açıklama varsayılan ada alınmaz (Chiller 1, CRAH 2)
+        ad: init?.ad ?? `${def.label.split(" (")[0]} ${count}`, // parantez içi açıklama varsayılan ada alınmaz (Chiller 1, CRAH 2)
         etiket: '',
         grup: '',
         notlar: '',
-        params: { ...def.defaults },
+        params: { ...def.defaults, ...init?.params },
       },
       selected: true,
     }
@@ -323,6 +328,13 @@ export const useStore = create<State>((set, get) => ({
     }))
     return id
   },
+
+  importEquipment: (nodes, edges) =>
+    set((s) => ({
+      nodes: [...s.nodes.map((n) => ({ ...n, selected: false })), ...fromProjectNodes(nodes).map((n) => ({ ...n, selected: true }))],
+      edges: [...s.edges.map((e) => ({ ...e, selected: false })), ...fromProjectEdges(edges)],
+      dirty: true,
+    })),
 
   updateNodeData: (id, patch) =>
     set((s) => ({

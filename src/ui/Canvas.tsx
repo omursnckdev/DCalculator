@@ -13,11 +13,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { tr } from '../i18n/tr'
 import { EQUIPMENT } from '../library/equipment'
 import { EQUIPMENT_TYPES } from '../model/types'
-import type { EquipmentType } from '../model/types'
+import type { EquipmentType, Params } from '../model/types'
 import { useStore } from '../store/useStore'
 import { EquipmentNodeView } from './EquipmentNodeView'
 import { LineEdgeView } from './LineEdgeView'
-import { DND_MIME, Palette } from './Palette'
+import type { CatalogEntry } from '../library/catalog'
+import { DND_CATALOG, DND_MIME, Palette, findCatalogEntry } from './Palette'
 
 const nodeTypes = { equipment: EquipmentNodeView }
 const edgeTypes = { line: LineEdgeView }
@@ -180,9 +181,14 @@ function CanvasInner() {
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault()
+      const p = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+      const cat = findCatalogEntry(e.dataTransfer.getData(DND_CATALOG))
+      if (cat) {
+        addNode(cat.type, snap(p.x), snap(p.y), { ad: cat.ad, params: cat.params })
+        return
+      }
       const type = e.dataTransfer.getData(DND_MIME) as EquipmentType
       if (!EQUIPMENT_TYPES.includes(type)) return
-      const p = screenToFlowPosition({ x: e.clientX, y: e.clientY })
       addNode(type, snap(p.x), snap(p.y))
     },
     [addNode, screenToFlowPosition],
@@ -190,19 +196,20 @@ function CanvasInner() {
 
   // Paletten tıklayınca: görünür alanın ortasına, üst üste binmemesi için kademeli koy.
   const addAtCenter = useCallback(
-    (type: EquipmentType) => {
+    (type: EquipmentType, init?: { ad?: string; params?: Params }) => {
       const { x, y, zoom } = getViewport()
       const offset = (useStore.getState().nodes.length % 8) * GRID
       const cx = (window.innerWidth / 2 - 240 - x) / zoom
       const cy = (window.innerHeight / 2 - 120 - y) / zoom
-      addNode(type, snap(cx + offset), snap(cy + offset))
+      addNode(type, snap(cx + offset), snap(cy + offset), init)
     },
     [addNode, getViewport],
   )
+  const addCatalog = useCallback((c: CatalogEntry) => addAtCenter(c.type, { ad: c.ad, params: c.params }), [addAtCenter])
 
   return (
     <>
-      <Palette onAdd={addAtCenter} />
+      <Palette onAdd={(t) => addAtCenter(t)} onAddCatalog={addCatalog} />
       <div className="relative min-w-0 flex-1">
         <ReactFlow
           nodes={nodes}
