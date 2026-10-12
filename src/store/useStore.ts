@@ -306,7 +306,7 @@ export const useStore = create<State>((set, get) => ({
       position: { x, y },
       data: {
         kind: type,
-        ad: `${def.label} ${count}`,
+        ad: `${def.label.split(" (")[0]} ${count}`, // parantez içi açıklama varsayılan ada alınmaz (Chiller 1, CRAH 2)
         etiket: '',
         grup: '',
         notlar: '',

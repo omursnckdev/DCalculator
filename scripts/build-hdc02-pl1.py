@@ -247,8 +247,8 @@ def feeder(id, ad, amp_trip, frame, pole, x, bar_name, spec, mm2, parallel, load
          notlar=ASSUME + f'{amp_trip} A MCCB: {K} × √3 × 415 V × {amp_trip} A × cosφ {pf} ≈ {kw} kW.' + note2)
     cable(id, load_id, bar_name, spec, parallel, mm2, length=cable_len)
 
-feeder('mf_acc1', 'MCCB ACC-01 Module-1 Chiller-1', 630, 630, '4P', 73763, 'CBL/MSB.PL1/03', '2x(4x95)+120 mm² N2XH', 120, 2, 'acc1', 'ACC-01 Module-1 Chiller-1', round(K * p3(630, 0.85)), 0.85, 'dis')
-feeder('mf_acc2', 'MCCB ACC-02 Module-1 Chiller-2', 630, 630, '4P', 75763, 'CBL/MSB.PL1/04', '2x(4x95)+120 mm² N2XH', 120, 2, 'acc2', 'ACC-02 Module-1 Chiller-2', round(K * p3(630, 0.85)), 0.85, 'dis')
+feeder('mf_acc1', 'MCCB ACC-01 Module-1 Chiller-1', 630, 630, '4P', 73763, 'CBL/MSB.PL1/03', '2x(4x95)+120 mm² N2XH', 120, 2, 'acc1', 'ACC-01 Module-1 Chiller-1', round(K * p3(630, 0.85)), 0.85, 'dis', typ='chiller')
+feeder('mf_acc2', 'MCCB ACC-02 Module-1 Chiller-2', 630, 630, '4P', 75763, 'CBL/MSB.PL1/04', '2x(4x95)+120 mm² N2XH', 120, 2, 'acc2', 'ACC-02 Module-1 Chiller-2', round(K * p3(630, 0.85)), 0.85, 'dis', typ='chiller')
 # Soğutma kapasitesi (varsayım): chiller termal kapasitesi = elektrik gücü × COP (≈5). Şemada yoktur.
 for _id in ('acc1', 'acc2'):
     nodes[_id]['params']['sogutmaKw'] = round(nodes[_id]['params']['kuruluKw'] * 5)
@@ -304,7 +304,7 @@ for n, es in ins.items():
 for e in edges:
     e.setdefault('kaynakPort', 0); e.setdefault('hedefPort', 0)
 DEFAULT_PORTS = {'sebeke': (0, 1), 'jenerator': (0, 1), 'trafo': (1, 1), 'mdb': (2, 6), 'dagitimPanosu': (1, 6), 'bara': (2, 8), 'ups': (1, 1),
-                 'ats': (2, 1), 'sts': (2, 1), 'kesici': (1, 1), 'yardimci': (1, 0), 'senkron': (2, 1), 'itYuku': (1, 0), 'mekanikYuk': (1, 0), 'aydinlatma': (1, 0), 'genelYuk': (1, 0)}
+                 'ats': (2, 1), 'sts': (2, 1), 'kesici': (1, 1), 'yardimci': (1, 0), 'senkron': (2, 1), 'itYuku': (1, 0), 'mekanikYuk': (1, 0), 'chiller': (1, 0), 'aydinlatma': (1, 0), 'genelYuk': (1, 0)}
 for n in nodes.values():
     di, do = DEFAULT_PORTS[n['type']]
     if di: n['params']['girisSayisi'] = max(di, len(ins.get(n['id'], [])), n['params'].get('girisSayisi', 0))

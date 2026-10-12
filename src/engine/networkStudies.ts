@@ -1,6 +1,7 @@
 import { EQUIPMENT } from '../library/equipment'
 import type { ProjectEdge, ProjectNode, Scenario } from '../model/types'
 import { tr } from '../i18n/tr'
+import { coolingKw, coolingRole } from './coolingUnits'
 import { switchState } from './switches'
 import type { Analysis, Issue, Model, Thresholds } from './types'
 
@@ -231,18 +232,37 @@ function studyBlock(model: Model, a: Analysis, th: Thresholds, scenario: Scenari
   }
 }
 
-/** Soğutma yeterliliği (soğutma kapasitesi tanımlı birim varsa). */
+/**
+ * Soğutma yeterliliği (soğutma kapasitesi tanımlı birim varsa). Etkin kapasite = min(soğuk su üretimi, hava tarafı)
+ * + doğrudan soğutma: chiller soğuk suyu üretir, CRAH/fan wall/in-row/RDHx bunu salon havasına aktarır (ikisi
+ * birbirine zincirlenir, toplanmaz); CRAC (DX) kendi başına soğutur. Yalnız bir taraf tanımlıysa o taraf geçerlidir.
+ */
 function coolingBlock(model: Model, a: Analysis, issues: Issue[]): void {
   const units = model.nodes
-    .filter((n) => n.type === 'mekanikYuk' && num(n, 'sogutmaKw') > 0)
-    .map((n) => ({ id: n.id, name: n.ad, kw: num(n, 'sogutmaKw'), energized: !!a.nodes[n.id]?.energized && !a.nodes[n.id]?.failed }))
-  if (units.length > 0) {
-    const capacityKw = units.reduce((s, u) => s + (u.energized ? u.kw : 0), 0)
-    const demandKw = a.heat.salonKw + a.heat.elektrikKw
-    const deficitKw = Math.max(0, demandKw - capacityKw)
-    a.cooling = { capacityKw, demandKw, deficitKw, reservePct: demandKw > 0 ? ((capacityKw - demandKw) / demandKw) * 100 : undefined, units }
-    if (deficitKw > 0.5) {
-      issues.push({ severity: 'warning', message: tr.analiz.coolingShort(Math.round(demandKw).toLocaleString('tr-TR'), Math.round(capacityKw).toLocaleString('tr-TR')) })
-    }
+    .filter((n) => coolingKw(n) > 0)
+    .map((n) => ({ id: n.id, name: n.ad, kw: coolingKw(n), role: coolingRole(n)!, energized: !!a.nodes[n.id]?.energized && !a.nodes[n.id]?.failed }))
+  if (units.length === 0) return
+  const sum = (role: 'produce' | 'air' | 'direct', onlyLive: boolean) => units.filter((u) => u.role === role && (!onlyLive || u.energized)).reduce((s, u) => s + u.kw, 0)
+  const hasProduce = units.some((u) => u.role === 'produce')
+  const hasAir = units.some((u) => u.role === 'air')
+  const produceKw = sum('produce', true)
+  const airKw = sum('air', true)
+  const directKw = sum('direct', true)
+  const chainKw = hasProduce && hasAir ? Math.min(produceKw, airKw) : hasProduce ? produceKw : airKw
+  const capacityKw = chainKw + directKw
+  const demandKw = a.heat.salonKw + a.heat.elektrikKw
+  const deficitKw = Math.max(0, demandKw - capacityKw)
+  a.cooling = {
+    capacityKw,
+    demandKw,
+    deficitKw,
+    reservePct: demandKw > 0 ? ((capacityKw - demandKw) / demandKw) * 100 : undefined,
+    produceKw: hasProduce ? produceKw : undefined,
+    airKw: hasAir ? airKw : undefined,
+    directKw: units.some((u) => u.role === 'direct') ? directKw : undefined,
+    units,
+  }
+  if (deficitKw > 0.5) {
+    issues.push({ severity: 'warning', message: tr.analiz.coolingShort(Math.round(demandKw).toLocaleString('tr-TR'), Math.round(capacityKw).toLocaleString('tr-TR')) })
   }
 }

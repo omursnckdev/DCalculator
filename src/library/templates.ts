@@ -62,11 +62,12 @@ class Builder {
   }
 }
 
-const TX = { nominalKva: 1000, primerGerilim: 34500, sekonderGerilim: 400, uk: 6, bostaKayip: 1.5, yukKayip: 11 }
+const TX = { nominalKva: 1250, primerGerilim: 34500, sekonderGerilim: 400, uk: 6, bostaKayip: 1.5, yukKayip: 11 }
 const GEN = { nominalKva: 1000, gerilim: 400, pf: 0.8 }
 const UPS = { nominalKva: 500, nominalKw: 450, girisGerilim: 400, cikisGerilim: 400, verim: 96, bataryaDk: 10 }
 const IT = { kuruluKw: 400, pf: 0.95, df: 1, kategori: 'IT', gerilim: 400, isiKonum: 'salon' }
-const CHILLER = { kuruluKw: 150, pf: 0.85, df: 0.9, kategori: 'Mekanik', gerilim: 400, isiKonum: 'dis', sogutmaKw: 450 }
+const CHILLER = { kuruluKw: 150, pf: 0.85, df: 1, gerilim: 400, sogutmaKw: 600 }
+const CRAH = { kuruluKw: 12, pf: 0.9, df: 1, gerilim: 400, sogutmaKw: 250 }
 
 /** Tek hat: şebeke → TX → MDB → UPS → IT; yedeklilik yok (N). */
 function singleLine(): Project {
@@ -77,13 +78,15 @@ function singleLine(): Project {
   b.n('ups', 'ups', 'UPS', -120, 400, UPS)
   b.n('ups-pnl', 'upsPanosu', 'UPS dağıtım panosu', -120, 540, { nominalAkim: 1000 })
   b.n('it', 'itYuku', 'IT yükü', -120, 680, IT)
-  b.n('chiller', 'mekanikYuk', 'Chiller', 140, 400, CHILLER)
+  b.n('chiller', 'chiller', 'Chiller', 140, 400, CHILLER)
+  b.n('crah', 'crah', 'CRAH', 280, 400, { ...CRAH, sogutmaKw: 450 })
   b.e('g', 'tx', { cap: 100, gerilim: 34500, r: 0.1 })
   b.e('tx', 'mdb', { cap: 2000, tip: 'busbar' })
   b.e('mdb', 'ups', { cap: 1000 })
   b.e('ups', 'ups-pnl', { cap: 1000 })
   b.e('ups-pnl', 'it', { cap: 1000 })
   b.e('mdb', 'chiller', { cap: 600 })
+  b.e('mdb', 'crah', { cap: 100 })
   return b.build('Şablon: tek hat (N)')
 }
 
@@ -100,8 +103,9 @@ function genN1(): Project {
   b.n('ups2', 'ups', 'UPS-2', 100, 400, UPS)
   b.n('ups-pnl', 'upsPanosu', 'UPS dağıtım panosu', 20, 540, { nominalAkim: 1000 })
   b.n('it', 'itYuku', 'IT yükü', 20, 680, IT)
-  b.n('ch1', 'mekanikYuk', 'Chiller-1', 280, 400, CHILLER)
-  b.n('ch2', 'mekanikYuk', 'Chiller-2', 420, 400, CHILLER)
+  b.n('ch1', 'chiller', 'Chiller-1', 280, 400, CHILLER)
+  b.n('ch2', 'chiller', 'Chiller-2', 420, 400, CHILLER)
+  for (const i of [1, 2, 3]) b.n(`crah${i}`, 'crah', `CRAH-${i}`, 560 + (i - 1) * 120, 400, CRAH)
   b.e('g', 'tx', { cap: 100, gerilim: 34500, r: 0.1 })
   b.e('tx', 'mdb', { cap: 2000, tip: 'busbar' })
   b.e('gen1', 'sync', { cap: 2000 })
@@ -114,6 +118,7 @@ function genN1(): Project {
   b.e('ups-pnl', 'it', { cap: 1000 })
   b.e('mdb', 'ch1', { cap: 600 })
   b.e('mdb', 'ch2', { cap: 600 })
+  for (const i of [1, 2, 3]) b.e('mdb', `crah${i}`, { cap: 100 })
   return b.build('Şablon: jeneratörlü N+1')
 }
 
@@ -129,7 +134,8 @@ function twoN(): Project {
     b.n(`mdb${s}`, 'mdb', `MDB ${S}`, x + 60, 400, { nominalAkim: 2000, genislik: 220 }, `Yol ${S}`)
     b.n(`ups${s}`, 'ups', `UPS ${S}`, x + 20, 540, UPS, `Yol ${S}`)
     b.n(`pdu${s}`, 'pdu', `PDU ${S}`, x + 20, 680, { nominalAkim: 1000 }, `Yol ${S}`)
-    b.n(`ch${s}`, 'mekanikYuk', `Chiller ${S}`, x + 200, 540, CHILLER, `Yol ${S}`)
+    b.n(`ch${s}`, 'chiller', `Chiller ${S}`, x + 200, 540, CHILLER, `Yol ${S}`)
+    for (const k of [1, 2]) b.n(`crah${s}${k}`, 'crah', `CRAH ${S}${k}`, x + 300 + (k - 1) * 120, 540, CRAH, `Yol ${S}`)
     b.e(`g${s}`, `tx${s}`, { cap: 100, gerilim: 34500, r: 0.1 })
     b.e(`tx${s}`, `ats${s}`, { cap: 2000, pay: 100 })
     b.e(`gen${s}`, `ats${s}`, { cap: 2000, pay: 0 })
@@ -137,6 +143,7 @@ function twoN(): Project {
     b.e(`mdb${s}`, `ups${s}`, { cap: 800 })
     b.e(`ups${s}`, `pdu${s}`, { cap: 800 })
     b.e(`mdb${s}`, `ch${s}`, { cap: 600 })
+    for (const k of [1, 2]) b.e(`mdb${s}`, `crah${s}${k}`, { cap: 100 })
   }
   b.n('it', 'itYuku', 'IT yükü (2N)', 270, 820, IT)
   b.e('pdua', 'it', { cap: 800 })
@@ -145,7 +152,7 @@ function twoN(): Project {
 }
 
 export const TEMPLATES: TemplateInfo[] = [
-  { id: 'tek-hat', ad: 'Tek hat (N)', aciklama: 'Şebeke → trafo → MDB → UPS → IT, tek chiller. Yedeklilik yok.', build: singleLine },
-  { id: 'jenerator-n1', ad: 'Jeneratörlü N+1 (Tier II/III benzeri)', aciklama: 'Şebeke + 2 jeneratör (senkron panosu), 2 UPS (N+1), 2 chiller (N+1).', build: genN1 },
-  { id: 'iki-n', ad: '2N tam yedekli (Tier IV benzeri)', aciklama: 'İki bağımsız yol (trafo + ATS + jeneratör + UPS), çift kablolu IT yükü, her yolda chiller.', build: twoN },
+  { id: 'tek-hat', ad: 'Tek hat (N)', aciklama: 'Şebeke → trafo → MDB → UPS → IT, tek chiller ve CRAH. Yedeklilik yok.', build: singleLine },
+  { id: 'jenerator-n1', ad: 'Jeneratörlü N+1 (Tier II/III benzeri)', aciklama: 'Şebeke + 2 jeneratör (senkron panosu), 2 UPS (N+1), 2 chiller ve 3 CRAH (N+1).', build: genN1 },
+  { id: 'iki-n', ad: '2N tam yedekli (Tier IV benzeri)', aciklama: 'İki bağımsız yol (trafo + ATS + jeneratör + UPS), çift kablolu IT yükü, her yolda chiller ve 2 CRAH.', build: twoN },
 ]

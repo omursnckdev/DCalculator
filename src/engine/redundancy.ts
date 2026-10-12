@@ -1,6 +1,7 @@
 import { EQUIPMENT } from '../library/equipment'
 import type { EdgeState, Scenario } from '../model/types'
 import { analyze } from './analyze'
+import { coolingKw } from './coolingUnits'
 import { DEFAULT_THRESHOLDS } from './thresholds'
 import type { Analysis, Model, Thresholds } from './types'
 
@@ -58,7 +59,7 @@ const peakOf = (a: Analysis, model: Model, type: string): number => {
 /** Soğutma birimi olmayan yüklerin kaybedilen gücü (soğutma birimleri ayrıca değerlendirilir). */
 function unservedNoCooling(a: Analysis, model: Model): number {
   let cool = 0
-  for (const n of model.nodes) if (n.type === 'mekanikYuk' && num(n, 'sogutmaKw') > 0) cool += a.nodes[n.id]?.unservedKw ?? 0
+  for (const n of model.nodes) if (coolingKw(n) > 0) cool += a.nodes[n.id]?.unservedKw ?? 0
   return a.unserved.totalKw - cool
 }
 

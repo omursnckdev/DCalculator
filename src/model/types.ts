@@ -20,6 +20,29 @@ export const EQUIPMENT_TYPES = [
   'mekanikYuk',
   'aydinlatma',
   'genelYuk',
+  // Soğutma ve mekanik
+  'chiller',
+  'crah',
+  'crac',
+  'fanwall',
+  'inrow',
+  'rdhx',
+  'kuruSogutucu',
+  'sogutmaKulesi',
+  'pompa',
+  'ahu',
+  'fan',
+  'nemlendirici',
+  // IT ve yardımcı yükler
+  'rack',
+  'depolama',
+  'guvenlik',
+  'yangin',
+  'asansor',
+  'yukBankasi',
+  'ofis',
+  // Dağıtım
+  'rpp',
 ] as const
 export type EquipmentType = (typeof EQUIPMENT_TYPES)[number]
 

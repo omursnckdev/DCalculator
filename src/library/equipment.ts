@@ -9,7 +9,14 @@ import type { EquipmentType, Params } from '../model/types'
  * "Açık Sorular" 3, 5 ve 6.
  */
 
-export type PaletteGroup = 'kaynak' | 'dagitim' | 'koruma' | 'ups' | 'yuk'
+export type PaletteGroup = 'kaynak' | 'dagitim' | 'koruma' | 'ups' | 'sogutma' | 'yuk'
+
+/**
+ * Soğutma kapasitesi olan ekipmanın rolü: 'produce' soğuk su üretir (chiller), 'air' soğuk suyu salon havasına
+ * aktarır (CRAH, fan wall, in-row, RDHx), 'direct' kendi başına soğutur (CRAC/DX). Etkin kapasite:
+ * min(üretim, hava tarafı) + doğrudan.
+ */
+export type CoolingRole = 'produce' | 'air' | 'direct'
 
 export interface NumberField {
   kind: 'number'
@@ -42,6 +49,8 @@ export interface EquipmentDef {
   fields: FieldDef[]
   /** Düğüm kartında gösterilen tek satırlık özet. */
   summary: (p: Params) => string
+  /** Soğutma kapasitesi (`sogutmaKw`) olan ekipman için rol. */
+  coolingRole?: CoolingRole
 }
 
 const n = (key: string, label: string, unit?: string, extra: Partial<NumberField> = {}): NumberField => ({
@@ -409,6 +418,110 @@ const defs: EquipmentDef[] = [
   },
 ]
 
+const coolingField = n('sogutmaKw', A.sogutmaKw, 'kW', { min: 0, step: 10 })
+
+const coolingSummary = (p: Params): string =>
+  `${fmt(num(p, 'kuruluKw'))} kW · ${num(p, 'sogutmaKw') > 0 ? `${fmt(num(p, 'sogutmaKw'))} kW soğutma` : `DF ${fmt(num(p, 'df'))}`}`
+
+interface LoadSpec {
+  type: EquipmentType
+  group: PaletteGroup
+  color: string
+  kw: number
+  pf: number
+  df?: number
+  kategori?: 'IT' | 'Mekanik'
+  isi: 'salon' | 'elektrik' | 'dis'
+  /** Termal soğutma kapasitesi (kW); verilirse alan ve rol eklenir. */
+  cool?: number
+  role?: CoolingRole
+  extra?: { defaults: Params; fields: FieldDef[] }
+}
+
+/** Soğutma, mekanik ve yardımcı yük ekipmanı: ortak yük alanları + (varsa) soğutma kapasitesi. */
+const LOAD_SPECS: LoadSpec[] = [
+  { type: 'chiller', group: 'sogutma', color: '#0284c7', kw: 250, pf: 0.87, isi: 'dis', cool: 1000, role: 'produce' },
+  { type: 'crah', group: 'sogutma', color: '#0891b2', kw: 12, pf: 0.9, isi: 'salon', cool: 80, role: 'air' },
+  { type: 'crac', group: 'sogutma', color: '#0e7490', kw: 30, pf: 0.85, isi: 'dis', cool: 90, role: 'direct' },
+  { type: 'fanwall', group: 'sogutma', color: '#06b6d4', kw: 25, pf: 0.95, isi: 'salon', cool: 250, role: 'air' },
+  { type: 'inrow', group: 'sogutma', color: '#22d3ee', kw: 6, pf: 0.95, isi: 'salon', cool: 35, role: 'air' },
+  { type: 'rdhx', group: 'sogutma', color: '#38bdf8', kw: 1.5, pf: 0.95, isi: 'salon', cool: 30, role: 'air' },
+  { type: 'kuruSogutucu', group: 'sogutma', color: '#64748b', kw: 18, pf: 0.85, isi: 'dis' },
+  { type: 'sogutmaKulesi', group: 'sogutma', color: '#475569', kw: 22, pf: 0.85, isi: 'dis' },
+  {
+    type: 'pompa',
+    group: 'sogutma',
+    color: '#2563eb',
+    kw: 30,
+    pf: 0.85,
+    isi: 'dis',
+    extra: {
+      defaults: { pompaTip: 'sogukSu' },
+      fields: [
+        {
+          kind: 'select',
+          key: 'pompaTip',
+          label: A.pompaTip,
+          options: [
+            { value: 'sogukSu', label: A.pompaSogukSu },
+            { value: 'kondenser', label: A.pompaKondenser },
+            { value: 'yangin', label: A.pompaYangin },
+            { value: 'sirkulasyon', label: A.pompaSirkulasyon },
+          ],
+        },
+      ],
+    },
+  },
+  { type: 'ahu', group: 'sogutma', color: '#0d9488', kw: 15, pf: 0.85, isi: 'dis' },
+  { type: 'fan', group: 'sogutma', color: '#94a3b8', kw: 5.5, pf: 0.85, isi: 'dis' },
+  { type: 'nemlendirici', group: 'sogutma', color: '#7dd3fc', kw: 10, pf: 1, isi: 'salon' },
+  { type: 'rack', group: 'yuk', color: '#b91c1c', kw: 80, pf: 0.95, kategori: 'IT', isi: 'salon' },
+  { type: 'depolama', group: 'yuk', color: '#c2410c', kw: 20, pf: 0.95, kategori: 'IT', isi: 'salon' },
+  { type: 'guvenlik', group: 'yuk', color: '#4f46e5', kw: 4, pf: 0.9, isi: 'elektrik' },
+  { type: 'yangin', group: 'yuk', color: '#e11d48', kw: 2, pf: 0.9, isi: 'elektrik' },
+  { type: 'asansor', group: 'yuk', color: '#78716c', kw: 18, pf: 0.8, df: 0.5, isi: 'elektrik' },
+  { type: 'yukBankasi', group: 'yuk', color: '#a16207', kw: 500, pf: 1, isi: 'dis' },
+  { type: 'ofis', group: 'yuk', color: '#7c3aed', kw: 30, pf: 0.9, df: 0.8, isi: 'dis' },
+]
+
+for (const sp of LOAD_SPECS) {
+  defs.push({
+    type: sp.type,
+    label: tr.ekipman[sp.type as keyof typeof tr.ekipman],
+    group: sp.group,
+    hasInput: true,
+    hasOutput: false,
+    color: sp.color,
+    defaults: {
+      kuruluKw: sp.kw,
+      pf: sp.pf,
+      df: sp.df ?? 1,
+      kategori: sp.kategori ?? 'Mekanik',
+      gerilim: 400,
+      isiKonum: sp.isi,
+      thd: 0,
+      ...(sp.cool !== undefined ? { sogutmaKw: sp.cool } : {}),
+      ...(sp.extra?.defaults ?? {}),
+    },
+    fields: [...loadFields, ...(sp.cool !== undefined ? [coolingField] : []), ...(sp.extra?.fields ?? [])],
+    summary: sp.cool !== undefined ? coolingSummary : loadSummary,
+    coolingRole: sp.role,
+  })
+}
+
+// Dağıtım: RPP (uzak güç panosu) — PDU benzeri, çok çıkışlı pano.
+defs.push({
+  type: 'rpp',
+  label: tr.ekipman.rpp,
+  group: 'ups',
+  hasInput: true,
+  hasOutput: true,
+  color: '#0f766e',
+  defaults: { gerilim: 400, nominalAkim: 250, diversity: 1, baraUzunluk: 1.5, baraDirenc: 0, isiKonum: 'elektrik' },
+  fields: [voltage, rating, diversity, busLength, busResistance, heatField],
+  summary: panelSummary,
+})
+
 /**
  * Bağlantı noktası (port) sayıları: giriş üstte, çıkış altta. Her porta tek hat bağlanır.
  * Varsayılanlar genel tipiktir; ekipman başına "Giriş sayısı / Çıkış sayısı" ile değiştirilir.
@@ -433,6 +546,26 @@ const PORT_DEFAULTS: Record<EquipmentType, { in: number; out: number }> = {
   mekanikYuk: { in: 1, out: 0 },
   aydinlatma: { in: 1, out: 0 },
   genelYuk: { in: 1, out: 0 },
+  chiller: { in: 1, out: 0 },
+  crah: { in: 1, out: 0 },
+  crac: { in: 1, out: 0 },
+  fanwall: { in: 1, out: 0 },
+  inrow: { in: 1, out: 0 },
+  rdhx: { in: 1, out: 0 },
+  kuruSogutucu: { in: 1, out: 0 },
+  sogutmaKulesi: { in: 1, out: 0 },
+  pompa: { in: 1, out: 0 },
+  ahu: { in: 1, out: 0 },
+  fan: { in: 1, out: 0 },
+  nemlendirici: { in: 1, out: 0 },
+  rack: { in: 1, out: 0 },
+  depolama: { in: 1, out: 0 },
+  guvenlik: { in: 1, out: 0 },
+  yangin: { in: 1, out: 0 },
+  asansor: { in: 1, out: 0 },
+  yukBankasi: { in: 1, out: 0 },
+  ofis: { in: 1, out: 0 },
+  rpp: { in: 2, out: 12 },
 }
 for (const d of defs) {
   // Alan dizileri tipler arasında paylaşılabilir (ör. yükler); kopyalayıp ekle.
@@ -452,7 +585,7 @@ export const EQUIPMENT: Record<EquipmentType, EquipmentDef> = Object.fromEntries
   defs.map((d) => [d.type, d]),
 ) as Record<EquipmentType, EquipmentDef>
 
-export const PALETTE_GROUPS: PaletteGroup[] = ['kaynak', 'dagitim', 'koruma', 'ups', 'yuk']
+export const PALETTE_GROUPS: PaletteGroup[] = ['kaynak', 'dagitim', 'koruma', 'ups', 'sogutma', 'yuk']
 
 export function defsInGroup(group: PaletteGroup): EquipmentDef[] {
   return defs.filter((d) => d.group === group)

@@ -149,7 +149,13 @@ export interface CoolingSummary {
   deficitKw: number
   /** (kapasite − ihtiyaç) / ihtiyaç, %. İhtiyaç 0 ise tanımsız. */
   reservePct?: number
-  units: { id: string; name: string; kw: number; energized: boolean }[]
+  /** Enerjili chiller (soğuk su üretimi) kapasitesi; chiller yoksa tanımsız. */
+  produceKw?: number
+  /** Enerjili hava tarafı (CRAH, fan wall, in-row, RDHx) kapasitesi. */
+  airKw?: number
+  /** Enerjili doğrudan soğutma (CRAC/DX) kapasitesi. */
+  directKw?: number
+  units: { id: string; name: string; kw: number; role: 'produce' | 'air' | 'direct'; energized: boolean }[]
 }
 
 export interface Totals {

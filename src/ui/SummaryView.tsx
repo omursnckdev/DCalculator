@@ -183,7 +183,10 @@ function CoolingCard() {
         <>
           <table className="text-sm">
             <tbody>
-              <Row label={tr.isi.coolCap} kw={cooling.capacityKw} tr />
+              {cooling.produceKw !== undefined && <Row label={tr.isi.coolProduce} kw={cooling.produceKw} tr />}
+              {cooling.airKw !== undefined && <Row label={tr.isi.coolAir} kw={cooling.airKw} tr />}
+              {cooling.directKw !== undefined && <Row label={tr.isi.coolDirect} kw={cooling.directKw} tr />}
+              <Row label={tr.isi.coolCap} kw={cooling.capacityKw} tr bold />
               <Row label={tr.isi.coolNeed} kw={cooling.demandKw} tr />
               {cooling.deficitKw > 0.5 ? <Row label={tr.isi.coolDeficit} kw={cooling.deficitKw} tr bold /> : null}
               <tr>
@@ -207,6 +210,7 @@ function CoolingCard() {
             </tbody>
           </table>
           {cooling.deficitKw <= 0.5 && <p className="mt-1 text-xs text-green-700">{tr.isi.coolOk}</p>}
+          {cooling.produceKw !== undefined && cooling.airKw !== undefined && <p className="mt-1 text-xs text-slate-500">{tr.isi.coolChainNote}</p>}
           <p className="mt-1 text-xs text-slate-500">{tr.isi.coolRideNote(String(s.izinliArtis))}</p>
         </>
       )}

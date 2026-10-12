@@ -132,6 +132,16 @@ Excel ve PNG çıktıları üst çubuktaki **Excel indir / PNG indir** düğmele
 - **Rapor (PDF):** üst çubuktaki düğme özet, şema görüntüsü, kayıplar, doluluk/Isc, doğrulama, yedeklilik, enerji/maliyet ve (varsa) simülasyon bölümlerini içeren yazdırılabilir rapor açar;
   tarayıcının yazdır penceresinde "PDF olarak kaydet" seçin. Excel'e ayrıca **Kayıplar** ve (simülasyon varsa) **Simülasyon** sayfaları eklenir.
 
+## Ekipman kütüphanesi
+
+Palet, işlevlerine göre gruplanır. Tüm yük tipleri ortak alanlara sahiptir (kurulu kW, PF, DF, kategori, gerilim, ısıyı bıraktığı yer, THD); varsayılanlar tipik değerlerdir, kendi ekipmanınızla değiştirin.
+
+- **Soğutma ve mekanik:** Chiller, CRAH, CRAC (DX), Fan wall (EC fan duvarı), Sıra içi soğutucu (in-row), Arka kapı eşanjörü (RDHx), Kuru soğutucu, Soğutma kulesi, Pompa (soğuk su / kondenser / yangın / sirkülasyon), Klima santrali / taze hava (AHU), Havalandırma / egzoz fanı, Nemlendirici.
+  Soğutma birimlerinde **Soğutma kapasitesi (termal kW)** alanı vardır. Etkin kapasite = min(chiller, hava tarafı [CRAH + fan wall + in-row + RDHx]) + doğrudan (CRAC). Chiller ile hava tarafı zincirlenir, toplanmaz.
+- **Yükler ve yardımcılar:** IT yükü, Rack sırası, Ağ ve depolama, Güvenlik ve izleme, Yangın paneli, Asansör, Yük bankası, Ofis / NOC, Aydınlatma, Mekanik yük (genel), Genel yük.
+- **Dağıtım:** Ana dağıtım panosu, Dağıtım panosu, Bara, ATS, STS, Senkron panosu, **RPP**, PDU, UPS dağıtım panosu; kesici ve ölçü elemanları.
+- Yeni eklenen ekipman varsayılan olarak kısa adla gelir (ör. `Chiller 1`, `CRAH 2`).
+
 ## HDC02 PL1 şeması
 
 `examples/hdc02-pl1.dcalc.json`: HDC02-ARP-SC-E-DD-ZZ-ZZ-POWR-6002 "LV Distribution Schematic Power Line-up 1" DXF'inden üretildi

@@ -1873,7 +1873,7 @@
   },
   {
    "id": "acc1",
-   "type": "mekanikYuk",
+   "type": "chiller",
    "ad": "ACC-01 Module-1 Chiller-1",
    "etiket": "ACC-01",
    "grup": "",
@@ -1913,7 +1913,7 @@
   },
   {
    "id": "acc2",
-   "type": "mekanikYuk",
+   "type": "chiller",
    "ad": "ACC-02 Module-1 Chiller-2",
    "etiket": "ACC-02",
    "grup": "",

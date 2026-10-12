@@ -1,6 +1,6 @@
 import { tr } from '../i18n/tr'
 import { EQUIPMENT, portCount } from '../library/equipment'
-import { HEAT_LOCATIONS } from '../model/types'
+import { EQUIPMENT_TYPES, HEAT_LOCATIONS } from '../model/types'
 import type { EquipmentType, HeatLocation, ProjectEdge, ProjectNode, Scenario } from '../model/types'
 import { resolveAutoClosed, stagingStandby, withDefaults } from './automation'
 import type { SimOptions } from './automation'
@@ -27,10 +27,11 @@ import type {
 } from './types'
 
 const SQRT3 = Math.sqrt(3)
-const LOAD_TYPES: EquipmentType[] = ['itYuku', 'mekanikYuk', 'aydinlatma', 'genelYuk']
+/** Yük tipleri: girişi var, çıkışı yok (ölçü elemanı hariç). Yeni yük ekipmanı kütüphaneye eklenince otomatik dahil olur. */
+const LOAD_TYPES: EquipmentType[] = EQUIPMENT_TYPES.filter((t) => EQUIPMENT[t].hasInput && !EQUIPMENT[t].hasOutput && t !== 'yardimci')
 /** İç bara kaybı hesaplanan pano tipleri (kesici ve ölçü elemanları hariç). */
-const PANEL_LOSS_TYPES: EquipmentType[] = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu', 'ats', 'sts', 'senkron']
-const PANEL_TYPES: EquipmentType[] = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu', 'ats', 'sts', 'kesici', 'senkron']
+const PANEL_LOSS_TYPES: EquipmentType[] = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu', 'rpp', 'ats', 'sts', 'senkron']
+const PANEL_TYPES: EquipmentType[] = ['mdb', 'dagitimPanosu', 'bara', 'upsPanosu', 'pdu', 'rpp', 'ats', 'sts', 'kesici', 'senkron']
 const TRANSFER_TYPES: EquipmentType[] = ['ats', 'sts']
 
 // --- küçük yardımcılar -----------------------------------------------------
@@ -355,7 +356,7 @@ function analyzeCore(
       const pf = param(n, 'pf')
       const p = kw * df
       const q = p * tanPhi(pf)
-      const bucket = n.params.kategori === 'IT' || (n.params.kategori === undefined && n.type === 'itYuku') ? 'it' : 'mech'
+      const bucket = (n.params.kategori ?? EQUIPMENT[n.type].defaults.kategori) === 'IT' ? 'it' : 'mech'
       if (en) {
         out[bucket] = { p, q }
         const s2 = p * p + q * q
