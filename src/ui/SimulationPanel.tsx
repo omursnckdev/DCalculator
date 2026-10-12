@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { SimStep } from '../engine'
 import { tr } from '../i18n/tr'
 import { EQUIPMENT } from '../library/equipment'
 import { modelSignature } from '../store/modelSig'
 import { useStore } from '../store/useStore'
+import { Chart, Legend } from './charts'
+import type { Series } from './charts'
 import { fmtNum } from './status'
 
 const KIND_STYLE: Record<string, string> = {
@@ -47,6 +50,7 @@ export function SimulationPanel() {
   const startSim = useStore((s) => s.startSim)
   const stopSim = useStore((s) => s.stopSim)
   const clearFault = useStore((s) => s.clearSimFault)
+  const addSimFault = useStore((s) => s.addSimFault)
   const setIndex = useStore((s) => s.setSimIndex)
   const setPlaying = useStore((s) => s.setSimPlaying)
   const setSpeed = useStore((s) => s.setSimSpeed)
@@ -55,6 +59,8 @@ export function SimulationPanel() {
   const open = useStore((s) => s.simOpen)
   const setOpen = useStore((s) => s.setSimOpen)
   const [clearPick, setClearPick] = useState('')
+  const [addPick, setAddPick] = useState('')
+  const [pane, setPane] = useState<'detail' | 'chart'>('detail')
 
   // Silinen ekipman arıza listesinde kalmasın.
   useEffect(() => {
@@ -202,10 +208,54 @@ export function SimulationPanel() {
       </div>
 
       {open && sim && step && (
+        <div className="flex items-center gap-2 border-t border-slate-100 px-3 py-1">
+          <select
+            className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-sm"
+            value={addPick}
+            onChange={(e) => setAddPick(e.target.value)}
+            aria-label={tr.sim.addFaultPick}
+          >
+            <option value="">{tr.sim.addFaultPick}</option>
+            {nodes
+              .filter((n) => EQUIPMENT[n.data.kind].hasOutput && !step.failed.includes(n.id))
+              .map((n) => (
+                <option key={n.id} value={n.id}>
+                  {n.data.ad}
+                </option>
+              ))}
+          </select>
+          <button
+            type="button"
+            disabled={!addPick}
+            title={tr.sim.addFault}
+            className="rounded bg-red-600 px-2.5 py-0.5 text-sm text-white disabled:opacity-40"
+            onClick={() => {
+              addSimFault([addPick])
+              setAddPick('')
+            }}
+          >
+            ⚡ {tr.sim.addFaultApply}
+          </button>
+          <div className="ml-auto flex gap-1">
+            {(['detail', 'chart'] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPane(p)}
+                className={`rounded border px-2 py-0.5 text-xs ${pane === p ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-300 hover:bg-slate-50'}`}
+              >
+                {p === 'detail' ? tr.sim.paneDetail : tr.sim.paneChart}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {open && sim && step && (
         <div className="flex gap-4 border-t border-slate-100 px-3 py-2">
-          <ol className="flex w-80 shrink-0 flex-col gap-1 overflow-y-auto" style={{ maxHeight: 190 }}>
+          <ol className="flex w-80 shrink-0 flex-col gap-1 overflow-y-auto" style={{ maxHeight: 230 }}>
             {sim.steps.map((st, i) => (
-              <li key={`${st.phase}-${st.id}`}>
+              <li key={`${i}-${st.phase}-${st.id}`}>
                 {st.phase === 'recovery' && sim.steps[i - 1]?.phase !== 'recovery' && (
                   <div className="mb-1 mt-1 border-t border-green-300 pt-1 text-[10px] font-semibold uppercase tracking-wide text-green-700">{tr.sim.recoveryHeading}</div>
                 )}
@@ -223,7 +273,12 @@ export function SimulationPanel() {
               </li>
             ))}
           </ol>
-          <div className="min-w-0 flex-1 overflow-y-auto" style={{ maxHeight: 190 }}>
+          {pane === 'chart' ? (
+            <div className="min-w-0 flex-1 overflow-y-auto" style={{ maxHeight: 230 }}>
+              <StepChart steps={sim.steps} index={index} />
+            </div>
+          ) : (
+          <div className="min-w-0 flex-1 overflow-y-auto" style={{ maxHeight: 230 }}>
             <div className="mb-1 flex items-baseline gap-2">
               <h3 className="text-sm font-semibold">{step.title}</h3>
               <span className="font-mono text-xs text-slate-500">{step.timeLabel}</span>
@@ -242,10 +297,51 @@ export function SimulationPanel() {
                 ))}
               </ul>
             )}
+            {step.battery.length > 0 && (
+              <>
+                <h4 className="mb-1 mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{tr.sim.batteryTitle}</h4>
+                <ul className="space-y-1">
+                  {step.battery.map((b) => (
+                    <li key={b.id} className="flex items-center gap-2 text-xs">
+                      <span className="w-40 truncate">{nameOf(b.id)}</span>
+                      <span className="h-2 w-28 overflow-hidden rounded bg-slate-200">
+                        <span className="block h-full" style={{ width: `${b.socPct}%`, background: b.depleted ? '#dc2626' : b.socPct < 30 ? '#d97706' : '#16a34a' }} />
+                      </span>
+                      <span className="tabular-nums text-slate-600">
+                        {b.depleted ? tr.sim.batteryEmptyShort : b.remainingMin !== undefined ? tr.sim.batteryLeft(fmtNum(b.socPct, 0), fmtNum(b.remainingMin, 1)) : tr.sim.batteryHeld(fmtNum(b.socPct, 0))}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
             <p className="mt-2 text-[10px] text-slate-400">{tr.sim.typicalNote}</p>
           </div>
+          )}
         </div>
       )}
     </section>
+  )
+}
+
+/** Adım adım grafik: kaybedilen yük, jeneratör yükü, çekilen güç ve en düşük batarya şarjı. */
+function StepChart({ steps, index }: { steps: SimStep[]; index: number }) {
+  const labels = steps.map((st, i) => (i === 0 ? '0' : st.timeLabel.replace('t ≈ ', '').replace('t = ', '')))
+  const gens = (st: SimStep) =>
+    Object.values(st.analysis.nodes).reduce((sum, r) => sum + (st.running.includes(r.id) ? r.totalKw : 0), 0)
+  const series: Series[] = [
+    { name: tr.sim.chartLost, color: '#dc2626', values: steps.map((st) => st.lostKw), kind: 'bar' },
+    { name: tr.sim.chartGen, color: '#d97706', values: steps.map(gens), dots: true },
+    { name: tr.sim.chartTotal, color: '#2563eb', values: steps.map((st) => st.analysis.totals.totalKw), dots: true },
+    { name: tr.sim.chartBattery, color: '#16a34a', values: steps.map((st) => (st.battery.length ? Math.min(...st.battery.map((b) => b.socPct)) : null)), axis: 'right', dashed: true, dots: true },
+  ]
+  return (
+    <div>
+      <Chart labels={labels} series={series} height={150} unit="kW" rightUnit="%" />
+      <Legend series={series} />
+      <p className="text-[10px] text-slate-400">
+        {tr.sim.chartNote} {tr.sim.step(index + 1, steps.length)}
+      </p>
+    </div>
   )
 }

@@ -254,7 +254,7 @@ function analyzeCore(
   const dead = new Set<string>([...failed, ...openSwitches, ...standby])
   if (!opts.genOnline) for (const n of model.nodes) if (n.type === 'jenerator') dead.add(n.id)
   for (const id of opts.offGens ?? []) dead.add(id)
-  const { energized: energizedSet, onBattery } = energize({ nodes: model.nodes, edges, dead, battery: opts.battery, hold: opts.hold })
+  const { energized: energizedSet, onBattery } = energize({ nodes: model.nodes, edges, dead, battery: opts.battery, hold: opts.hold, depleted: opts.depleted ? new Set(opts.depleted) : undefined })
   const energized = new Map<string, boolean>()
   for (const id of order) energized.set(id, energizedSet.has(id))
   // Normal kaynaktan (şebeke/trafo zinciri) canlı bir yolla besleniyor mu? Jeneratör acil

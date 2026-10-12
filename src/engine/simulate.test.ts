@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EQUIPMENT } from '../library/equipment'
 import type { EquipmentType, Params, ProjectEdge, ProjectNode } from '../model/types'
-import { simulateFailure, simulateRecovery } from './simulate'
+import { batteryRuntimeMin, simulateAdditionalFault, simulateFailure, simulateRecovery } from './simulate'
 
 const portUse = new Map<string, number>()
 const nextPort = (key: string): number => {
@@ -117,8 +117,13 @@ describe('adım adım arıza simülasyonu', () => {
     expect(ids(steps)).toEqual(['normal', 'fault', 'battery'])
     expect(steps[1].analysis.nodes.it.energized).toBe(true) // bataryada
     expect(steps[2].lostKw).toBeCloseTo(500, 6) // IT + chiller
-    expect(steps[2].seconds).toBe(60)
-    expect(steps[2].timeLabel).toBe('t ≈ 1 dk')
+    // 1 dk @ nominal 1000 kW; 500 kW'lık yükte (IT 400 + chiller 100 UPS dışı) UPS yükü 400 kW → 2,5 dk
+    expect(steps[2].seconds).toBe(150)
+    expect(steps[2].timeLabel).toBe('t ≈ 3 dk')
+    expect(steps[2].battery[0]).toMatchObject({ id: 'ups', depleted: true, socPct: 0 })
+    expect(steps[2].changes[0].text).toMatch(/bataryası tükendi/)
+    expect(steps[1].battery[0]).toMatchObject({ id: 'ups', onBattery: true, depleted: false, socPct: 100 })
+    expect(steps[1].battery[0].remainingMin).toBeCloseTo(2.5, 6)
   })
 
   it('etkisiz arıza (yedek jeneratör) yalnız normal ve arıza adımı üretir', () => {
@@ -217,3 +222,75 @@ describe('arıza giderme (geri dönüş) simülasyonu', () => {
     expect(Math.round(fin.analysis.totals.totalKw)).toBe(Math.round(steps[0].analysis.totals.totalKw))
   })
 })
+
+describe('UPS batarya enerjisi', () => {
+  /** İki UPS, farklı yükler: UPS2 daha çok yüklü, bataryası daha erken biter. */
+  function twoUps() {
+    const nodes = [
+      grid('g'), node('tx', 'trafo', { nominalKva: 5000, primerGerilim: 400, sekonderGerilim: 400, ...NO_LOSS }), node('msb', 'mdb'),
+      node('u1', 'ups', { ...upsP, bataryaDk: 10 }), node('u2', 'ups', { ...upsP, bataryaDk: 10 }),
+      node('it1', 'itYuku', { kuruluKw: 400, pf: 1, df: 1 }), node('it2', 'itYuku', { kuruluKw: 800, pf: 1, df: 1 }),
+    ]
+    const edges = [edge('g', 'tx'), edge('tx', 'msb'), edge('msb', 'u1'), edge('msb', 'u2'), edge('u1', 'it1'), edge('u2', 'it2')]
+    return { nodes, edges }
+  }
+
+  it('farklı yüklerde batarya farklı zamanlarda biter (kalan süre ∝ 1 / yük)', () => {
+    const steps = simulateFailure(twoUps(), ['tx'])
+    expect(ids(steps)).toEqual(['normal', 'fault', 'battery', 'battery'])
+    // u2: 10 × 1000/800 = 12,5 dk = 750 sn; u1: 25 dk — 750 sn'de %50 kalır, kalan 750 sn → 1500 sn
+    expect(steps[2].seconds).toBeCloseTo(750, 6)
+    expect(steps[2].analysis.nodes.it2.energized).toBe(false)
+    expect(steps[2].analysis.nodes.it1.energized).toBe(true)
+    const u1 = steps[2].battery.find((b) => b.id === 'u1')!
+    expect(u1.socPct).toBeCloseTo(50, 6)
+    expect(u1.remainingMin).toBeCloseTo(12.5, 6)
+    expect(steps[3].seconds).toBeCloseTo(1500, 6)
+    expect(steps[3].analysis.nodes.it1.energized).toBe(false)
+    expect(steps[3].lostKw).toBeCloseTo(1200, 6)
+  })
+
+  it('batarya süresi yükle ters orantılı hesaplanır', () => {
+    const m = twoUps()
+    const steps = simulateFailure(m, ['tx'])
+    expect(batteryRuntimeMin(m, steps[1].analysis, 'u1')).toBeCloseTo(25, 6)
+    expect(batteryRuntimeMin(m, steps[1].analysis, 'u2')).toBeCloseTo(12.5, 6)
+  })
+})
+
+describe('sıralı (ek) arıza', () => {
+  it('yedek jeneratör arızalıyken trafo da arızalanır: kalan jeneratör tüm yükü alır', () => {
+    const m = plant()
+    const steps = simulateFailure(m, ['gen1'])
+    const from = steps[steps.length - 1]
+    expect(from.failed).toEqual(['gen1'])
+    const add = simulateAdditionalFault(m, from, ['tx'])
+    expect(add[0].id).toBe('fault')
+    expect(add[0].failed).toEqual(['gen1', 'tx'])
+    expect(add[0].changes[0]).toMatchObject({ kind: 'fault' })
+    const last = add[add.length - 1]
+    expect(last.analysis.nodes.gen2.totalKw).toBeGreaterThan(400)
+    expect(last.analysis.nodes.gen1.totalKw).toBe(0)
+    expect(last.lostKw).toBe(0)
+  })
+
+  it('zamanlar mutlaktır: ek arıza, seçilen adımın saniyesinden başlar ve batarya şarjı sürer', () => {
+    const m = plant(10, false) // jeneratörsüz: trafo arızasında batarya boşalır
+    const first = simulateFailure(m, ['chiller'])
+    expect(first.length).toBeGreaterThan(1)
+    const fault = first[first.length - 1]
+    const add = simulateAdditionalFault(m, { ...fault, seconds: 120 }, ['tx'])
+    expect(add[0].seconds).toBe(120)
+    expect(add[0].timeLabel).toBe('t ≈ 2 dk')
+    const bat = add[add.length - 1]
+    expect(bat.id).toBe('battery')
+    expect(bat.seconds).toBeGreaterThan(120)
+  })
+
+  it('zaten arızalı ekipman eklenmez', () => {
+    const m = plant()
+    const steps = simulateFailure(m, ['gen1'])
+    expect(simulateAdditionalFault(m, steps[1], ['gen1'])).toEqual([])
+  })
+})
+

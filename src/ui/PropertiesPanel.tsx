@@ -218,6 +218,9 @@ function Stat({ label, value }: { label: string; value: string }) {
   )
 }
 
+/** Seçici içinde her seferinde yeni dizi döndürmemek için sabit boş liste. */
+const NO_IDS: string[] = []
+
 export function PropertiesPanel() {
   const analysis = useAnalysis()
   const nodes = useStore((s) => s.nodes)
@@ -233,6 +236,8 @@ export function PropertiesPanel() {
   const simPicked = useStore((s) => s.simPicked)
   const toggleSimPick = useStore((s) => s.toggleSimPick)
   const simRunning = useStore((s) => s.sim !== null)
+  const addSimFault = useStore((s) => s.addSimFault)
+  const simStepFailed = useStore((s) => (s.sim ? s.sim.steps[s.sim.index]?.failed ?? NO_IDS : NO_IDS))
 
   const node = useMemo(() => nodes.find((n) => n.selected), [nodes])
   const edge = useMemo(() => (node ? undefined : edges.find((e) => e.selected)), [node, edges])
@@ -253,16 +258,16 @@ export function PropertiesPanel() {
           {EQUIPMENT[node.data.kind].hasOutput && (
             <button
               type="button"
-              disabled={simRunning}
-              title={simRunning ? tr.sim.listBusy : tr.sim.listHint}
-              onClick={() => toggleSimPick(node.id)}
+              disabled={simRunning && (simStepFailed.includes(node.id) || (analysis.nodes[node.id]?.failed ?? false))}
+              title={simRunning ? (simStepFailed.includes(node.id) ? tr.sim.alreadyFailed : tr.sim.applyHere) : tr.sim.listHint}
+              onClick={() => (simRunning ? addSimFault([node.id]) : toggleSimPick(node.id))}
               className={`mb-3 w-full rounded border px-2 py-1.5 text-sm disabled:opacity-40 ${
-                simPicked.includes(node.id)
+                !simRunning && simPicked.includes(node.id)
                   ? 'border-red-400 bg-red-50 text-red-800 hover:bg-red-100'
                   : 'border-red-300 text-red-700 hover:bg-red-50'
               }`}
             >
-              {simPicked.includes(node.id) ? `✕ ${tr.sim.removeFromList}` : `⚡ ${tr.sim.addToList}`}
+              {simRunning ? `⚡ ${tr.sim.applyHere}` : simPicked.includes(node.id) ? `✕ ${tr.sim.removeFromList}` : `⚡ ${tr.sim.addToList}`}
             </button>
           )}
           {activeScenario && (

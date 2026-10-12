@@ -65,6 +65,19 @@ export interface SimStep {
   running: string[]
   /** Bu adımdan sonra hâlâ arızalı olan (simülasyonda arıza verilen) ekipman. */
   failed: string[]
+  /** Batarya durumu: bataryaya geçmiş veya şarjı azalmış UPS'ler. */
+  battery: BatteryInfo[]
+}
+
+export interface BatteryInfo {
+  id: string
+  name: string
+  /** Kalan şarj, %. */
+  socPct: number
+  /** O anki yükle kalan süre, dk (bataryadaysa). */
+  remainingMin?: number
+  onBattery: boolean
+  depleted: boolean
 }
 
 const fmt = (v: number, d = 0): string => v.toLocaleString('tr-TR', { maximumFractionDigits: d })
@@ -243,9 +256,212 @@ function markRunning(a: Analysis, ids: string[]): void {
   for (const id of ids) if (a.nodes[id]) a.nodes[id] = { ...a.nodes[id], running: true }
 }
 
+const runningGens = (a: Analysis): string[] => Object.values(a.nodes).filter((r) => r.running).map((r) => r.id)
+
+// --- UPS batarya enerjisi ------------------------------------------------------
+
+type Soc = Map<string, number>
+
+/** UPS bataryasının o anki yükle toplam çalışma süresi (dk): bataryaDk × nominal kW / çıkış kW (doğrusal enerji). */
+export function batteryRuntimeMin(model: Model, a: Analysis, upsId: string): number {
+  const n = model.nodes.find((x) => x.id === upsId)
+  if (!n) return Infinity
+  const out = a.nodes[upsId]?.totalKw ?? 0
+  const cap = typeof n.params.nominalKw === 'number' ? n.params.nominalKw : (EQUIPMENT.ups.defaults.nominalKw as number)
+  const dk = typeof n.params.bataryaDk === 'number' ? n.params.bataryaDk : (EQUIPMENT.ups.defaults.bataryaDk as number)
+  if (out <= 0.5) return Infinity
+  return (dk * cap) / out
+}
+
+function initialSoc(model: Model, from?: SimStep): Soc {
+  const soc: Soc = new Map()
+  for (const n of model.nodes) if (n.type === 'ups') soc.set(n.id, 1)
+  for (const b of from?.battery ?? []) soc.set(b.id, b.socPct / 100)
+  return soc
+}
+
+/** Önceki adımın yüküyle `dt` saniye boşalma. */
+function advanceSoc(model: Model, soc: Soc, prev: Analysis, dtSec: number): void {
+  if (dtSec <= 0) return
+  for (const [id, v] of soc) {
+    if (!prev.nodes[id]?.onBattery) continue
+    const rt = batteryRuntimeMin(model, prev, id)
+    soc.set(id, Math.max(0, v - (Number.isFinite(rt) && rt > 0 ? dtSec / 60 / rt : rt === 0 ? 1 : 0)))
+  }
+}
+
+function batteryList(model: Model, soc: Soc, a: Analysis): BatteryInfo[] {
+  const out: BatteryInfo[] = []
+  for (const n of model.nodes) {
+    if (n.type !== 'ups') continue
+    const v = soc.get(n.id) ?? 1
+    const on = !!a.nodes[n.id]?.onBattery
+    if (v > 0.999 && !on) continue
+    const rt = on ? batteryRuntimeMin(model, a, n.id) : Infinity
+    out.push({ id: n.id, name: n.ad, socPct: v * 100, remainingMin: on && Number.isFinite(rt) ? v * rt : undefined, onBattery: on, depleted: v <= 1e-6 })
+  }
+  return out
+}
+
+// --- ortak aşama çalıştırıcı ------------------------------------------------------
+
+interface StageDef {
+  id: SimStageId
+  /** Başlangıca göre (mutlak) süre, sn. */
+  seconds: number
+  opts: Partial<SimOptions>
+  /** Jeneratörler bu aşamada çalıştırılmış sayılır (yük taşıyanlar). */
+  gens: boolean
+}
+
+interface PlayCtx {
+  model: Model
+  th: Thresholds
+  settings: ProjectSettings
+  base: Analysis
+  scenario: Scenario | undefined
+  soc: Soc
+  phase: 'fault' | 'recovery'
+  /** Adımlara yazılacak hâlâ arızalı ekipman. */
+  failed: string[]
+  /** Vurgulanacak (arıza/giderme) ekipman. */
+  mark: string[]
+  steps: SimStep[]
+  prev: Analysis
+  prevSeconds: number
+}
+
+function pushStep(
+  ctx: PlayCtx,
+  def: StageDef,
+  a: Analysis,
+  extra: { faultNames?: string[]; clearedNames?: string[]; changesPrefix?: SimChange[]; title?: string; markIds?: string[] } = {},
+): void {
+  const { model, base, settings } = ctx
+  advanceSoc(model, ctx.soc, ctx.prev, def.seconds - ctx.prevSeconds)
+  const { changes, changedNodes } = diffAnalyses(model, ctx.prev, a, extra.faultNames ?? [], base, settings)
+  for (const c of (extra.clearedNames ?? []).slice().reverse()) changes.unshift({ kind: 'cleared', text: tr.sim.changeCleared(c) })
+  if (extra.changesPrefix) changes.splice((extra.faultNames ?? []).length, 0, ...extra.changesPrefix)
+  ctx.steps.push({
+    id: def.id,
+    title: extra.title ?? tr.sim.stages[def.id],
+    description: tr.sim.stageDesc[def.id],
+    seconds: def.seconds,
+    timeLabel: timeLabel(def.seconds),
+    analysis: a,
+    changes,
+    changedNodes: [...new Set([...changedNodes, ...(extra.markIds ?? [])])],
+    lostKw: Math.max(0, a.unserved.totalKw - base.unserved.totalKw),
+    phase: ctx.phase,
+    opts: def.opts,
+    running: runningGens(a),
+    failed: ctx.failed,
+    battery: batteryList(model, ctx.soc, a),
+  })
+  ctx.prev = a
+  ctx.prevSeconds = def.seconds
+}
+
+/**
+ * Arıza aşamalarını sırayla çözer (arıza anı, STS, bypass, jeneratör, sıralama) ve ardından batarya
+ * tükenmelerini zaman sırasıyla ekler. Değişmeyen aşamalar atlanır.
+ */
+function playFault(ctx: PlayCtx, t0: number, first: Partial<SimOptions>, opts0: Partial<SimOptions>, faultNames: string[], newIds: string[]): void {
+  const { model, th, base, scenario } = ctx
+  const run = (o: Partial<SimOptions>) => analyze(model, th, scenario, base, o)
+  const depleted = opts0.depleted ?? []
+  const keep = { depleted }
+  const stages: StageDef[] = [
+    { id: 'fault', seconds: t0, opts: { ...first, battery: true, ...keep }, gens: false },
+    { id: 'sts', seconds: t0 + SIM_TIMING.sts, opts: { ...opts0, hold: undefined, keepClosed: undefined, battery: true, ...keep }, gens: false },
+    { id: 'bypass', seconds: t0 + SIM_TIMING.bypass, opts: { ...opts0, hold: undefined, autoBypass: true, battery: true, ...keep }, gens: false },
+    // Jeneratörler zaten çalışıyorsa (ek arıza) yük devri çalıştırma gecikmesi beklemez.
+    { id: 'gen', seconds: t0 + (opts0.genOnline ? 0.5 : SIM_TIMING.gen), opts: { autoBypass: true, staging: false, genOnline: true, battery: true, ...keep }, gens: true },
+    { id: 'staging', seconds: t0 + SIM_TIMING.staging, opts: { autoBypass: true, staging: true, genOnline: true, battery: true, ...keep }, gens: true },
+  ]
+  let prevSig = signature(ctx.prev, model)
+  let last: { a: Analysis; opts: Partial<SimOptions>; seconds: number } | undefined
+  for (const st of stages) {
+    const a = run(st.opts)
+    if (st.gens) markRunning(a, model.nodes.filter((n) => n.type === 'jenerator' && a.nodes[n.id]?.totalKw > 0.5).map((n) => n.id))
+    const sig = signature(a, model)
+    if (st.id !== 'fault' && sig === prevSig) continue
+    pushStep(ctx, st, a, st.id === 'fault' ? { faultNames, markIds: newIds } : {})
+    prevSig = sig
+    last = { a, opts: st.opts, seconds: st.seconds }
+  }
+  if (!last) return
+
+  // Batarya tükenmeleri: bataryadaki UPS'lerin kalan süresi o anki yükle hesaplanır; en erken biten UPS için
+  // yeni bir adım eklenir ve yük yeniden çözülür (birden çok UPS farklı zamanlarda tükenebilir).
+  const dead = new Set(depleted)
+  let cur = last
+  for (let guard = 0; guard < model.nodes.length; guard++) {
+    let soonest: { id: string; dt: number } | undefined
+    for (const n of model.nodes) {
+      if (n.type !== 'ups' || dead.has(n.id) || !cur.a.nodes[n.id]?.onBattery) continue
+      const rt = batteryRuntimeMin(model, cur.a, n.id)
+      if (!Number.isFinite(rt)) continue
+      const dt = (ctx.soc.get(n.id) ?? 1) * rt * 60
+      if (!soonest || dt < soonest.dt) soonest = { id: n.id, dt }
+    }
+    if (!soonest) break
+    // Aynı anda biten UPS'ler tek adımda toplanır.
+    const T = cur.seconds + soonest.dt
+    const batch = model.nodes
+      .filter((n) => n.type === 'ups' && !dead.has(n.id) && cur.a.nodes[n.id]?.onBattery)
+      .filter((n) => {
+        const rt = batteryRuntimeMin(model, cur.a, n.id)
+        return Number.isFinite(rt) && Math.abs((ctx.soc.get(n.id) ?? 1) * rt * 60 - soonest!.dt) < 0.5
+      })
+    for (const u of batch) dead.add(u.id)
+    const opts: Partial<SimOptions> = { autoBypass: true, staging: true, genOnline: true, battery: true, depleted: [...dead] }
+    const def: StageDef = { id: 'battery', seconds: T, opts, gens: true }
+    const a = run(opts)
+    markRunning(a, model.nodes.filter((n) => n.type === 'jenerator' && a.nodes[n.id]?.totalKw > 0.5).map((n) => n.id))
+    // Bu UPS'in şarjı tükendi: izleyici bu anda sıfırlanır.
+    advanceSoc(model, ctx.soc, cur.a, T - cur.seconds)
+    for (const u of batch) ctx.soc.set(u.id, 0)
+    ctx.prevSeconds = T // advanceSoc pushStep içinde tekrar uygulanmasın
+    ctx.prev = cur.a
+    pushStepNoAdvance(ctx, def, a, batch.map((u) => u.ad))
+    cur = { a, opts, seconds: T }
+  }
+}
+
+/** Batarya tükenme adımı: şarj zaten güncellendi; ayrıca "bataryası tükendi" satırı yazılır. */
+function pushStepNoAdvance(ctx: PlayCtx, def: StageDef, a: Analysis, names: string[]): void {
+  const prevSeconds = ctx.prevSeconds
+  const prevAnalysis = ctx.prev
+  const { changes, changedNodes } = diffAnalyses(ctx.model, prevAnalysis, a, [], ctx.base, ctx.settings)
+  changes.unshift({ kind: 'battery', text: tr.sim.batteryEmpty(names.join(', ')) })
+  ctx.steps.push({
+    id: def.id,
+    title: tr.sim.stages.battery,
+    description: tr.sim.stageDesc.battery,
+    seconds: def.seconds,
+    timeLabel: timeLabel(def.seconds),
+    analysis: a,
+    changes,
+    changedNodes,
+    lostKw: Math.max(0, a.unserved.totalKw - ctx.base.unserved.totalKw),
+    phase: ctx.phase,
+    opts: def.opts,
+    running: runningGens(a),
+    failed: ctx.failed,
+    battery: batteryList(ctx.model, ctx.soc, a),
+  })
+  ctx.prev = a
+  ctx.prevSeconds = Math.max(prevSeconds, def.seconds)
+}
+
+const emptyCtx = (model: Model, th: Thresholds, settings: ProjectSettings, base: Analysis, scenario: Scenario | undefined, soc: Soc, phase: 'fault' | 'recovery', failed: string[], prev: Analysis, prevSeconds: number): PlayCtx => ({
+  model, th, settings, base, scenario, soc, phase, failed, mark: [], steps: [], prev, prevSeconds,
+})
+
 /**
  * Seçilen ekipman(lar)ın arızasını aşama aşama çözer: arıza anı, STS transferi, otomatik bypass,
- * jeneratörlerin devreye girmesi, jeneratör yük sıralaması ve batarya bitişi. Her aşama, o ana kadar
+ * jeneratörlerin devreye girmesi, jeneratör yük sıralaması ve UPS batarya tükenmeleri. Her aşama, o ana kadar
  * devreye girmiş otomasyonlarla kararlı durum çözümüdür; değişmeyen aşamalar atlanır.
  */
 export function simulateFailure(
@@ -265,60 +481,69 @@ export function simulateFailure(
     nodeStates: baseScenario?.nodeStates ?? {},
   }
   const base = analyze(model, th, baseScenario)
-  const run = (opts: Partial<SimOptions>) => analyze(model, th, scenario, base, opts)
-
+  const soc = initialSoc(model)
+  const ctx = emptyCtx(model, th, settings, base, scenario, soc, 'fault', failedIds, base, 0)
+  ctx.steps.push({
+    id: 'normal',
+    title: tr.sim.stages.normal,
+    description: tr.sim.stageDesc.normal,
+    seconds: -1,
+    timeLabel: '',
+    analysis: base,
+    changes: [],
+    changedNodes: [],
+    lostKw: 0,
+    phase: 'fault',
+    opts: { ...FULL_AUTOMATION },
+    running: [],
+    failed: [],
+    battery: [],
+  })
   const hold = holdFrom(base, model)
-
-  const autonomyMin = Math.max(
-    1,
-    ...model.nodes.filter((n) => n.type === 'ups').map((n) => (typeof n.params.bataryaDk === 'number' ? n.params.bataryaDk : 10)),
+  playFault(
+    ctx,
+    0,
+    { autoBypass: false, staging: false, genOnline: false, hold },
+    { autoBypass: false, staging: false, genOnline: false },
+    faultNames,
+    failedIds,
   )
-  const stages: { id: SimStageId; seconds: number; opts: Partial<SimOptions>; gens: boolean }[] = [
-    { id: 'fault', seconds: 0, opts: { autoBypass: false, staging: false, genOnline: false, battery: true, hold }, gens: false },
-    { id: 'sts', seconds: SIM_TIMING.sts, opts: { autoBypass: false, staging: false, genOnline: false, battery: true }, gens: false },
-    { id: 'bypass', seconds: SIM_TIMING.bypass, opts: { autoBypass: true, staging: false, genOnline: false, battery: true }, gens: false },
-    { id: 'gen', seconds: SIM_TIMING.gen, opts: { autoBypass: true, staging: false, genOnline: true, battery: true }, gens: true },
-    { id: 'staging', seconds: SIM_TIMING.staging, opts: { autoBypass: true, staging: true, genOnline: true, battery: true }, gens: true },
-    { id: 'battery', seconds: autonomyMin * 60, opts: { ...FULL_AUTOMATION }, gens: true },
-  ]
-
-  const steps: SimStep[] = []
-  const push = (id: SimStageId, seconds: number, analysis: Analysis, opts: Partial<SimOptions>, prev?: Analysis, faults: string[] = []) => {
-    const { changes, changedNodes } = diffAnalyses(model, prev, analysis, faults, base, settings)
-    steps.push({
-      id,
-      title: tr.sim.stages[id],
-      description: tr.sim.stageDesc[id],
-      seconds,
-      timeLabel: timeLabel(seconds),
-      analysis,
-      changes,
-      changedNodes: [...new Set([...changedNodes, ...(id === 'fault' ? failedIds : [])])],
-      lostKw: Math.max(0, analysis.unserved.totalKw - base.unserved.totalKw),
-      phase: 'fault',
-      opts,
-      running: runningGens(analysis),
-      failed: id === 'normal' ? [] : failedIds,
-    })
-  }
-  push('normal', -1, base, { ...FULL_AUTOMATION })
-  steps[0].timeLabel = ''
-  let prev = base
-  let prevSig = signature(base, model)
-  for (const st of stages) {
-    const a = run(st.opts)
-    // Jeneratör yalnızca yük taşıyorsa (normal kaynak kayıpken) çalıştırılmıştır.
-    if (st.gens) markRunning(a, model.nodes.filter((n) => n.type === 'jenerator' && a.nodes[n.id]?.totalKw > 0.5).map((n) => n.id))
-    const sig = signature(a, model)
-    if (st.id !== 'fault' && sig === prevSig) continue
-    push(st.id, st.seconds, a, st.opts, prev, st.id === 'fault' ? faultNames : [])
-    prev = a
-    prevSig = sig
-  }
-  return steps
+  return ctx.steps
 }
 
-const runningGens = (a: Analysis): string[] => Object.values(a.nodes).filter((r) => r.running).map((r) => r.id)
+/**
+ * Sıralı arıza: simülasyon `from` adımındayken ek ekipman arızalanır. Mevcut durum (transferler, bypass,
+ * çalışan jeneratörler, batarya şarjı) korunarak arıza aşamaları o andan başlayarak yeniden çözülür; dönen
+ * adımlar `from`dan sonra eklenir (zamanlar mutlaktır).
+ */
+export function simulateAdditionalFault(
+  model: Model,
+  from: SimStep,
+  newIds: string[],
+  baseScenario?: Scenario,
+  th: Thresholds = DEFAULT_THRESHOLDS,
+  settings: ProjectSettings = DEFAULT_SETTINGS,
+): SimStep[] {
+  const byId = new Map(model.nodes.map((n) => [n.id, n]))
+  const add = newIds.filter((id) => !from.failed.includes(id) && byId.has(id))
+  if (add.length === 0) return []
+  const failedAll = [...from.failed, ...add]
+  const scenario: Scenario = {
+    id: 'sim',
+    ad: 'sim',
+    failedNodes: [...new Set([...(baseScenario?.failedNodes ?? []), ...failedAll])],
+    edgeStates: baseScenario?.edgeStates ?? {},
+    nodeStates: baseScenario?.nodeStates ?? {},
+  }
+  const base = analyze(model, th, baseScenario)
+  const t0 = Math.max(0, from.seconds)
+  const ctx = emptyCtx(model, th, settings, base, scenario, initialSoc(model, from), 'fault', failedAll, from.analysis, t0)
+  const keepClosed = model.nodes.filter((n) => from.analysis.nodes[n.id]?.autoClosed).map((n) => n.id)
+  const o = from.opts
+  const carry: Partial<SimOptions> = { autoBypass: o.autoBypass ?? true, staging: o.staging ?? false, genOnline: o.genOnline ?? false, depleted: o.depleted }
+  playFault(ctx, t0, { ...carry, hold: holdFrom(from.analysis, model, true), keepClosed }, carry, add.map((id) => byId.get(id)?.ad ?? id), add)
+  return ctx.steps
+}
 
 /**
  * Arızanın `from` adımından itibaren giderilmesini çözer. `clearIds` verilen ekipmanın arızası kalkar,
@@ -353,49 +578,34 @@ export function simulateRecovery(
   const repairedGens = cleared.filter((id) => byId.get(id)?.type === 'jenerator')
   const carrying = (a: Analysis): string[] => model.nodes.filter((n) => n.type === 'jenerator' && a.nodes[n.id]?.totalKw > 0.5).map((n) => n.id)
   const stillRunning = from.running.filter((id) => !remaining.includes(id) && !repairedGens.includes(id))
+  const depleted = from.opts.depleted
 
-  const stages: { id: SimStageId; seconds: number; opts: Partial<SimOptions>; running: (a: Analysis) => string[] }[] = [
+  const stages: (StageDef & { running: (a: Analysis) => string[] })[] = [
     {
       id: 'clear',
       seconds: 0,
       opts: { ...from.opts, hold: holdFrom(from.analysis, model, true), keepClosed, offGens: repairedGens },
+      gens: false,
       running: () => stillRunning,
     },
     {
       id: 'retransfer',
       seconds: SIM_TIMING.retransfer,
-      opts: { autoBypass: true, staging: true, genOnline: from.opts.genOnline ?? true, battery: true },
+      opts: { autoBypass: true, staging: true, genOnline: from.opts.genOnline ?? true, battery: true, depleted },
+      gens: false,
       running: (a) => [...new Set([...stillRunning, ...carrying(a)])],
     },
-    { id: 'genStop', seconds: SIM_TIMING.retransfer + SIM_TIMING.cooldown, opts: { ...FULL_AUTOMATION }, running: carrying },
+    { id: 'genStop', seconds: SIM_TIMING.retransfer + SIM_TIMING.cooldown, opts: { ...FULL_AUTOMATION, depleted }, gens: false, running: carrying },
   ]
-  const out: SimStep[] = []
-  let prev = from.analysis
-  let prevSig = signature(prev, model)
+  const ctx = emptyCtx(model, th, settings, base, scenario, initialSoc(model, from), 'recovery', remaining, from.analysis, 0)
+  let prevSig = signature(from.analysis, model)
   for (const st of stages) {
     const a = analyze(model, th, scenario, base, st.opts)
     markRunning(a, st.running(a))
     const sig = signature(a, model)
     if (st.id !== 'clear' && sig === prevSig) continue
-    const { changes, changedNodes } = diffAnalyses(model, prev, a, [], base, settings)
-    if (st.id === 'clear') for (const id of cleared.slice().reverse()) changes.unshift({ kind: 'cleared', text: tr.sim.changeCleared(byId.get(id)?.ad ?? id) })
-    out.push({
-      id: st.id,
-      title: tr.sim.stages[st.id],
-      description: tr.sim.stageDesc[st.id],
-      seconds: st.seconds,
-      timeLabel: timeLabel(st.seconds),
-      analysis: a,
-      changes,
-      changedNodes: [...new Set([...changedNodes, ...(st.id === 'clear' ? cleared : [])])],
-      lostKw: Math.max(0, a.unserved.totalKw - base.unserved.totalKw),
-      phase: 'recovery',
-      opts: st.opts,
-      running: runningGens(a),
-      failed: remaining,
-    })
-    prev = a
+    pushStep(ctx, st, a, st.id === 'clear' ? { clearedNames: cleared.map((id) => byId.get(id)?.ad ?? id), markIds: cleared } : {})
     prevSig = sig
   }
-  return out
+  return ctx.steps
 }

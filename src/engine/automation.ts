@@ -22,6 +22,8 @@ export interface SimOptions {
   offGens?: string[]
   /** false: kısa devre ve toplam gerilim düşümü hesaplanmaz (ağır taramalarda hız için). */
   studies?: boolean
+  /** Bataryası tükenmiş UPS kimlikleri. */
+  depleted?: string[]
 }
 
 export const FULL_AUTOMATION: SimOptions = { autoBypass: true, staging: true, genOnline: true, battery: false }
@@ -72,7 +74,7 @@ export function resolveAutoClosed(model: Model, scenario: Scenario | undefined, 
   }
 
   for (let iter = 0; iter < 30; iter++) {
-    const { energized } = energize({ nodes: model.nodes, edges, dead: deadSet(), battery: opts.battery, hold: opts.hold })
+    const { energized } = energize({ nodes: model.nodes, edges, dead: deadSet(), battery: opts.battery, hold: opts.hold, depleted: opts.depleted ? new Set(opts.depleted) : undefined })
     let progress = false
     for (const b of auto) {
       if (closed.has(b.id)) continue

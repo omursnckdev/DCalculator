@@ -11,6 +11,8 @@ export interface EnergizeInput {
   battery: boolean
   /** Transfer (ATS/STS) düğümü -> kilitli (henüz geçiş yapmamış) giriş hattı. */
   hold?: Record<string, string>
+  /** Bataryası tükenmiş UPS'ler: girişi olmayınca çıkışı da kaybolur. */
+  depleted?: Set<string>
 }
 
 /**
@@ -48,7 +50,7 @@ export function energize(inp: EnergizeInput): { energized: Set<string>; onBatter
   const onBattery = new Set<string>()
   if (inp.battery) {
     for (const n of inp.nodes) {
-      if (n.type === 'ups' && !inp.dead.has(n.id) && !energized.has(n.id)) {
+      if (n.type === 'ups' && !inp.dead.has(n.id) && !energized.has(n.id) && !inp.depleted?.has(n.id)) {
         onBattery.add(n.id)
         seed(n.id)
       }

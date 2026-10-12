@@ -27,7 +27,7 @@ import type {
 } from '../model/types'
 import { DEFAULT_SETTINGS, cloneSettings } from '../model/settings'
 import type { ProjectSettings } from '../model/settings'
-import { simulateFailure, simulateRecovery } from '../engine'
+import { simulateAdditionalFault, simulateFailure, simulateRecovery } from '../engine'
 import type { SimStep } from '../engine'
 import { saveProjectToDb } from './persistence'
 
@@ -85,6 +85,8 @@ interface State {
   startSim: (failed: string[]) => void
   /** Arızayı seçili adımdan itibaren giderir; sonraki adımlar giderme sürecidir. */
   clearSimFault: (ids?: string[]) => void
+  /** Seçili adımdan itibaren ek ekipman arızası uygular (sıralı arıza). */
+  addSimFault: (ids: string[]) => void
   setSimIndex: (i: number) => void
   setSimPlaying: (p: boolean) => void
   setSimSpeed: (s: number) => void
@@ -191,6 +193,20 @@ export const useStore = create<State>((set, get) => ({
         index: Math.min(sim.index + 1, steps.length - 1),
         playing: rec.length > 1,
       },
+    })
+  },
+  addSimFault: (ids) => {
+    const s = get()
+    const sim = s.sim
+    if (!sim) return
+    const from = sim.steps[sim.index]
+    if (!from) return
+    const model = { nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }
+    const add = simulateAdditionalFault(model, from, ids, s.scenarios.find((x) => x.id === s.activeScenarioId), undefined, s.ayarlar)
+    if (add.length === 0) return
+    const steps = [...sim.steps.slice(0, sim.index + 1), ...add]
+    set({
+      sim: { ...sim, steps, history: [...sim.history, { at: sim.index, steps: sim.steps }], index: Math.min(sim.index + 1, steps.length - 1), playing: add.length > 1 },
     })
   },
   setSimIndex: (i) =>
