@@ -5,6 +5,7 @@ import { boxesOf } from './autoLayout'
 import { dimsOf } from './dims'
 import { boxOf, bounds, findOverlaps, roomAt } from './geometry'
 import { applyPlan, tagCandidates } from './plan'
+import { checkRooms, roomEntrance } from './planRooms'
 import { wallBlocked, walkStepFloors } from './walk'
 
 const hdc = parseProject(readFileSync(new URL('../../examples/hdc02-pl1.dcalc.json', import.meta.url), 'utf8'))
@@ -108,5 +109,72 @@ describe('duvar çarpışması', () => {
     let st = { x: 8, z: 10, h: 0 }
     for (let i = 0; i < 40; i++) st = walkStepFloors([], [], [], st, 0.1, 0, 0.35, w)
     expect(st.x).toBeGreaterThan(11)
+  })
+})
+
+describe('plan odaları: sayı, yerleşim ve doğruluk denetimi', () => {
+  const adlar = plan.odalar.map((o) => o.ad)
+  it('oda sayısı ve türleri: 8 trafo/RMU, 4 batarya, 4 UPS/STS, 2 UPS/MSB, 3 telekom/MMR/RPP, 2 telekom, veri salonu', () => {
+    expect(plan.odalar).toHaveLength(24)
+    expect(adlar.filter((a) => a.startsWith('Trafo')).length).toBe(4)
+    expect(adlar.filter((a) => a.startsWith('RMU')).length).toBe(4)
+    expect(adlar.filter((a) => a.startsWith('Batarya')).length).toBe(4)
+    expect(adlar.filter((a) => a.startsWith('UPS / STS') || a.startsWith('STS B')).length).toBe(4)
+    expect(adlar.filter((a) => a.startsWith('UPS / MSB')).length).toBe(2)
+    expect(adlar.filter((a) => a.startsWith('MMR')).length).toBe(2)
+    expect(adlar.filter((a) => a.startsWith('Telekom')).length).toBe(2)
+    expect(adlar).toContain('RPP / kontrol odası')
+    expect(plan.odalar.filter((o) => o.tur === 'salon')).toHaveLength(1)
+    expect(new Set(adlar).size).toBe(adlar.length) // aynı ad iki kez yok
+  })
+  it('hiçbir iki (elektrik) odası üst üste binmez', () => {
+    const e = plan.odalar.filter((o) => o.tur === 'elektrik')
+    for (let i = 0; i < e.length; i++)
+      for (let j = i + 1; j < e.length; j++) {
+        const a = e[i]
+        const b = e[j]
+        const ox = Math.min(a.x + a.g, b.x + b.g) - Math.max(a.x, b.x)
+        const oz = Math.min(a.z + a.d, b.z + b.d) - Math.max(a.z, b.z)
+        expect(ox > 0.3 && oz > 0.3, `${a.ad} / ${b.ad}`).toBe(false)
+      }
+  })
+  it('planın her ekipman dikdörtgeni tam bir elektrik odasının içinde', () => {
+    for (const e of plan.ekipman) {
+      const inn = plan.odalar.filter((o) => o.tur !== 'salon' && e.x >= o.x && e.x <= o.x + o.g && e.z >= o.z && e.z <= o.z + o.d)
+      expect(inn.length, e.etiket).toBe(1)
+    }
+  })
+  it('oda sınırları duvarlarla uyumlu: kapı genişliğini aşan açık kenar ve odayı kesen duvar yok', () => {
+    expect(checkRooms(plan, ['Veri salonu'])).toEqual([])
+  })
+  it('doğrulayıcı gerçekten yakalar: duvarsız oda ve kesen duvar bildirilir', () => {
+    const bos = { ...plan, odalar: [{ ad: 'Boş', tur: 'elektrik' as const, x: 10, z: 10, g: 6, d: 6, y: 3 }], duvarlar: [[10, 10, 16, 10]] as [number, number, number, number][], ekipman: [] }
+    expect(checkRooms(bos).some((i) => i.tur === 'acik')).toBe(true)
+    const kesen = { ...bos, duvarlar: [[10, 10, 16, 10], [10, 16, 16, 16], [10, 10, 10, 16], [16, 10, 16, 16], [10, 13, 16, 13]] as [number, number, number, number][] }
+    const r = checkRooms(kesen)
+    expect(r.some((i) => i.tur === 'bolucu')).toBe(true)
+    expect(r.some((i) => i.tur === 'acik')).toBe(false)
+  })
+  it('oda girişi: kapı boşluğu merkezi duvar çizgisinde, normal odadan dışarı', () => {
+    const walls: [number, number, number, number][] = [[0, 0, 4, 0], [5.2, 0, 10, 0], [0, 10, 10, 10], [0, 0, 0, 10], [10, 0, 10, 10]]
+    const e = roomEntrance({ x: 0, z: 0, g: 10, d: 10 }, walls)
+    expect(e.side).toBe('kuzey')
+    expect(e.x).toBeCloseTo(4.6, 6)
+    expect(e.z).toBe(0)
+    expect([e.nx, e.nz]).toEqual([0, -1])
+    expect(e.width).toBeCloseTo(1.2, 6)
+    // kapalı oda: güney kenar ortası
+    const k = roomEntrance({ x: 0, z: 0, g: 10, d: 10 }, [[0, 0, 10, 0], [0, 10, 10, 10], [0, 0, 0, 10], [10, 0, 10, 10]])
+    expect([k.nx, k.nz, k.width]).toEqual([0, 1, 0])
+  })
+  it('gerçek planda her odanın girişi bulunur (kapalı oda yok) ve oda kenarındadır', () => {
+    let kapali = 0
+    for (const o of plan.odalar) {
+      const e = roomEntrance(o, plan.duvarlar)
+      if (e.width === 0) kapali++
+      const onEdge = Math.abs(e.x - o.x) < 0.5 || Math.abs(e.x - (o.x + o.g)) < 0.5 || Math.abs(e.z - o.z) < 0.5 || Math.abs(e.z - (o.z + o.d)) < 0.5
+      expect(onEdge, o.ad).toBe(true)
+    }
+    expect(kapali).toBeLessThanOrEqual(2)
   })
 })

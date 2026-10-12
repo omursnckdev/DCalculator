@@ -5,6 +5,7 @@ import { Pipes, Trays } from './Infra'
 import { Controllers, Ground, Rig } from './Controllers'
 import { EquipmentLayer } from './Equipment'
 import { LabelLayer } from './LabelLayer'
+import { PlanSigns } from './PlanSigns'
 import { PlanWalls } from './PlanWalls'
 import { Rooms } from './Rooms'
 import { SceneCtx } from './sceneData'
@@ -41,6 +42,7 @@ export default function Scene3D({ data, dpr }: { data: SceneData; dpr: number })
         <Ground />
         <Rooms />
         <PlanWalls />
+        <PlanSigns />
         <EquipmentLayer />
         <Trays />
         <Pipes />

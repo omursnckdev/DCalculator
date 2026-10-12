@@ -183,7 +183,11 @@ for r in page.rects:
         continue
     inner = [t for t, x, y in cands if r['x0'] - 1 <= x <= r['x1'] + 1 and r['top'] - 1 <= y <= r['bottom'] + 1 and TAG.match(t)]
     if not inner:
-        continue
+        # Dik yazılı etiketler (ör. RPP.POP.1A) kutunun dışında, hemen üstünde/altında durabilir: aynı x aralığındaki en yakın aday
+        near = [(abs(y - (r['top'] + r['bottom']) / 2), t) for t, x, y in cands if TAG.match(t) and r['x0'] - 1 <= x <= r['x1'] + 1 and abs(y - (r['top'] + r['bottom']) / 2) <= 2.5 / S]
+        if not near:
+            continue
+        inner = [min(near)[1]]
     # birden çok aday: en uzun (en belirgin) olan
     tag = max(inner, key=len)
     cxm, czm = m((r['x0'] + r['x1']) / 2, (r['top'] + r['bottom']) / 2)
@@ -209,6 +213,7 @@ res = {
     'ad': a.ad,
     'kaynak': a.pdf.split('/')[-1],
     'olcek': a.olcek,
+    'orijinPt': [round(ox, 2), round(oy, 2)],  # PDF'teki (0,0) noktası (pt): kontrol/bindirme için
     'sinir': {'g': round(W, 2), 'd': round(D, 2)},
     'duvarlar': [[round(v, 2) for v in w] for w in walls],
     'odalar': rooms,

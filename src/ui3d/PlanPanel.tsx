@@ -26,6 +26,7 @@ export function PlanPanel() {
     if (!confirm(A.confirm(p.ad))) return
     const r = importPlan(p)
     setMsg(A.done(r.matched, r.unmatched, r.unused.length))
+    use3dStore.getState().setPrefs({ showLabels: true })
     use3dStore.getState().requestView('fit')
   }
   const loadExample = async () => {
