@@ -80,6 +80,11 @@ const Equipment = memo(function Equipment(p: EqProps) {
       return
     }
     ;(document.activeElement as HTMLElement | null)?.blur?.()
+    // Yürüme modunda tıklama yalnız seçer (taşıma yok).
+    if (use3dStore.getState().walk) {
+      beginNodeDrag(p.id, null, e.shiftKey || e.ctrlKey)
+      return
+    }
     beginNodeDrag(p.id, groundFromRay(e.ray), e.shiftKey || e.ctrlKey)
     document.body.style.cursor = 'grabbing'
   }

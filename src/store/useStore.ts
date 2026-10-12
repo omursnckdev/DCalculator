@@ -133,6 +133,8 @@ interface State {
   autoLayout3d: () => void
   /** 3D sahnede ekipman ekler (x,z metre); şemada ayrıca otomatik bir konum alır. */
   addNode3d: (type: EquipmentType, x: number, z: number, init?: { ad?: string; params?: Params }) => string
+  /** Seçili ekipmanı (3D yerleşimi olanları) 1 m kaydırarak kopyalar; yeni kopyalar seçili olur. Hatlar kopyalanmaz. */
+  duplicateSelected3d: () => string[]
   addOda3d: (oda: Omit<Oda3D, 'id'>) => string
   updateOda3d: (id: string, patch: Partial<Omit<Oda3D, 'id'>>) => void
   removeOda3d: (id: string) => void
@@ -329,6 +331,26 @@ export const useStore = create<State>((set, get) => ({
       nodes: st.nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, yerlesim3d: { x, z, ...(room ? { oda: room.id } : {}) } } } : n)),
     }))
     return id
+  },
+  duplicateSelected3d: () => {
+    const s = get()
+    const src = s.nodes.filter((n) => n.selected && n.data.yerlesim3d)
+    if (src.length === 0) return []
+    const ids: string[] = []
+    const copies: EquipmentNode[] = src.map((n) => {
+      const id = newId('d')
+      ids.push(id)
+      const l = n.data.yerlesim3d!
+      return {
+        ...n,
+        id,
+        position: { x: n.position.x + 40, y: n.position.y + 40 },
+        selected: true,
+        data: { ...n.data, ad: `${n.data.ad} (kopya)`, params: { ...n.data.params }, yerlesim3d: { ...l, x: l.x + 1, z: l.z + 1 } },
+      }
+    })
+    set((st) => ({ nodes: [...st.nodes.map((n) => ({ ...n, selected: false })), ...copies], edges: st.edges.map((e) => ({ ...e, selected: false })), dirty: true }))
+    return ids
   },
   addOda3d: (oda) => {
     const id = newId('oda')

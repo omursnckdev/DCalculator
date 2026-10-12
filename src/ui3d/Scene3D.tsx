@@ -6,6 +6,7 @@ import { EquipmentLayer } from './Equipment'
 import { LabelLayer } from './LabelLayer'
 import { Rooms } from './Rooms'
 import { SceneCtx } from './sceneData'
+import { Walk } from './Walk'
 import type { SceneData } from './sceneData'
 
 /** R3F sahnesi (lazy yüklenir). Veri üst bileşenden (analiz bağlamı Canvas'a geçmediği için) prop olarak gelir. */
@@ -34,6 +35,7 @@ export default function Scene3D({ data, dpr }: { data: SceneData; dpr: number })
         <hemisphereLight args={['#ffffff', '#cbd5e1', 0.4]} />
         <Rig />
         <Controllers />
+        <Walk />
         <Ground />
         <Rooms />
         <EquipmentLayer />

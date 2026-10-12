@@ -107,3 +107,30 @@ describe('hat uzunluğunu 3D\'den alma', () => {
     expect(loss(200)).toBeCloseTo(loss(100) * 2, 6)
   })
 })
+
+describe('kopyalama ve panel tercihleri', () => {
+  it('seçili ekipman 1 m kaydırılarak kopyalanır, kopya seçili olur; hat kopyalanmaz', () => {
+    const id = st().addNode3d('mdb', 5, 5)
+    const ids = st().duplicateSelected3d()
+    expect(ids).toHaveLength(1)
+    const copy = st().nodes.find((n) => n.id === ids[0])!
+    expect(copy.data.ad).toContain('(kopya)')
+    expect(copy.data.yerlesim3d).toMatchObject({ x: 6, z: 6 })
+    expect(copy.selected).toBe(true)
+    expect(st().nodes.find((n) => n.id === id)!.selected).toBe(false)
+    // parametre kopyası bağımsız
+    st().updateNodeParam(ids[0], 'nominalAkim', 123)
+    expect(st().nodes.find((n) => n.id === id)!.data.params.nominalAkim).not.toBe(123)
+  })
+  it('panel açık/kapalı tercihi saklanır', async () => {
+    const mem = new Map<string, string>()
+    vi.stubGlobal('localStorage', { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => void mem.set(k, v) })
+    const { useUiPrefs } = await import('./uiPrefs')
+    useUiPrefs.getState().setLeft(false)
+    useUiPrefs.getState().setRight(false)
+    expect(JSON.parse(mem.get('dcalculator:uiPrefs')!)).toEqual({ leftOpen: false, rightOpen: false })
+    useUiPrefs.getState().setLeft(true)
+    useUiPrefs.getState().setRight(true)
+    vi.unstubAllGlobals()
+  })
+})

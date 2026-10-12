@@ -48,7 +48,7 @@ export function levels(model: Model): Map<string, number> {
 const label = (n: ProjectNode) => n.ad || n.id
 
 /** Küçük elemanın bağlı olduğu ana ekipman: önce yukarı akış, yoksa aşağı akış (küçük elemanlar atlanır). */
-function anchorOf(model: Model, id: string, byId: Map<string, ProjectNode>): string | undefined {
+export function anchorOf(model: Model, id: string, byId: Map<string, ProjectNode>): string | undefined {
   for (const dir of ['up', 'down'] as const) {
     const seen = new Set<string>([id])
     let frontier = [id]
@@ -200,6 +200,21 @@ export function boxesOf(nodes: ProjectNode[], overrides: Record<string, Yerlesim
   for (const n of nodes) {
     const l = overrides[n.id] ?? n.yerlesim3d
     if (l) out.push(boxOf(n.id, n.type, l, dimsOf({ ...n, yerlesim3d: l })))
+  }
+  return out
+}
+
+/**
+ * Her küçük elemanın (kesici, ölçü) bağlı olduğu ana ekipman → ana ekipman başına takipçi listesi. Ana ekipman taşınırken
+ * takipçileri onunla birlikte taşınır.
+ */
+export function followersOf(model: Model): Map<string, string[]> {
+  const byId = new Map(model.nodes.map((n) => [n.id, n]))
+  const out = new Map<string, string[]>()
+  for (const n of model.nodes) {
+    if (!isMinor(n.type)) continue
+    const a = anchorOf(model, n.id, byId)
+    if (a) out.set(a, [...(out.get(a) ?? []), n.id])
   }
   return out
 }

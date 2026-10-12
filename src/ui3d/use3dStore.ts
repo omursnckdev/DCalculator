@@ -60,6 +60,12 @@ interface View3DState extends Prefs {
   setGuides: (g: Guide[]) => void
   hoverId: string | null
   setHover: (id: string | null) => void
+  /** Yürüme (birinci şahıs) modu. */
+  walk: boolean
+  setWalk: (on: boolean) => void
+  /** Seçim kutusu (ekran koordinatları, px). */
+  marquee: { x0: number; y0: number; x1: number; y1: number } | null
+  setMarquee: (m: { x0: number; y0: number; x1: number; y1: number } | null) => void
   measure: boolean
   measurePts: [number, number][]
   setMeasure: (on: boolean) => void
@@ -91,6 +97,10 @@ export const use3dStore = create<View3DState>((set, get) => ({
   setGuides: (guides) => set({ guides }),
   hoverId: null,
   setHover: (hoverId) => set({ hoverId }),
+  walk: false,
+  setWalk: (walk) => set({ walk, measure: false }),
+  marquee: null,
+  setMarquee: (marquee) => set({ marquee }),
   measure: false,
   measurePts: [],
   setMeasure: (on) => set({ measure: on, measurePts: [] }),

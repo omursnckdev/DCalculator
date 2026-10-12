@@ -6,6 +6,7 @@ import { tr } from '../i18n/tr'
 import { newId } from '../model/project'
 import type { EquipmentType } from '../model/types'
 import { useStore } from '../store/useStore'
+import { useUiPrefs } from '../store/uiPrefs'
 import { Symbol } from './Symbol'
 
 export const DND_MIME = 'application/x-dcalculator-equipment'
@@ -76,9 +77,17 @@ function CatalogSection({ onAddCatalog }: { onAddCatalog: (c: CatalogEntry) => v
 }
 
 export function Palette({ onAdd, onAddCatalog }: { onAdd: (type: EquipmentType) => void; onAddCatalog: (c: CatalogEntry) => void }) {
+  const open = useUiPrefs((s) => s.leftOpen)
+  const setLeft = useUiPrefs((s) => s.setLeft)
+  if (!open) return null
   return (
     <aside className="w-60 shrink-0 overflow-y-auto border-r border-slate-200 bg-white p-3">
-      <h2 className="text-sm font-semibold">{tr.palette.title}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold">{tr.palette.title}</h2>
+        <button type="button" className="rounded px-1.5 text-slate-500 hover:bg-slate-100" onClick={() => setLeft(false)} title={`${tr.ui.hidePalette} ([)`} aria-label={tr.ui.hidePalette}>
+          ◀
+        </button>
+      </div>
       <p className="mb-3 text-xs text-slate-500">{tr.palette.hint}</p>
       <CatalogSection onAddCatalog={onAddCatalog} />
       {PALETTE_GROUPS.map((g) => (

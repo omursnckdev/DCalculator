@@ -4,6 +4,7 @@ import { lastProjectId, loadProjectFromDb, saveProjectToDb } from '../store/pers
 import { AnalysisProvider } from '../store/useAnalysis'
 import { redo, undo } from '../store/history'
 import { useStore } from '../store/useStore'
+import { useUiPrefs } from '../store/uiPrefs'
 import { Canvas } from './Canvas'
 import { IssuesPanel } from './IssuesPanel'
 import { ElectricalView } from './ElectricalView'
@@ -69,6 +70,25 @@ export function App() {
     })
   }, [])
 
+  const leftOpen = useUiPrefs((s) => s.leftOpen)
+  const rightOpen = useUiPrefs((s) => s.rightOpen)
+  const setLeft = useUiPrefs((s) => s.setLeft)
+  const setRight = useUiPrefs((s) => s.setRight)
+  // [ ve ] tuşları: paleti / özellikler panelini aç-kapat.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const ui = useUiPrefs.getState()
+      if (e.key === '[') ui.setLeft(!ui.leftOpen)
+      else if (e.key === ']') ui.setRight(!ui.rightOpen)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+  const hasPalette = view === 'diagram' || view === 'view3d'
+
   return (
     <AnalysisProvider>
       <div className="flex h-full flex-col">
@@ -86,6 +106,16 @@ export function App() {
               {tr.view[v]}
             </button>
           ))}
+          <div className="ml-auto flex items-center gap-1 pr-2">
+            {hasPalette && (
+              <button type="button" className={`rounded border px-2 py-0.5 text-xs ${leftOpen ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-slate-300 bg-white text-slate-600'}`} onClick={() => setLeft(!leftOpen)} title="[" aria-pressed={leftOpen}>
+                ◧ {tr.ui.palette}
+              </button>
+            )}
+            <button type="button" className={`rounded border px-2 py-0.5 text-xs ${rightOpen ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-slate-300 bg-white text-slate-600'}`} onClick={() => setRight(!rightOpen)} title="]" aria-pressed={rightOpen}>
+              {tr.ui.properties} ◨
+            </button>
+          </div>
         </div>
         {activeScenario && (
           <div className="flex items-center gap-3 border-b border-amber-300 bg-amber-100 px-3 py-1 text-sm text-amber-900">
@@ -123,12 +153,14 @@ export function App() {
           ) : (
             <ScenarioView />
           )}
-          <div className="flex w-72 shrink-0 flex-col border-l border-slate-200">
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <PropertiesPanel />
+          {rightOpen && (
+            <div className="flex w-72 shrink-0 flex-col border-l border-slate-200">
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <PropertiesPanel />
+              </div>
+              <IssuesPanel />
             </div>
-            <IssuesPanel />
-          </div>
+          )}
         </div>
         <footer className="border-t border-slate-200 bg-white px-3 py-1 text-[11px] text-slate-500">
           {tr.disclaimer}

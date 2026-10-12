@@ -90,6 +90,52 @@ if (mid) {
   check('hat tıklayınca seçiliyor (3D güzergâh araçları)', (await page.locator('text=/Uzunluk kaynağı/').count()) > 0)
 }
 
+// Paneller kapatılabilir
+const asides = () => page.locator('aside').count()
+await page.getByRole('button', { name: /Palet/ }).first().click()
+await page.getByRole('button', { name: /Özellikler/ }).first().click()
+await page.waitForTimeout(400)
+check('palet ve özellikler paneli kapandı', (await asides()) === 0)
+await page.keyboard.press('[')
+await page.keyboard.press(']')
+await page.waitForTimeout(400)
+check('[ ] kısayolu panelleri açtı', (await asides()) === 2)
+
+// Yürüme modu (Y): göz yüksekliği 1,7 m, ↑ ile ilerler, Esc çıkar
+await page.locator('#v3d-search').fill('MDB')
+await page.locator('ul button').first().click()
+await page.waitForTimeout(800)
+await page.keyboard.press('y')
+await page.waitForTimeout(1200)
+const w0 = await page.evaluate(() => window.__v3d?.camPos?.())
+if (w0) {
+  check('yürüme modunda göz yüksekliği 1,7 m', Math.abs(w0.y - 1.7) < 0.01)
+  await page.keyboard.down('ArrowUp')
+  await page.waitForTimeout(1200)
+  await page.keyboard.up('ArrowUp')
+  await page.waitForTimeout(400)
+  const w1 = await page.evaluate(() => window.__v3d.camPos())
+  check('yön tuşuyla ilerledi', Math.hypot(w1.x - w0.x, w1.z - w0.z) > 0.8)
+}
+await page.keyboard.press('Escape')
+await page.waitForTimeout(600)
+check('Esc ile yürümeden çıkıldı', (await page.locator('text=/Yürüme modu:/').count()) === 0)
+
+// Seçim kutusu (Shift+sürükle, zeminde; sol üst köşede senaryo paneli olduğundan sağ alttan başlanır)
+await page.getByRole('button', { name: 'Üst (plan)', exact: true }).click()
+await page.waitForTimeout(1200)
+const cb = await page.locator('canvas').boundingBox()
+await page.keyboard.down('Shift')
+await page.mouse.move(cb.x + cb.width - 30, cb.y + cb.height - 40)
+await page.mouse.down()
+await page.mouse.move(cb.x + 120, cb.y + 40, { steps: 8 })
+await page.mouse.up()
+await page.keyboard.up('Shift')
+await page.waitForTimeout(600)
+await page.getByRole('button', { name: /Hizala/ }).first().click()
+const txt = await page.locator('text=/ekipman seçili/').first().innerText()
+check('seçim kutusu birden çok ekipman seçti', Number(/^(\d+)/.exec(txt)?.[1] ?? 0) > 3)
+
 // Geri al
 await page.keyboard.press('Control+z')
 await page.waitForTimeout(500)

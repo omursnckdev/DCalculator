@@ -117,6 +117,7 @@ Ayrıntılı istek: [3D-MODEL-ISTEKLERI.md](3D-MODEL-ISTEKLERI.md); kararlar ve 
 - **Kablo güzergâhı:** ortogonal otomatik güzergâh, sürüklenebilir ara noktalar, "uzunluk 3D'den" seçeneği (kayıp ve gerilim düşümü gerçek mesafeyle).
 - **Çıktı:** 3D PNG ve PDF raporunda "3D yerleşim" bölümü.
 - **Performans ve arayüz:** birleştirilmiş geometri ve toplu hatlarla çizim çağrısı ≈ 3,7× azaldı (HDC02: 611 → 163), memo'lu ekipman, ~30 kare/sn animasyon, kalite seçeneği, GPU tespiti ve "Yazılım render" uyarısı, gruplanmış araç çubuğu, lejant, kısayol kartı (PLAN 77–78).
+- **Yürüme modu ve düzenleme (PLAN 79–81):** gizlenebilir paneller, birinci şahıs yürüme (WASD/oklar, çarpışma), seçim kutusu, hizala/eşit aralık, kopyala, kesicilerin panoyla taşınması.
 - **3D'de senaryo:** Senaryo ve bakım paneli ile canlı simülasyon şeridi (PLAN 76).
 - **Sınırlar:** mimari, CFD, kablo tavası doluluğu, glTF yükleme, çok katlı yapı yok; ekipman boyutları tipik yer tutucudur.
 

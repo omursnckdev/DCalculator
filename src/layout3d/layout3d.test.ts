@@ -12,7 +12,10 @@ import type { Oda3D, Project } from '../model/types'
 import { autoLayout, boxesOf, levels } from './autoLayout'
 import { defaultDims, dimsOf, rackCount, zoneOf } from './dims'
 import { alignGuides, boxOf, bounds, findOverlaps, rectsOverlap, roomAt, snap } from './geometry'
+import { alignPatches, distributePatches } from './arrange'
 import { heatGrid, heatRgb } from './heat'
+import { BODY_RADIUS, blockedAt, forwardOf, freeSpot, rightOf, walkStep } from './walk'
+import { followersOf } from './autoLayout'
 import { defaultRoute, polylineLength, routeLengthM, routePoints } from './route'
 
 const hdc = parseProject(readFileSync(new URL('../../examples/hdc02-pl1.dcalc.json', import.meta.url), 'utf8'))
@@ -249,5 +252,69 @@ describe('rapor', () => {
     expect(buildReportHtml({ ...base, view3dPng: 'data:image/png;base64,AAAA' })).toContain('3D yerleşim')
     expect(buildReportHtml(base)).not.toContain('3D yerleşim')
     expect(buildReportHtml({ ...base, view3dPng: 'data:image/png;base64,AAAA', sections: { view3d: false } })).not.toContain('3D yerleşim')
+  })
+})
+
+describe('yürüme modu', () => {
+  const wall = boxOf('w', 'mdb', { x: 0, z: 0 }, { g: 4, d: 1, y: 2.2 })
+  it('ekipman içi ve yarıçap payı engeldir; uzakta ve alçak/küçük elemanlar engel değildir', () => {
+    expect(blockedAt([wall], 0, 0)).toBe(true)
+    expect(blockedAt([wall], 0, 0.5 + BODY_RADIUS - 0.01)).toBe(true) // yarıçap payı içinde
+    expect(blockedAt([wall], 0, 0.5 + BODY_RADIUS + 0.05)).toBe(false)
+    expect(blockedAt([boxOf('k', 'kesici', { x: 0, z: 0 }, { g: 0.4, d: 0.4, y: 0.6 })], 0, 0)).toBe(false)
+    expect(blockedAt([boxOf('l', 'pompa', { x: 0, z: 0 }, { g: 1, d: 1, y: 0.3 })], 0, 0)).toBe(false)
+  })
+  it('döndürülmüş ekipman doğru engellenir', () => {
+    const r = boxOf('r', 'mdb', { x: 0, z: 0 }, { g: 4, d: 1, y: 2.2 })
+    r.rot = 90 // 4 m artık z yönünde
+    expect(blockedAt([r], 0, 1.8)).toBe(true)
+    expect(blockedAt([r], 1.8, 0)).toBe(false)
+  })
+  it('duvara çarpınca paralel kayar, tam engelde durur', () => {
+    // z ekseninde yaklaşırken x bileşeni kayar
+    const p = walkStep([wall], 0, 1.2, 0.3, -0.5)
+    expect(p.z).toBeCloseTo(1.2, 9) // z engelli
+    expect(p.x).toBeCloseTo(0.3, 9) // x kaydı
+    const stuck = walkStep([wall, boxOf('w2', 'mdb', { x: 0.6, z: 1.2 }, { g: 0.5, d: 3, y: 2 })], 0, 1.2, 0.3, -0.5)
+    expect(stuck).toEqual({ x: 0, z: 1.2 })
+  })
+  it('engelli noktadan en yakın boş noktaya taşınır; yön vektörleri', () => {
+    const q = freeSpot([wall], 0, 0)
+    expect(blockedAt([wall], q.x, q.z)).toBe(false)
+    expect(forwardOf(0)).toEqual({ x: -0, z: -1 })
+    const f = forwardOf(Math.PI / 2)
+    expect(f.x).toBeCloseTo(-1, 9)
+    expect(rightOf(0)).toEqual({ x: 1, z: -0 })
+  })
+})
+
+describe('hizalama ve eşit aralık', () => {
+  const b = (id: string, x: number, z: number, g = 2, d = 1) => boxOf(id, 'mdb', { x, z }, { g, d, y: 2 })
+  it('sola hizala: sol kenarlar eşitlenir; ortala: merkezler', () => {
+    const p = alignPatches([b('a', 0, 0, 2), b('c', 10, 5, 4)], 'left')
+    // a sol kenar -1, c sol kenar 8 → minX = -1; c merkezi 1'e gelir
+    expect(p.a.x).toBeCloseTo(0, 9)
+    expect(p.c.x).toBeCloseTo(1, 9)
+    const m = alignPatches([b('a', 0, 0), b('c', 10, 8)], 'centerZ')
+    expect(m.a.z).toBeCloseTo(m.c.z, 9)
+    expect(alignPatches([b('a', 0, 0)], 'left')).toEqual({})
+  })
+  it('eşit aralık: uçlar sabit, boşluklar eşit', () => {
+    const p = distributePatches([b('a', 0, 0), b('c', 3, 0), b('d', 20, 0)], 'x')
+    expect(p.a.x).toBeCloseTo(0, 9)
+    expect(p.d.x).toBeCloseTo(20, 9)
+    // 3 kutu × 2 m = 6 m; toplam açıklık 22 − 6 = 16 → boşluk 8; c sol kenar = −1+2+8 = 9 → merkez 10
+    expect(p.c.x).toBeCloseTo(10, 9)
+    expect(distributePatches([b('a', 0, 0), b('c', 3, 0)], 'x')).toEqual({})
+  })
+})
+
+describe('küçük elemanların takibi', () => {
+  it('HDC02: kesicilerin çoğunun bir ana ekipmanı vardır ve takipçi listeleri ayrık', () => {
+    const f = followersOf(hdc)
+    const all = [...f.values()].flat()
+    expect(new Set(all).size).toBe(all.length)
+    const minors = hdc.nodes.filter((n) => n.type === 'kesici' || n.type === 'yardimci').length
+    expect(all.length).toBeGreaterThan(minors * 0.8)
   })
 })

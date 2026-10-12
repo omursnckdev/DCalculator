@@ -22,6 +22,8 @@ import { saveBlob } from '../ui/fileio'
 import { EQUIPMENT_TYPES } from '../model/types'
 import type { EquipmentType } from '../model/types'
 import { snap } from '../layout3d/geometry'
+import { alignPatches, distributePatches } from '../layout3d/arrange'
+import type { AlignMode } from '../layout3d/arrange'
 import { capture3d, currentCamera, pickGround } from './capture'
 import { detectGpu } from './gpu'
 import type { GpuInfo } from './gpu'
@@ -128,6 +130,9 @@ function Toolbar3D({ gpu }: { gpu: GpuInfo | null }) {
         </label>
       </Menu>
       <div className="flex gap-1">
+        <button type="button" className={s.walk ? btnOn : btn} onClick={() => s.setWalk(!s.walk)} title={tr.v3d.walkHint}>
+          🚶 {tr.v3d.walk}
+        </button>
         <button type="button" className={s.measure ? btnOn : btn} onClick={() => s.setMeasure(!s.measure)} title={tr.v3d.measureHint}>
           📏 {tr.v3d.measure}
         </button>
@@ -151,6 +156,7 @@ function Toolbar3D({ gpu }: { gpu: GpuInfo | null }) {
           {tr.v3d.png}
         </button>
       </div>
+      <ArrangeMenu />
       <Menu label={`${tr.v3d.views}${views.length ? ` (${views.length})` : ''}`}>
         {views.length === 0 && <p className="text-slate-400">{tr.v3d.noViews}</p>}
         {views.map((v, i) => (
@@ -231,6 +237,43 @@ function Toolbar3D({ gpu }: { gpu: GpuInfo | null }) {
         </div>
       )}
     </div>
+  )
+}
+
+/** Seçili ekipmanı hizala / eşit dağıt / kopyala. */
+function ArrangeMenu() {
+  const nodes = useStore((st) => st.nodes)
+  const setLayout = useStore((st) => st.setLayout3d)
+  const duplicate = useStore((st) => st.duplicateSelected3d)
+  const sel = nodes.filter((n) => n.selected && n.data.yerlesim3d)
+  const boxesOfSel = () => {
+    const pn = toProjectNodes(sel)
+    return boxesOf(pn)
+  }
+  const align = (m: AlignMode) => setLayout(alignPatches(boxesOfSel(), m))
+  const dist = (a: 'x' | 'z') => setLayout(distributePatches(boxesOfSel(), a))
+  const b = `${btn} w-full text-left disabled:opacity-40`
+  const A = tr.v3d.arr
+  return (
+    <Menu label={A.title}>
+      <p className="text-slate-500">{A.selected(sel.length)}</p>
+      <div className="grid grid-cols-2 gap-1">
+        {(['left', 'right', 'top', 'bottom', 'centerX', 'centerZ'] as const).map((m) => (
+          <button key={m} type="button" className={b} disabled={sel.length < 2} onClick={() => align(m)}>
+            {A[m]}
+          </button>
+        ))}
+        <button type="button" className={b} disabled={sel.length < 3} onClick={() => dist('x')}>
+          {A.distX}
+        </button>
+        <button type="button" className={b} disabled={sel.length < 3} onClick={() => dist('z')}>
+          {A.distZ}
+        </button>
+      </div>
+      <button type="button" className={b} disabled={sel.length < 1} onClick={() => duplicate()}>
+        ⧉ {A.duplicate} (Ctrl+D)
+      </button>
+    </Menu>
   )
 }
 
@@ -509,6 +552,8 @@ export function View3D() {
   const colorMode = use3dStore((s) => s.colorMode)
   const quality = use3dStore((s) => s.quality)
   const measure = use3dStore((s) => s.measure)
+  const walk = use3dStore((s) => s.walk)
+  const marquee = use3dStore((s) => s.marquee)
   const [ok] = useState(webglOk)
   const [gpu] = useState<GpuInfo | null>(detectGpu)
 
@@ -603,6 +648,18 @@ export function View3D() {
           <EdgeTools data={data} />
           <Legend3D data={data} />
           {overlapCount > 0 && <div className="pointer-events-none absolute bottom-16 right-2 z-10 rounded bg-red-600 px-2 py-0.5 text-[11px] font-semibold text-white">⚠ {tr.v3d.overlap}: {overlapCount}</div>}
+          {walk && (
+            <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3 rounded bg-slate-900/85 px-3 py-1.5 text-xs text-white shadow">
+              <span>🚶 {tr.v3d.walkHud}</span>
+              <button type="button" className="rounded border border-white/40 px-2 py-0.5 hover:bg-white/10" onClick={() => use3dStore.getState().setWalk(false)}>
+                {tr.v3d.walkExit} (Esc)
+              </button>
+            </div>
+          )}
+          {marquee && host && (() => {
+            const r = host.getBoundingClientRect()
+            return <div className="pointer-events-none absolute z-20 border border-blue-500 bg-blue-500/10" style={{ left: Math.min(marquee.x0, marquee.x1) - r.left, top: Math.min(marquee.y0, marquee.y1) - r.top, width: Math.abs(marquee.x1 - marquee.x0), height: Math.abs(marquee.y1 - marquee.y0) }} />
+          })()}
           {measure && <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded bg-sky-600 px-2 py-0.5 text-xs text-white">{tr.v3d.measureHint}</div>}
           {nodes.length === 0 && (
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">

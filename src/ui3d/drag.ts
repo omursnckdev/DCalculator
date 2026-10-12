@@ -2,7 +2,8 @@ import * as THREE from 'three'
 import { alignGuides, boxOf, roomAt, snap } from '../layout3d/geometry'
 import type { Box } from '../layout3d/geometry'
 import { dimsOf } from '../layout3d/dims'
-import { toProjectNodes } from '../model/project'
+import { followersOf } from '../layout3d/autoLayout'
+import { toProjectEdges, toProjectNodes } from '../model/project'
 import type { Nokta3D, Oda3D, ProjectEdge } from '../model/types'
 import { useStore } from '../store/useStore'
 import { use3dStore } from './use3dStore'
@@ -13,6 +14,9 @@ type Drag =
   | { kind: 'wp'; edgeId: string; index: number; y: number; pts: Nokta3D[] }
 
 export const drag: { current: Drag | null; last: { x: number; z: number } } = { current: null, last: { x: 0, z: 0 } }
+
+/** Seçim kutusu (zeminde Shift+sürükle) durumu. */
+export const marq: { active: boolean; x0: number; y0: number } = { active: false, x0: 0, y0: 0 }
 
 const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
 const hit = new THREE.Vector3()
@@ -51,10 +55,15 @@ export function beginNodeDrag(id: string, ground: { x: number; z: number } | nul
     setSelection([id])
   }
   if (!ground) return
-  const nodes = useStore.getState().nodes
+  const st = useStore.getState()
+  const nodes = st.nodes
   const ids = [...sel]
+  // Ana ekipmanla birlikte taşınan küçük elemanlar (kesici, ölçü): bağlı oldukları ekipman seçiliyse onlar da gelir.
+  const follow = followersOf({ nodes: toProjectNodes(nodes), edges: toProjectEdges(st.edges) })
+  for (const id of [...sel]) for (const f of follow.get(id) ?? []) if (!sel.has(f)) ids.push(f)
   const start: Record<string, { x: number; z: number }> = {}
-  for (const n of nodes) if (sel.has(n.id) && n.data.yerlesim3d) start[n.id] = { x: n.data.yerlesim3d.x, z: n.data.yerlesim3d.z }
+  const moving = new Set(ids)
+  for (const n of nodes) if (moving.has(n.id) && n.data.yerlesim3d) start[n.id] = { x: n.data.yerlesim3d.x, z: n.data.yerlesim3d.z }
   drag.current = { kind: 'nodes', ids: ids.filter((i) => start[i]), start, startGround: ground, primary: id, grab }
 }
 

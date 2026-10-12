@@ -6,7 +6,7 @@ import * as THREE from 'three'
 import { bounds } from '../layout3d/geometry'
 import { routePoints } from '../layout3d/route'
 import { useStore } from '../store/useStore'
-import { beginNodeDrag, drag, endDrag, groundFromRay, moveDrag, rotateSelected, selectedIds, setSelection } from './drag'
+import { beginNodeDrag, drag, endDrag, groundFromRay, marq, moveDrag, rotateSelected, selectedIds, setSelection } from './drag'
 import { registerCamGetter, registerCapture, registerPicker, rememberCapture } from './capture'
 import { useScene } from './sceneData'
 import { use3dStore } from './use3dStore'
@@ -64,6 +64,8 @@ export function Controllers() {
         const r = gl.domElement.getBoundingClientRect()
         return { x: r.left + ((m.x + 1) / 2) * r.width, y: r.top + ((1 - m.y) / 2) * r.height }
       },
+      marqState: () => ({ ...marq }),
+      camPos: () => ({ x: camera.position.x, y: camera.position.y, z: camera.position.z, ry: camera.rotation.y }),
       stats: () => {
         gl.render(scene, camera)
         return { calls: gl.info.render.calls, triangles: gl.info.render.triangles, geometries: gl.info.memory.geometries, textures: gl.info.memory.textures, programs: gl.info.programs?.length ?? 0 }
@@ -172,6 +174,11 @@ export function Controllers() {
       return groundFromRay(ray.ray, height)
     }
     const onMove = (e: PointerEvent) => {
+      if (marq.active) {
+        if (ctl) ctl.enabled = false
+        use3dStore.getState().setMarquee({ x0: marq.x0, y0: marq.y0, x1: e.clientX, y1: e.clientY })
+        return
+      }
       const d = drag.current
       const g = groundOf(e, d?.kind === 'wp' ? d.y : 0)
       if (g) drag.last = g
@@ -181,7 +188,28 @@ export function Controllers() {
       moveDrag(g, [...s.boxById.values()], s.rooms)
       invalidate()
     }
-    const onUp = () => {
+    const onUp = (e: PointerEvent) => {
+      if (marq.active) {
+        marq.active = false
+        use3dStore.getState().setMarquee(null)
+        if (ctl) ctl.enabled = true
+        const r = el.getBoundingClientRect()
+        const xs = [marq.x0, e.clientX].sort((a, b) => a - b)
+        const ys = [marq.y0, e.clientY].sort((a, b) => a - b)
+        if (xs[1] - xs[0] > 4 || ys[1] - ys[0] > 4) {
+          const v = new THREE.Vector3()
+          const ids: string[] = []
+          for (const b of scRef.current.boxById.values()) {
+            v.set(b.x, b.elev + b.h / 2, b.z).project(camera)
+            const px = r.left + ((v.x + 1) / 2) * r.width
+            const py = r.top + ((1 - v.y) / 2) * r.height
+            if (v.z < 1 && px >= xs[0] && px <= xs[1] && py >= ys[0] && py <= ys[1]) ids.push(b.id)
+          }
+          setSelection(e.ctrlKey ? [...new Set([...selectedIds(), ...ids])] : ids)
+          invalidate()
+        }
+        return
+      }
       if (drag.current && !(drag.current.kind === 'nodes' && drag.current.grab)) {
         endDrag()
         if (ctl) ctl.enabled = true
@@ -211,9 +239,20 @@ export function Controllers() {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return
-      if (e.ctrlKey || e.metaKey || e.altKey) return
       const st = use3dStore.getState()
       const k = e.key.toLowerCase()
+      if ((e.ctrlKey || e.metaKey) && k === 'd') {
+        e.preventDefault()
+        if (!st.walk) useStore.getState().duplicateSelected3d()
+        invalidate()
+        return
+      }
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      if (k === 'y') {
+        st.setWalk(!st.walk)
+        return
+      }
+      if (st.walk) return // yürürken diğer kısayollar kapalı (Esc ve hareket tuşları Walk'ta)
       if (k === 'r') rotateSelected(e.shiftKey ? -90 : 90)
       else if (k === 'h') st.setPrefs({ hideWalls: !st.hideWalls })
       else if (k === 'f') {
@@ -260,7 +299,17 @@ export function Ground() {
   }
   return (
     <>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} onClick={onClick} onPointerDown={(e) => { if (measure && e.button === 0) use3dStore.getState().addMeasurePt([e.point.x, e.point.z]) }}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} onClick={onClick} onPointerDown={(e) => {
+          if (e.button !== 0) return
+          if (measure) use3dStore.getState().addMeasurePt([e.point.x, e.point.z])
+          else if ((e.shiftKey || e.ctrlKey) && !use3dStore.getState().walk) {
+            // Zeminde Shift/Ctrl+sürükle: seçim kutusu (kamera dönmesin)
+            marq.active = true
+            marq.x0 = e.nativeEvent.clientX
+            marq.y0 = e.nativeEvent.clientY
+            use3dStore.setState({ marquee: { x0: marq.x0, y0: marq.y0, x1: marq.x0, y1: marq.y0 } })
+          }
+        }}>
         <planeGeometry args={[600, 600]} />
         <meshBasicMaterial visible={false} />
       </mesh>
