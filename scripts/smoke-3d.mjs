@@ -80,6 +80,16 @@ await page.getByRole('button', { name: /Bakım analizi/ }).click()
 await page.waitForTimeout(4000)
 check('bakım analizi sonucu geldi', (await page.locator('text=/Bakım sürerken/').count()) === 1)
 
+// Hat tıklama (birleştirilmiş çizgilerden segment → hat eşlemesi; yalnız dev sunucuda __v3d vardır)
+await page.getByRole('button', { name: 'Üst (plan)', exact: true }).click()
+await page.waitForTimeout(1500)
+const mid = await page.evaluate(() => window.__v3d?.cableMid?.('g>tx'))
+if (mid) {
+  await page.mouse.click(mid.x, mid.y)
+  await page.waitForTimeout(1000)
+  check('hat tıklayınca seçiliyor (3D güzergâh araçları)', (await page.locator('text=/Uzunluk kaynağı/').count()) > 0)
+}
+
 // Geri al
 await page.keyboard.press('Control+z')
 await page.waitForTimeout(500)

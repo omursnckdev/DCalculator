@@ -20,10 +20,11 @@ interface Prefs {
   showHeat: boolean
   showCables: boolean
   showLabels: boolean
+  quality: 'dusuk' | 'normal' | 'yuksek'
 }
 
 const KEY = 'dcalculator:view3d'
-const DEFAULTS: Prefs = { colorMode: 'tur', snapStep: 0.1, hideWalls: false, showHeat: true, showCables: true, showLabels: false }
+const DEFAULTS: Prefs = { colorMode: 'tur', snapStep: 0.1, hideWalls: false, showHeat: true, showCables: true, showLabels: false, quality: 'normal' }
 
 function loadPrefs(): Prefs {
   try {
@@ -35,6 +36,7 @@ function loadPrefs(): Prefs {
       showHeat: typeof raw.showHeat === 'boolean' ? raw.showHeat : DEFAULTS.showHeat,
       showCables: typeof raw.showCables === 'boolean' ? raw.showCables : DEFAULTS.showCables,
       showLabels: typeof raw.showLabels === 'boolean' ? raw.showLabels : DEFAULTS.showLabels,
+      quality: raw.quality === 'dusuk' || raw.quality === 'yuksek' ? raw.quality : 'normal',
     }
   } catch {
     return DEFAULTS
@@ -73,7 +75,7 @@ export const use3dStore = create<View3DState>((set, get) => ({
     set(p)
     const s = get()
     try {
-      localStorage.setItem(KEY, JSON.stringify({ colorMode: s.colorMode, snapStep: s.snapStep, hideWalls: s.hideWalls, showHeat: s.showHeat, showCables: s.showCables, showLabels: s.showLabels }))
+      localStorage.setItem(KEY, JSON.stringify({ colorMode: s.colorMode, snapStep: s.snapStep, hideWalls: s.hideWalls, showHeat: s.showHeat, showCables: s.showCables, showLabels: s.showLabels, quality: s.quality }))
     } catch {
       /* depolama kapalı */
     }

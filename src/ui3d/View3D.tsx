@@ -6,7 +6,7 @@ import { runInWorker } from '../ui/useWorker'
 import { useBaseModel } from '../store/useModel'
 import { fmtNum } from '../ui/status'
 import { useAnalysis } from '../store/useAnalysis'
-import { COLOR_MODES, heatKwOf } from '../layout3d/colors'
+import { COLOR_MODES, DEAD_HEX, FAILED_HEX, SHED_HEX, STATUS_HEX, groupHex, heatKwOf } from '../layout3d/colors'
 import type { ColorMode } from '../layout3d/colors'
 import { boxesOf } from '../layout3d/autoLayout'
 import { findOverlaps } from '../layout3d/geometry'
@@ -23,6 +23,8 @@ import { EQUIPMENT_TYPES } from '../model/types'
 import type { EquipmentType } from '../model/types'
 import { snap } from '../layout3d/geometry'
 import { capture3d, currentCamera, pickGround } from './capture'
+import { detectGpu } from './gpu'
+import type { GpuInfo } from './gpu'
 import type { SceneData } from './sceneData'
 import { use3dStore } from './use3dStore'
 
@@ -40,7 +42,28 @@ function webglOk(): boolean {
 const btn = 'rounded border border-slate-300 bg-white px-2 py-1 text-xs hover:bg-slate-50'
 const btnOn = 'rounded border border-blue-600 bg-blue-600 px-2 py-1 text-xs text-white'
 
-function Toolbar3D() {
+/** Açılır menü: dışarı tıklayınca kapanır. */
+function Menu({ label, children, active = false }: { label: string; children: React.ReactNode; active?: boolean }) {
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    if (!open) return
+    const close = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('[data-menu]')) setOpen(false)
+    }
+    window.addEventListener('mousedown', close)
+    return () => window.removeEventListener('mousedown', close)
+  }, [open])
+  return (
+    <div className="relative" data-menu>
+      <button type="button" className={active || open ? btnOn : btn} onClick={() => setOpen(!open)} aria-expanded={open}>
+        {label} ▾
+      </button>
+      {open && <div className="absolute left-0 top-full z-30 mt-1 w-56 space-y-1.5 rounded border border-slate-300 bg-white p-2 text-xs shadow-lg">{children}</div>}
+    </div>
+  )
+}
+
+function Toolbar3D({ gpu }: { gpu: GpuInfo | null }) {
   const s = use3dStore()
   const nodes = useStore((st) => st.nodes)
   const views = useStore((st) => st.gorunumler3d)
@@ -50,25 +73,27 @@ function Toolbar3D() {
   const flowAnim = useStore((st) => st.flowAnim)
   const setFlowAnim = useStore((st) => st.setFlowAnim)
   const [q, setQ] = useState('')
+  const [help, setHelp] = useState(false)
   const matches = q.trim() ? nodes.filter((n) => `${n.data.ad} ${n.data.etiket} ${n.data.grup}`.toLocaleLowerCase('tr').includes(q.trim().toLocaleLowerCase('tr'))).slice(0, 8) : []
   const check = (label: string, on: boolean, set: (v: boolean) => void) => (
-    <label className="flex items-center gap-1 text-xs">
+    <label className="flex items-center gap-2">
       <input type="checkbox" checked={on} onChange={(e) => set(e.target.checked)} />
       {label}
     </label>
   )
+  const sel = 'rounded border border-slate-300 px-1 py-0.5 text-xs'
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-200 bg-white px-3 py-1.5">
-      <div className="flex gap-1">
+    <div className="relative flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-200 bg-white px-3 py-1.5">
+      <div className="flex overflow-hidden rounded border border-slate-300">
         {(['fit', 'front', 'side', 'top', 'persp'] as const).map((v) => (
-          <button key={v} type="button" className={btn} onClick={() => s.requestView(v)}>
+          <button key={v} type="button" className="border-r border-slate-200 bg-white px-2 py-1 text-xs last:border-r-0 hover:bg-slate-50" onClick={() => s.requestView(v)}>
             {tr.v3d[v]}
           </button>
         ))}
       </div>
       <label className="flex items-center gap-1 text-xs">
         {tr.v3d.color}
-        <select className="rounded border border-slate-300 px-1 py-0.5" value={s.colorMode} onChange={(e) => s.setPrefs({ colorMode: e.target.value as ColorMode })}>
+        <select className={sel} value={s.colorMode} onChange={(e) => s.setPrefs({ colorMode: e.target.value as ColorMode })}>
           {COLOR_MODES.map((m) => (
             <option key={m} value={m}>
               {tr.v3d.modes[m]}
@@ -76,44 +101,80 @@ function Toolbar3D() {
           ))}
         </select>
       </label>
-      {check(tr.v3d.walls, !s.hideWalls, (v) => s.setPrefs({ hideWalls: !v }))}
-      {check(tr.v3d.heat, s.showHeat, (v) => s.setPrefs({ showHeat: v }))}
-      {check(tr.v3d.cables, s.showCables, (v) => s.setPrefs({ showCables: v }))}
-      {check(tr.v3d.labels, s.showLabels, (v) => s.setPrefs({ showLabels: v }))}
-      {check(tr.v3d.flow, flowAnim, setFlowAnim)}
-      <label className="flex items-center gap-1 text-xs">
-        {tr.v3d.snap}
-        <select className="rounded border border-slate-300 px-1 py-0.5" value={s.snapStep} onChange={(e) => s.setPrefs({ snapStep: Number(e.target.value) })}>
-          <option value={0}>{tr.v3d.free}</option>
-          {[0.1, 0.25, 0.5, 1].map((v) => (
-            <option key={v} value={v}>
-              {v} m
-            </option>
-          ))}
-        </select>
-      </label>
-      <button type="button" className={s.measure ? btnOn : btn} onClick={() => s.setMeasure(!s.measure)} title={tr.v3d.measureHint}>
-        {tr.v3d.measure}
-      </button>
-      <button
-        type="button"
-        className={btn}
-        onClick={() => {
-          if (confirm(tr.v3d.autoConfirm)) autoLayout3d()
-        }}
-      >
-        {tr.v3d.auto}
-      </button>
-      <button
-        type="button"
-        className={btn}
-        onClick={() => {
-          const png = capture3d()
-          if (png) void fetch(png).then((r) => r.blob()).then((b) => saveBlob(b, `${useStore.getState().projectName || 'proje'}-3d.png`))
-        }}
-      >
-        {tr.v3d.png}
-      </button>
+      <Menu label={tr.v3d.show}>
+        {check(tr.v3d.walls, !s.hideWalls, (v) => s.setPrefs({ hideWalls: !v }))}
+        {check(tr.v3d.heat, s.showHeat, (v) => s.setPrefs({ showHeat: v }))}
+        {check(tr.v3d.cables, s.showCables, (v) => s.setPrefs({ showCables: v }))}
+        {check(tr.v3d.labels, s.showLabels, (v) => s.setPrefs({ showLabels: v }))}
+        {check(tr.v3d.flowLong, flowAnim, setFlowAnim)}
+        <label className="flex items-center justify-between gap-2">
+          {tr.v3d.snap}
+          <select className={sel} value={s.snapStep} onChange={(e) => s.setPrefs({ snapStep: Number(e.target.value) })}>
+            <option value={0}>{tr.v3d.free}</option>
+            {[0.1, 0.25, 0.5, 1].map((v) => (
+              <option key={v} value={v}>
+                {v} m
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center justify-between gap-2" title={tr.v3d.qualityHint}>
+          {tr.v3d.quality}
+          <select className={sel} value={s.quality} onChange={(e) => s.setPrefs({ quality: e.target.value as 'dusuk' | 'normal' | 'yuksek' })}>
+            <option value="dusuk">{tr.v3d.qLow}</option>
+            <option value="normal">{tr.v3d.qNormal}</option>
+            <option value="yuksek">{tr.v3d.qHigh}</option>
+          </select>
+        </label>
+      </Menu>
+      <div className="flex gap-1">
+        <button type="button" className={s.measure ? btnOn : btn} onClick={() => s.setMeasure(!s.measure)} title={tr.v3d.measureHint}>
+          📏 {tr.v3d.measure}
+        </button>
+        <button
+          type="button"
+          className={btn}
+          onClick={() => {
+            if (confirm(tr.v3d.autoConfirm)) autoLayout3d()
+          }}
+        >
+          {tr.v3d.auto}
+        </button>
+        <button
+          type="button"
+          className={btn}
+          onClick={() => {
+            const png = capture3d()
+            if (png) void fetch(png).then((r) => r.blob()).then((b) => saveBlob(b, `${useStore.getState().projectName || 'proje'}-3d.png`))
+          }}
+        >
+          {tr.v3d.png}
+        </button>
+      </div>
+      <Menu label={`${tr.v3d.views}${views.length ? ` (${views.length})` : ''}`}>
+        {views.length === 0 && <p className="text-slate-400">{tr.v3d.noViews}</p>}
+        {views.map((v, i) => (
+          <div key={v.ad} className="flex items-center justify-between gap-1">
+            <button type="button" className="min-w-0 flex-1 truncate rounded px-1.5 py-0.5 text-left hover:bg-slate-100" onClick={() => s.moveCamera(v.pos, v.target, v.ortho ? 'top' : 'persp')}>
+              {v.ad}
+            </button>
+            <button type="button" className="px-1 text-red-600" aria-label={tr.v3d.remove} onClick={() => removeView(i)}>
+              ×
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          className={`${btn} w-full`}
+          onClick={() => {
+            const c = currentCamera()
+            const ad = c && prompt(tr.v3d.viewName, `Görünüm ${views.length + 1}`)
+            if (c && ad?.trim()) saveView({ ad: ad.trim(), pos: c.pos, target: c.target, ortho: c.ortho })
+          }}
+        >
+          + {tr.v3d.saveView}
+        </button>
+      </Menu>
       <div className="relative">
         <input
           id="v3d-search"
@@ -142,29 +203,70 @@ function Toolbar3D() {
           </ul>
         )}
       </div>
-      <div className="flex items-center gap-1">
-        <span className="text-xs text-slate-500">{tr.v3d.views}:</span>
-        {views.map((v, i) => (
-          <span key={v.ad} className="flex items-center rounded border border-slate-300 bg-white text-xs">
-            <button type="button" className="px-1.5 py-0.5 hover:bg-slate-50" onClick={() => s.moveCamera(v.pos, v.target, v.ortho ? 'top' : 'persp')}>
-              {v.ad}
-            </button>
-            <button type="button" className="px-1 text-red-600" aria-label={tr.v3d.remove} onClick={() => removeView(i)}>
-              ×
-            </button>
+      <div className="ml-auto flex items-center gap-2">
+        {gpu?.software && (
+          <span className="rounded bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800" title={`${tr.v3d.softGpuHint} (${gpu.renderer})`}>
+            ⚠ {tr.v3d.softGpu}
           </span>
-        ))}
-        <button
-          type="button"
-          className={btn}
-          onClick={() => {
-            const c = currentCamera()
-            const ad = c && prompt(tr.v3d.viewName, `Görünüm ${views.length + 1}`)
-            if (c && ad?.trim()) saveView({ ad: ad.trim(), pos: c.pos, target: c.target, ortho: c.ortho })
-          }}
-        >
-          {tr.v3d.saveView}
+        )}
+        <button type="button" className={help ? btnOn : btn} onClick={() => setHelp(!help)} aria-label={tr.v3d.help} title={tr.v3d.help}>
+          ?
         </button>
+      </div>
+      {help && (
+        <div className="absolute right-3 top-full z-30 mt-1 w-96 max-w-[90vw] rounded border border-slate-300 bg-white p-3 text-xs shadow-lg">
+          <h4 className="mb-1 text-sm font-semibold">{tr.v3d.helpTitle}</h4>
+          <ul className="mb-2 grid grid-cols-2 gap-x-3 gap-y-0.5 text-slate-700">
+            {tr.v3d.keys.map(([k, v]) => (
+              <li key={k}>
+                <kbd className="rounded border border-slate-300 bg-slate-50 px-1">{k}</kbd> {v}
+              </li>
+            ))}
+          </ul>
+          <p className="mb-1 text-slate-500">{tr.v3d.approx}</p>
+          <p className={gpu?.software ? 'font-medium text-amber-700' : 'text-slate-600'}>
+            {tr.v3d.gpu}: {gpu ? gpu.renderer : tr.v3d.gpuUnknown}
+            {gpu?.software ? ` — ${tr.v3d.softGpuHint}` : ''}
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Renk modu açıklaması (lejant). */
+function Legend3D({ data }: { data: SceneData }) {
+  const mode = use3dStore((s) => s.colorMode)
+  const dot = (c: string, label: string) => (
+    <span key={label} className="inline-flex items-center gap-1">
+      <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: c }} />
+      {label}
+    </span>
+  )
+  const L = tr.v3d.legend
+  let body: React.ReactNode = null
+  if (mode === 'doluluk') body = [dot(STATUS_HEX.none, L.none), dot(STATUS_HEX.ok, L.ok), dot(STATUS_HEX.warning, L.warn), dot(STATUS_HEX.over, L.over)]
+  else if (mode === 'enerji') body = [dot('#16a34a', L.energized), dot(DEAD_HEX, L.dead)]
+  else if (mode === 'isi')
+    body = (
+      <span className="inline-flex items-center gap-1">
+        0
+        <span className="inline-block h-2.5 w-24 rounded-sm" style={{ background: 'linear-gradient(90deg,#2563eb,#22c55e,#facc15,#f97316,#dc2626)' }} />
+        {fmtNum(data.colorCtx.maxHeatKw, 0)} kW
+      </span>
+    )
+  else if (mode === 'grup') {
+    const groups = [...new Set(data.nodes.map((n) => n.grup).filter(Boolean))].slice(0, 8)
+    body = groups.length ? groups.map((g) => dot(groupHex(g), g)) : <span className="text-slate-400">{L.noGroup}</span>
+  } else body = <span className="text-slate-500">{L.byType}</span>
+  return (
+    <div className="pointer-events-none absolute bottom-2 right-2 z-10 max-w-md space-y-1 rounded bg-white/90 px-2 py-1 text-[11px] text-slate-700 shadow-sm">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">{body}</div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 border-t border-slate-200 pt-0.5">
+        {dot(FAILED_HEX, L.failed)}
+        {dot(SHED_HEX, L.shed)}
+        {dot('#22c55e', L.running)}
+        {dot('#facc15', L.battery)}
       </div>
     </div>
   )
@@ -405,7 +507,10 @@ export function View3D() {
   const ensure = useStore((s) => s.ensureLayout3d)
   const analysis = useAnalysis()
   const colorMode = use3dStore((s) => s.colorMode)
+  const quality = use3dStore((s) => s.quality)
+  const measure = use3dStore((s) => s.measure)
   const [ok] = useState(webglOk)
+  const [gpu] = useState<GpuInfo | null>(detectGpu)
 
   // Ctrl+K: ekipman aramasına odaklan.
   useEffect(() => {
@@ -473,7 +578,7 @@ export function View3D() {
     <div className="flex min-h-0 min-w-0 flex-1">
       <Palette onAdd={(t) => place(centerGround(host), t)} onAddCatalog={(c) => place(centerGround(host), c.type, c)} />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <Toolbar3D />
+        <Toolbar3D gpu={gpu} />
         <div
           ref={setHost}
           className="relative min-h-0 flex-1"
@@ -491,17 +596,19 @@ export function View3D() {
           }}
         >
           <Suspense fallback={<div className="p-4 text-sm text-slate-500">{tr.v3d.loading}</div>}>
-            <Scene3D data={data} frameloopAlways={flowAnim || !!simStep} />
+            <Scene3D data={data} dpr={quality === 'dusuk' ? 1 : quality === 'yuksek' ? Math.min(2, window.devicePixelRatio || 1) : Math.min(1.5, window.devicePixelRatio || 1)} />
           </Suspense>
           <ScenarioPanel3D />
           <RoomsPanel />
           <EdgeTools data={data} />
-          <div className="pointer-events-none absolute bottom-2 right-2 z-10 max-w-md rounded bg-white/85 px-2 py-1 text-[11px] text-slate-600">
-            {tr.v3d.hint}
-            {use3dStore.getState().measure ? ` · ${tr.v3d.measureHint}` : ''}
-            {overlapCount > 0 && <div className="font-semibold text-red-600">⚠ {tr.v3d.overlap}: {overlapCount}</div>}
-            <div>{tr.v3d.approx}</div>
-          </div>
+          <Legend3D data={data} />
+          {overlapCount > 0 && <div className="pointer-events-none absolute bottom-16 right-2 z-10 rounded bg-red-600 px-2 py-0.5 text-[11px] font-semibold text-white">⚠ {tr.v3d.overlap}: {overlapCount}</div>}
+          {measure && <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded bg-sky-600 px-2 py-0.5 text-xs text-white">{tr.v3d.measureHint}</div>}
+          {nodes.length === 0 && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+              <div className="rounded-lg bg-white/90 px-6 py-4 text-center text-sm text-slate-600 shadow">{tr.v3d.empty}</div>
+            </div>
+          )}
         </div>
         <SimulationPanel />
       </div>

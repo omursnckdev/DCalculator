@@ -12,7 +12,8 @@ const FLOOR: Record<Oda3D['tur'], string> = { elektrik: '#fde68a', salon: '#bfdb
 
 function Heat({ room }: { room: Oda3D }) {
   const sc = useScene()
-  const tex = useMemo(() => {
+  // Kaynaklar (ısı/soğutma) ve konumları: yalnız bunlar değişince doku yeniden üretilir.
+  const src = useMemo(() => {
     const heat: { x: number; z: number; kw: number }[] = []
     const cool: { x: number; z: number; kw: number }[] = []
     let unitSum = 0
@@ -42,7 +43,14 @@ function Heat({ room }: { room: Oda3D }) {
     const cap = sc.analysis.cooling?.capacityKw
     const scale = cap !== undefined && unitSum > 0 ? Math.min(1.2, Math.max(0, cap / unitSum)) : 1
     const uniform = cap !== undefined ? Math.max(0, cap - inRoomAir * scale) : 0
-    const grid = heatGrid(room, heat, cool.map((c) => ({ ...c, kw: c.kw * scale })), 0.5, uniform)
+    return { heat, cool: cool.map((c) => ({ ...c, kw: c.kw * scale })), uniform }
+  }, [sc.nodes, sc.analysis, room])
+  const key = useMemo(
+    () => `${room.x},${room.z},${room.g},${room.d}|${sc.tempShift.toFixed(2)}|${src.uniform.toFixed(1)}|${src.heat.map((h) => `${h.x.toFixed(1)},${h.z.toFixed(1)},${h.kw.toFixed(1)}`).join(';')}|${src.cool.map((h) => `${h.x.toFixed(1)},${h.z.toFixed(1)},${h.kw.toFixed(1)}`).join(';')}`,
+    [src, room, sc.tempShift],
+  )
+  const tex = useMemo(() => {
+    const grid = heatGrid(room, src.heat, src.cool, 0.5, src.uniform)
     const data = new Uint8Array(grid.nx * grid.nz * 4)
     const shift = sc.tempShift
     for (let iz = 0; iz < grid.nz; iz++) {
@@ -63,10 +71,11 @@ function Heat({ room }: { room: Oda3D }) {
     t.minFilter = THREE.LinearFilter
     t.needsUpdate = true
     return t
-  }, [sc.nodes, sc.analysis, sc.tempShift, room])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
   useEffect(() => () => tex.dispose(), [tex])
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[room.x + room.g / 2, 0.03, room.z + room.d / 2]}>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[room.x + room.g / 2, 0.03, room.z + room.d / 2]} raycast={() => null}>
       <planeGeometry args={[Math.ceil(room.g / 0.5) * 0.5, Math.ceil(room.d / 0.5) * 0.5]} />
       <meshBasicMaterial map={tex} transparent opacity={0.6} depthWrite={false} />
     </mesh>

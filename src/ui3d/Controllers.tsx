@@ -4,6 +4,7 @@ import type { ThreeEvent } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { bounds } from '../layout3d/geometry'
+import { routePoints } from '../layout3d/route'
 import { useStore } from '../store/useStore'
 import { beginNodeDrag, drag, endDrag, groundFromRay, moveDrag, rotateSelected, selectedIds, setSelection } from './drag'
 import { registerCamGetter, registerCapture, registerPicker, rememberCapture } from './capture'
@@ -41,9 +42,31 @@ export function Controllers() {
         const r = gl.domElement.getBoundingClientRect()
         return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height }
       },
+      /** Hat güzergâhının orta noktasının ekran konumu (tıklama testi için). */
+      cableMid: (edgeId: string) => {
+        const s = scRef.current
+        const e = s.edges.find((x) => x.id === edgeId)
+        const a = e && s.boxById.get(e.source)
+        const b = e && s.boxById.get(e.target)
+        if (!e || !a || !b) return null
+        const pts = routePoints(e, a, b, s.lanes.get(e.id) ?? 0)
+        // En uzun segmentin ortası
+        let best = 1
+        let bl = -1
+        for (let i = 1; i < pts.length; i++) {
+          const l = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y, pts[i].z - pts[i - 1].z)
+          if (l > bl) {
+            bl = l
+            best = i
+          }
+        }
+        const m = new THREE.Vector3((pts[best].x + pts[best - 1].x) / 2, (pts[best].y + pts[best - 1].y) / 2, (pts[best].z + pts[best - 1].z) / 2).project(camera)
+        const r = gl.domElement.getBoundingClientRect()
+        return { x: r.left + ((m.x + 1) / 2) * r.width, y: r.top + ((1 - m.y) / 2) * r.height }
+      },
       stats: () => {
         gl.render(scene, camera)
-        return { calls: gl.info.render.calls, triangles: gl.info.render.triangles, geometries: gl.info.memory.geometries, textures: gl.info.memory.textures }
+        return { calls: gl.info.render.calls, triangles: gl.info.render.triangles, geometries: gl.info.memory.geometries, textures: gl.info.memory.textures, programs: gl.info.programs?.length ?? 0 }
       },
     }
   }, [camera, gl, scene])

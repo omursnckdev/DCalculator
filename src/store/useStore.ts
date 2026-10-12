@@ -78,6 +78,7 @@ function loadView(): NodeView {
 
 /** `uzunlukKaynak === '3d'` hatların uzunluğunu güncel yerleşimden yeniden hesaplar (değişen yoksa aynı dizi döner). */
 function withLengths(nodes: EquipmentNode[], edges: LineEdge[]): LineEdge[] {
+  if (!edges.some((e) => e.data?.uzunlukKaynak === '3d')) return edges // sürüklemede ağır dönüşümü atla
   const pe = toProjectEdges(edges)
   const patches = lengthPatches(toProjectNodes(nodes), pe)
   if (Object.keys(patches).length === 0) return edges

@@ -2,14 +2,14 @@ import { Canvas, invalidate } from '@react-three/fiber'
 import { useEffect } from 'react'
 import { Cables } from './Cables'
 import { Controllers, Ground, Rig } from './Controllers'
-import { Equipment } from './Equipment'
+import { EquipmentLayer } from './Equipment'
 import { LabelLayer } from './LabelLayer'
 import { Rooms } from './Rooms'
 import { SceneCtx } from './sceneData'
 import type { SceneData } from './sceneData'
 
 /** R3F sahnesi (lazy yüklenir). Veri üst bileşenden (analiz bağlamı Canvas'a geçmediği için) prop olarak gelir. */
-export default function Scene3D({ data, frameloopAlways }: { data: SceneData; frameloopAlways: boolean }) {
+export default function Scene3D({ data, dpr }: { data: SceneData; dpr: number }) {
   // Veri değişince (talep üzerine çizim kipinde) yeniden çiz.
   useEffect(() => {
     invalidate()
@@ -17,10 +17,15 @@ export default function Scene3D({ data, frameloopAlways }: { data: SceneData; fr
   return (
     <Canvas
       className="h-full w-full"
-      frameloop={frameloopAlways ? 'always' : 'demand'}
-      dpr={[1, 1.5]}
-      gl={{ preserveDrawingBuffer: true, antialias: true }}
-      onPointerMissed={() => undefined}
+      // Talep üzerine çizim: animasyonlar (akış, nabız) anim.tick ile ~30 kare/sn'de sürülür.
+      frameloop="demand"
+      dpr={dpr}
+      // Hibrit (Intel + NVIDIA/AMD) dizüstülerde tarayıcıya güçlü ekran kartını seçmesini söyler.
+      gl={{ preserveDrawingBuffer: true, antialias: true, powerPreference: 'high-performance' }}
+      // Birleştirilmiş hat çizgileri (LineSegments2) için tıklama toleransı, piksel.
+      onCreated={({ raycaster }) => {
+        ;(raycaster.params as unknown as Record<string, unknown>).Line2 = { threshold: 6 }
+      }}
     >
       <SceneCtx.Provider value={data}>
         <color attach="background" args={['#f8fafc']} />
@@ -31,7 +36,7 @@ export default function Scene3D({ data, frameloopAlways }: { data: SceneData; fr
         <Controllers />
         <Ground />
         <Rooms />
-        {data.nodes.map((n) => (n.yerlesim3d ? <Equipment key={n.id} n={n} /> : null))}
+        <EquipmentLayer />
         <Cables />
         <LabelLayer />
       </SceneCtx.Provider>

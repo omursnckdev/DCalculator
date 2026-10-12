@@ -116,6 +116,8 @@ Ayrıntılı istek: [3D-MODEL-ISTEKLERI.md](3D-MODEL-ISTEKLERI.md); kararlar ve 
 - **Simülasyon 3D'de:** adım değiştikçe arıza, enerjisiz, atılan yük, çalışan jeneratör, batarya ve salon sıcaklığı güncellenir.
 - **Kablo güzergâhı:** ortogonal otomatik güzergâh, sürüklenebilir ara noktalar, "uzunluk 3D'den" seçeneği (kayıp ve gerilim düşümü gerçek mesafeyle).
 - **Çıktı:** 3D PNG ve PDF raporunda "3D yerleşim" bölümü.
+- **Performans ve arayüz:** birleştirilmiş geometri ve toplu hatlarla çizim çağrısı ≈ 3,7× azaldı (HDC02: 611 → 163), memo'lu ekipman, ~30 kare/sn animasyon, kalite seçeneği, GPU tespiti ve "Yazılım render" uyarısı, gruplanmış araç çubuğu, lejant, kısayol kartı (PLAN 77–78).
+- **3D'de senaryo:** Senaryo ve bakım paneli ile canlı simülasyon şeridi (PLAN 76).
 - **Sınırlar:** mimari, CFD, kablo tavası doluluğu, glTF yükleme, çok katlı yapı yok; ekipman boyutları tipik yer tutucudur.
 
 ### 4.11 Raporlama
@@ -141,7 +143,7 @@ Yazdırılabilir **PDF raporu** (özet, şema görüntüsü, kayıplar, doluluk,
 
 **Veri modeli:** şema v7; ayarlar `Project.ayarlar` içinde, eksik/bozuk alanlar varsayılana düşer; ekipman tipleri eklemelidir, eski dosyalar aynen açılır.
 
-**Test:** 24 test dosyası, 373 test (motor, kütüphane, şablonlar, HDC02 örneği, rapor, Excel, içe aktarma, depo). Yeni tipler için testler her alanın varsayılanını ve anahtar benzersizliğini zorunlu kılar.
+**Test:** 24 test dosyası, 374 test (motor, kütüphane, şablonlar, HDC02 örneği, rapor, Excel, içe aktarma, depo). Yeni tipler için testler her alanın varsayılanını ve anahtar benzersizliğini zorunlu kılar.
 
 ---
 

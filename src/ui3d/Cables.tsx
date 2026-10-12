@@ -1,8 +1,12 @@
 import { Line } from '@react-three/drei'
-import { invalidate, useFrame } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js'
+import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js'
+import { tick } from './anim'
 import { STATUS_HEX } from '../layout3d/colors'
 import { defaultRoute, routePoints } from '../layout3d/route'
 import type { Nokta3D, ProjectEdge } from '../model/types'
@@ -76,7 +80,7 @@ function FlowDots({ cables }: { cables: Cable[] }) {
     }
     m.count = k
     m.instanceMatrix.needsUpdate = true
-    invalidate()
+    tick()
   })
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, Math.max(1, live.length * per)]} frustumCulled={false}>
@@ -86,32 +90,79 @@ function FlowDots({ cables }: { cables: Cable[] }) {
   )
 }
 
+/**
+ * Hatlar: kalınlık kovası (1–5 px) ve kesik/sürekli ayrımına göre en fazla ~10 LineSegments2 çizimiyle birleştirilir
+ * (hat başına ayrı çizim yerine). Tıklanan segmentten hat bulunur.
+ */
+function CableBatches({ cables }: { cables: Cable[] }) {
+  const batches = useMemo(() => {
+    const map = new Map<string, { width: number; dashed: boolean; pos: number[]; col: number[]; edgeOf: string[] }>()
+    const c = new THREE.Color()
+    for (const cb of cables) {
+      const width = Math.min(5, Math.max(1, Math.round(cb.width)))
+      const dashed = cb.open || !cb.live
+      const key = `${width}|${dashed}`
+      let b = map.get(key)
+      if (!b) {
+        b = { width, dashed, pos: [], col: [], edgeOf: [] }
+        map.set(key, b)
+      }
+      c.set(cb.color)
+      for (let i = 1; i < cb.pts.length; i++) {
+        const a = cb.pts[i - 1]
+        const z = cb.pts[i]
+        b.pos.push(a.x, a.y, a.z, z.x, z.y, z.z)
+        b.col.push(c.r, c.g, c.b, c.r, c.g, c.b)
+        b.edgeOf.push(cb.edge.id)
+      }
+    }
+    return [...map.values()].map((b) => {
+      const geo = new LineSegmentsGeometry()
+      geo.setPositions(b.pos)
+      geo.setColors(b.col)
+      const mat = new LineMaterial({ linewidth: b.width, vertexColors: true, dashed: b.dashed, dashSize: 0.4, gapSize: 0.25 })
+      const obj = new LineSegments2(geo, mat)
+      if (b.dashed) obj.computeLineDistances()
+      return { obj, edgeOf: b.edgeOf }
+    })
+  }, [cables])
+  useEffect(
+    () => () => {
+      for (const b of batches) {
+        b.obj.geometry.dispose()
+        ;(b.obj.material as THREE.Material).dispose()
+      }
+    },
+    [batches],
+  )
+  return (
+    <>
+      {batches.map((b, i) => (
+        <primitive
+          key={i}
+          object={b.obj}
+          onClick={(e: ThreeEvent<MouseEvent>) => {
+            if (e.delta > 3) return
+            e.stopPropagation()
+            const id = b.edgeOf[e.faceIndex ?? -1]
+            if (id) setSelection([], id)
+          }}
+        />
+      ))}
+    </>
+  )
+}
+
 export function Cables() {
   const sc = useScene()
   const showCables = use3dStore((s) => s.showCables)
   const cables = useCables()
   if (!showCables) return null
+  const sel = cables.find((c) => c.edge.id === sc.selectedEdge)
   return (
     <>
-      {cables.map((c) => {
-        const selected = sc.selectedEdge === c.edge.id
-        return (
-          <Line
-            key={c.edge.id}
-            points={c.pts.map((p) => [p.x, p.y, p.z] as [number, number, number])}
-            color={selected ? '#7c3aed' : c.color}
-            lineWidth={selected ? c.width + 1.5 : c.width}
-            dashed={c.open || !c.live}
-            dashSize={0.4}
-            gapSize={0.25}
-            onClick={(e: ThreeEvent<MouseEvent>) => {
-              if (e.delta > 3) return
-              e.stopPropagation()
-              setSelection([], c.edge.id)
-            }}
-          />
-        )
-      })}
+      <CableBatches cables={cables} />
+      {sel && <Line points={sel.pts.map((p) => [p.x, p.y, p.z] as [number, number, number])} color="#7c3aed" lineWidth={sel.width + 2.5} raycast={() => null} />}
       {sc.flowAnim && <FlowDots cables={cables} />}
       <RouteEditor />
     </>

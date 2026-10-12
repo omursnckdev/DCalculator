@@ -50,7 +50,17 @@ const snapOf = (s: HistoryState): Snap => ({
   name: s.projectName,
 })
 
-const keyOf = (sn: Snap): string => JSON.stringify([sn.nodes, sn.edges, sn.scenarios, sn.ayarlar, sn.odalar3d, sn.name])
+/** Referansı değişmeyen büyük nesneler (ayarlar, senaryolar, odalar) bir kez dizgeleştirilir. */
+const jsonMemo = new WeakMap<object, string>()
+const js = (o: object): string => {
+  let v = jsonMemo.get(o)
+  if (v === undefined) {
+    v = JSON.stringify(o)
+    jsonMemo.set(o, v)
+  }
+  return v
+}
+const keyOf = (sn: Snap): string => `${JSON.stringify(sn.nodes)}|${JSON.stringify(sn.edges)}|${js(sn.scenarios)}|${js(sn.ayarlar)}|${js(sn.odalar3d)}|${sn.name}`
 
 function publish(): void {
   api?.setState({ history: { undo: undoStack.length, redo: redoStack.length } })
