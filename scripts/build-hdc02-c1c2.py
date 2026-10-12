@@ -104,10 +104,10 @@ for B, N, P in BLOKLAR:
     # ------------------------------------------------------------------ düğümler
     dugum(ref('grid'), 'sebeke', f'Şebeke 34,5 kV ({B})', params=dict(gerilim=34500, kisaDevreMva=1240, cikisSayisi=1),
           not_=f'Çizelge s.{kay}: TX.{B} primer kısa devre gücü 1240 MVA (34,5 kV). Şebeke bağlantı noktası ve OG kablo çizelgede yok (varsayım: tek besleme).')
-    dugum(ref('rmu'), 'rmu', f'RMU.{B}', alias=[f'RMU.{B}'], params=dict(gerilim=34500))
+    dugum(ref('rmu'), 'rmu', f'RMU.{B}', alias=[f'RMU.{B}'], params=dict(gerilim=34500),
+          not_='Varsayım: RMU çizelgede yok (plandan geldi); şebeke → RMU → TX bağlantısı varsayımdır.')
     dugum(ref('tx'), 'trafo', f'TX.{B}', alias=[f'TX.{B}'],
-          params=dict(primerGerilim=34500, sekonderGerilim=V),
-          varsayilan=dict(nominalKva=3150, uk=7, bostaKayip=3.6, yukKayip=27),
+          params=dict(primerGerilim=34500, sekonderGerilim=V, nominalKva=3150, uk=7, bostaKayip=3.6, yukKayip=27),
           not_=f'Çizelge s.{kay}: 3150 kVA, 34,5 kV/415 V, empedans %7, sekonder 5000 A ACB (LSIG, 70 kA). Varsayım: boşta/yük kaybı tipik değerlerdir (TX.PL1 ile aynı).')
     dugum(ref('gen1'), 'jenerator', f'GEN.{B}.1', alias=[f'GEN.{B}.1'], params=dict(gerilim=V),
           varsayilan=dict(nominalKva=1800, pf=0.8),
@@ -122,7 +122,8 @@ for B, N, P in BLOKLAR:
           not_=f'Çizelge s.{pano}: MSB.{B} 415 V, ACB 5000 A, Icu 70 kA.')
     for i, kw in ((1, 850), (2, 850), (3, 200)):
         dugum(ref(f'ups{i}'), 'ups', f'UPS.{B}.{i}', alias=[f'UPS.{B}.{i}'], params=dict(girisGerilim=V, cikisGerilim=V),
-              varsayilan=dict(nominalKw=kw, nominalKva=round(kw / 0.9)))
+              varsayilan=dict(nominalKw=kw, nominalKva=round(kw / 0.9)),
+              not_=f'Varsayım: UPS gücü çizelgede yok ({kw} kW; plandaki değer/UPS.PL1 örneği).')
     dugum(ref('udp1'), 'mdb', f'UDP.{B}.1', alias=[f'UDP.{B}.1'], params=dict(gerilim=V, nominalAkim=2500),
           not_=f'Çizelge s.{pano}: UDP.{B}.1 415 V, ACB 2500 A, Icu 70 kA.')
     dugum(ref('udp2'), 'mdb', f'UDP.{B}.2', alias=[f'UDP.{B}.2'], params=dict(gerilim=V, nominalAkim=400),
@@ -172,8 +173,8 @@ for B, N, P in BLOKLAR:
     hat(f'BB/GEN.{B}', 'busbar', ref('sync'), ref('msb'), 100, f'{ozet}', akim=5000, aciklama='5000 A BUSBAR (5P)',
         k=kesici(f'ACB GEN.{B} çıkış (5000 A)', 'ACB', 5000, 70, veri='varsayim',
                  not_=f'Varsayım: BB/GEN.{B} başındaki ACB çizelgede yok; bara anma akımı (5000 A) alındı.'),
-        hk=kesici(f'ACB MSB.{B} jeneratör girişi', 'ACB', 5000, 70, kutup='3P', veri='varsayim',
-                  not_=f'Varsayım: MSB.{B} jeneratör giriş ACB\'si çizelgede yok; MSB anma akımı (5000 A) alındı.'))
+        hk=kesici(f'ACB MSB.{B} jeneratör girişi', 'ACB', 5000, 70, kutup='3P', veri='varsayim', durum='acik', otomatik='otomatik',
+                  not_=f'Varsayım: MSB.{B} jeneratör giriş ACB\'si çizelgede yok; MSB anma akımı (5000 A) alındı. Normalde AÇIK, şebeke/trafo kaybında otomatik kapanır (jeneratör ile trafo paralel çalışmaz; çizelgenin kısa devre hesabı yalnız trafoyu içerir).'))
 
     # ------------------------------------------------------------------ MSB çıkışları
     BYP = dict(durum='acik', otomatik='otomatik')
@@ -232,19 +233,19 @@ for B, N, P in BLOKLAR:
     for i, plx in ((1, 'PL1'), (2, 'PL2')):
         g = f'catcher-{B}-{plx}'
         hat(f'BB/{B}-Sec{i + 1}', 'busbar', ref('tf'), ref(f'to{i}'), 64 if i == 1 else 67, f'{bar}', akim=2500, grup=g, aciklama='2500 A BUSBAR (TF-1 → TO-%d)' % i)
-        hat(f'Cbl_SM-{4 + i} ({B})', 'kablo', ref(f'to{i}'), f'CRP.{plx}.1:c{N}', 10, f'{kab}', grup=g, aciklama=f'10x(4x1000) mm² Cu XLPE tek damar (TO-{i} → CRP.{plx}.1)',
-            kablo_=dict(paralel=10, damar=4, kesit=1000, metin='10x(4x1000) mm² Cu XLPE', akim=2500, r=0.0018, x=0.007))
+        hat(f'Cbl_SM-{4 + i} ({B})', 'kablo', ref(f'to{i}'), f'CRP.{plx}.1:c{N}', 10, f'{kab}', grup=g, aciklama=f'tek damar, ayrı 1000 mm² CPC; akım kapasitesi = tap-off ACB 2500 A (kablo kapasitesi çizelgede yok) (TO-{i} → CRP.{plx}.1)',
+            kablo_=dict(paralel=10, damar=4, kesit=1000, pe=1000, metin='10x(4x1000)+1000 mm² Cu XLPE', akim=2500, r=0.0018, x=0.007))
 
 # ---------------------------------------------------------------------------------- catcher tarafı (PL1 / PL2 CRP panoları)
 # CRP.PLx.1: C1 ve C2 catcher barasından ("Catcher 01/02" ACB'leri) beslenir; çıkışı BB/CRP.PLx.1 ile STS B girişlerine gider.
 # Şema dışı yer tutucu kaynaklar ve 0 kW "catcher barası" yükleri bu gerçek bağlantıyla değiştirilir.
 for plx in ('PL1', 'PL2'):
     dugum(f'CRP.{plx}.1', 'mdb', f'CRP.{plx}.1', alias=[f'CRP.{plx}.1'], olustur=False)
-    dugum(f'CRP.{plx}.1:in', 'kesici', f'ACB CRP.{plx}.1 girişi', alias=[f'ACB CRP.{plx}.1 girişi'], olustur=False)
+    dugum(f'CRP.{plx}.1:in', 'kesici', f'ACB CRP.{plx}.1 girişi', alias=[f'ACB CRP.{plx}.1 girişi'], olustur=False, params=dict(kesmeKa=70))
     dugum(f'CRP.{plx}.1:bus', 'bara', f'BB/CRP.{plx}.1 (catcher barası)', alias=[f'BB/CRP.{plx}.1 (catcher barası)'], olustur=False)
     for no in (1, 2):
         dugum(f'CRP.{plx}.1:c{no}', 'kesici', f'ACB CRP.{plx}.1 → Catcher 0{no}', alias=[f'ACB CRP.{plx}.1 → Catcher 0{no}'], olustur=False,
-              params=dict(montaj='alt'))  # artık giriş şalteri: 3D'de CRP panosuna oturur
+              params=dict(montaj='alt', kesmeKa=70))  # artık giriş şalteri: 3D'de CRP panosuna oturur
     g = f'crp-{plx}'
     for no in (1, 2):
         hat(f'CRP.{plx}.1 ← Catcher 0{no}', 'busbar', f'CRP.{plx}.1:c{no}', f'CRP.{plx}.1', 2, 'varsayim', akim=2500, veri='varsayim', grup=g,
@@ -408,8 +409,8 @@ def kontrol(pdf_yolu):
                     grid = next(x for x in dugumler if x['ref'] == f'{blok}:grid')
                     tx = next(x for x in dugumler if x['ref'] == f'{blok}:tx')
                     esit(blok, ad, 'primer kısa devre gücü MVA', m.group(2), grid['params']['kisaDevreMva'])
-                    esit(blok, ad, 'trafo kVA', m.group(3), tx['varsayilan']['nominalKva'])
-                    esit(blok, ad, 'trafo empedansı %', m.group(4), tx['varsayilan']['uk'])
+                    esit(blok, ad, 'trafo kVA', m.group(3), tx['params']['nominalKva'])
+                    esit(blok, ad, 'trafo empedansı %', m.group(4), tx['params']['uk'])
                     esit(blok, ad, f'{anahtar} anma akımı', m.group(5), kk['akim'])
                     esit(blok, ad, f'{anahtar} Icu', m.group(6), kk['icu'])
             else:

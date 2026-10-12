@@ -25,7 +25,8 @@
    ],
    "params": {
     "gerilim": 34500
-   }
+   },
+   "not": "Varsayım: RMU çizelgede yok (plandan geldi); şebeke → RMU → TX bağlantısı varsayımdır."
   },
   {
    "ref": "C1:tx",
@@ -37,9 +38,7 @@
    ],
    "params": {
     "primerGerilim": 34500,
-    "sekonderGerilim": 415
-   },
-   "varsayilan": {
+    "sekonderGerilim": 415,
     "nominalKva": 3150,
     "uk": 7,
     "bostaKayip": 3.6,
@@ -128,7 +127,8 @@
    "varsayilan": {
     "nominalKw": 850,
     "nominalKva": 944
-   }
+   },
+   "not": "Varsayım: UPS gücü çizelgede yok (850 kW; plandaki değer/UPS.PL1 örneği)."
   },
   {
    "ref": "C1:ups2",
@@ -145,7 +145,8 @@
    "varsayilan": {
     "nominalKw": 850,
     "nominalKva": 944
-   }
+   },
+   "not": "Varsayım: UPS gücü çizelgede yok (850 kW; plandaki değer/UPS.PL1 örneği)."
   },
   {
    "ref": "C1:ups3",
@@ -162,7 +163,8 @@
    "varsayilan": {
     "nominalKw": 200,
     "nominalKva": 222
-   }
+   },
+   "not": "Varsayım: UPS gücü çizelgede yok (200 kW; plandaki değer/UPS.PL1 örneği)."
   },
   {
    "ref": "C1:udp1",
@@ -516,7 +518,8 @@
    ],
    "params": {
     "gerilim": 34500
-   }
+   },
+   "not": "Varsayım: RMU çizelgede yok (plandan geldi); şebeke → RMU → TX bağlantısı varsayımdır."
   },
   {
    "ref": "C2:tx",
@@ -528,9 +531,7 @@
    ],
    "params": {
     "primerGerilim": 34500,
-    "sekonderGerilim": 415
-   },
-   "varsayilan": {
+    "sekonderGerilim": 415,
     "nominalKva": 3150,
     "uk": 7,
     "bostaKayip": 3.6,
@@ -619,7 +620,8 @@
    "varsayilan": {
     "nominalKw": 850,
     "nominalKva": 944
-   }
+   },
+   "not": "Varsayım: UPS gücü çizelgede yok (850 kW; plandaki değer/UPS.PL1 örneği)."
   },
   {
    "ref": "C2:ups2",
@@ -636,7 +638,8 @@
    "varsayilan": {
     "nominalKw": 850,
     "nominalKva": 944
-   }
+   },
+   "not": "Varsayım: UPS gücü çizelgede yok (850 kW; plandaki değer/UPS.PL1 örneği)."
   },
   {
    "ref": "C2:ups3",
@@ -653,7 +656,8 @@
    "varsayilan": {
     "nominalKw": 200,
     "nominalKva": 222
-   }
+   },
+   "not": "Varsayım: UPS gücü çizelgede yok (200 kW; plandaki değer/UPS.PL1 örneği)."
   },
   {
    "ref": "C2:udp1",
@@ -1001,7 +1005,10 @@
    "olustur": false,
    "alias": [
     "ACB CRP.PL1.1 girişi"
-   ]
+   ],
+   "params": {
+    "kesmeKa": 70
+   }
   },
   {
    "ref": "CRP.PL1.1:bus",
@@ -1021,7 +1028,8 @@
     "ACB CRP.PL1.1 → Catcher 01"
    ],
    "params": {
-    "montaj": "alt"
+    "montaj": "alt",
+    "kesmeKa": 70
    }
   },
   {
@@ -1033,7 +1041,8 @@
     "ACB CRP.PL1.1 → Catcher 02"
    ],
    "params": {
-    "montaj": "alt"
+    "montaj": "alt",
+    "kesmeKa": 70
    }
   },
   {
@@ -1052,7 +1061,10 @@
    "olustur": false,
    "alias": [
     "ACB CRP.PL2.1 girişi"
-   ]
+   ],
+   "params": {
+    "kesmeKa": 70
+   }
   },
   {
    "ref": "CRP.PL2.1:bus",
@@ -1072,7 +1084,8 @@
     "ACB CRP.PL2.1 → Catcher 01"
    ],
    "params": {
-    "montaj": "alt"
+    "montaj": "alt",
+    "kesmeKa": 70
    }
   },
   {
@@ -1084,7 +1097,8 @@
     "ACB CRP.PL2.1 → Catcher 02"
    ],
    "params": {
-    "montaj": "alt"
+    "montaj": "alt",
+    "kesmeKa": 70
    }
   },
   {
@@ -1268,11 +1282,11 @@
     "akim": 5000,
     "icu": 70,
     "kutup": "3P",
-    "durum": "kapali",
-    "otomatik": "yok",
+    "durum": "acik",
+    "otomatik": "otomatik",
     "veri": "varsayim",
     "sayfa": "",
-    "not": "Varsayım: MSB.C1 jeneratör giriş ACB'si çizelgede yok; MSB anma akımı (5000 A) alındı."
+    "not": "Varsayım: MSB.C1 jeneratör giriş ACB'si çizelgede yok; MSB anma akımı (5000 A) alındı. Normalde AÇIK, şebeke/trafo kaybında otomatik kapanır (jeneratör ile trafo paralel çalışmaz; çizelgenin kısa devre hesabı yalnız trafoyu içerir)."
    },
    "aciklama": "5000 A BUSBAR (5P)"
   },
@@ -1877,13 +1891,14 @@
     "paralel": 10,
     "damar": 4,
     "kesit": 1000,
-    "metin": "10x(4x1000) mm² Cu XLPE",
+    "pe": 1000,
+    "metin": "10x(4x1000)+1000 mm² Cu XLPE",
     "akim": 2500,
     "r": 0.0018,
     "x": 0.007
    },
    "grup": "catcher-C1-PL1",
-   "aciklama": "10x(4x1000) mm² Cu XLPE tek damar (TO-1 → CRP.PL1.1)"
+   "aciklama": "tek damar, ayrı 1000 mm² CPC; akım kapasitesi = tap-off ACB 2500 A (kablo kapasitesi çizelgede yok) (TO-1 → CRP.PL1.1)"
   },
   {
    "ad": "BB/C1-Sec3",
@@ -1911,13 +1926,14 @@
     "paralel": 10,
     "damar": 4,
     "kesit": 1000,
-    "metin": "10x(4x1000) mm² Cu XLPE",
+    "pe": 1000,
+    "metin": "10x(4x1000)+1000 mm² Cu XLPE",
     "akim": 2500,
     "r": 0.0018,
     "x": 0.007
    },
    "grup": "catcher-C1-PL2",
-   "aciklama": "10x(4x1000) mm² Cu XLPE tek damar (TO-2 → CRP.PL2.1)"
+   "aciklama": "tek damar, ayrı 1000 mm² CPC; akım kapasitesi = tap-off ACB 2500 A (kablo kapasitesi çizelgede yok) (TO-2 → CRP.PL2.1)"
   },
   {
    "ad": "OG besleme (C2)",
@@ -2058,11 +2074,11 @@
     "akim": 5000,
     "icu": 70,
     "kutup": "3P",
-    "durum": "kapali",
-    "otomatik": "yok",
+    "durum": "acik",
+    "otomatik": "otomatik",
     "veri": "varsayim",
     "sayfa": "",
-    "not": "Varsayım: MSB.C2 jeneratör giriş ACB'si çizelgede yok; MSB anma akımı (5000 A) alındı."
+    "not": "Varsayım: MSB.C2 jeneratör giriş ACB'si çizelgede yok; MSB anma akımı (5000 A) alındı. Normalde AÇIK, şebeke/trafo kaybında otomatik kapanır (jeneratör ile trafo paralel çalışmaz; çizelgenin kısa devre hesabı yalnız trafoyu içerir)."
    },
    "aciklama": "5000 A BUSBAR (5P)"
   },
@@ -2667,13 +2683,14 @@
     "paralel": 10,
     "damar": 4,
     "kesit": 1000,
-    "metin": "10x(4x1000) mm² Cu XLPE",
+    "pe": 1000,
+    "metin": "10x(4x1000)+1000 mm² Cu XLPE",
     "akim": 2500,
     "r": 0.0018,
     "x": 0.007
    },
    "grup": "catcher-C2-PL1",
-   "aciklama": "10x(4x1000) mm² Cu XLPE tek damar (TO-1 → CRP.PL1.1)"
+   "aciklama": "tek damar, ayrı 1000 mm² CPC; akım kapasitesi = tap-off ACB 2500 A (kablo kapasitesi çizelgede yok) (TO-1 → CRP.PL1.1)"
   },
   {
    "ad": "BB/C2-Sec3",
@@ -2701,13 +2718,14 @@
     "paralel": 10,
     "damar": 4,
     "kesit": 1000,
-    "metin": "10x(4x1000) mm² Cu XLPE",
+    "pe": 1000,
+    "metin": "10x(4x1000)+1000 mm² Cu XLPE",
     "akim": 2500,
     "r": 0.0018,
     "x": 0.007
    },
    "grup": "catcher-C2-PL2",
-   "aciklama": "10x(4x1000) mm² Cu XLPE tek damar (TO-2 → CRP.PL2.1)"
+   "aciklama": "tek damar, ayrı 1000 mm² CPC; akım kapasitesi = tap-off ACB 2500 A (kablo kapasitesi çizelgede yok) (TO-2 → CRP.PL2.1)"
   },
   {
    "ad": "CRP.PL1.1 ← Catcher 01",

@@ -45,7 +45,7 @@ const ins = (m: M, id: string) => m.edges.filter((e) => e.target === id)
 
 /** Hata düzeyindeki bulgulardan çizelge verisinden kaynaklanan, beklenen iki kategori: UDB.x.3 (yük = 80 A = şalter, gerilim düşümü %3,6) ve MSB şalterlerinin
  *  kesme kapasitesi (çizelge 70 kA; motor jeneratör katkısını trafoyla paralel toplayıp 73,8 kA bulur, çizelgenin kendi hesabı yalnız trafo: 52,76 kA). */
-const BEKLENEN = /UDB\.C[12]\.3|kesme kapasitesi 70 kA/
+const BEKLENEN = /UDB\.C[12]\.3/
 const beklenmeyen = (a: ReturnType<typeof analyze>) => a.issues.filter((i) => i.severity === 'error' && !BEKLENEN.test(i.message))
 
 const base = userModel()
@@ -117,6 +117,9 @@ describe('hat çizelgesi: C1/C2 uygulaması', () => {
     const incomers = ins(after, msb.id).map((e) => after.nodes.find((n) => n.id === e.source)!)
     expect(incomers.map((n) => n.ad).sort()).toEqual(['ACB MSB.C1 jeneratör girişi', 'ACB MSB.C1 trafo girişi'])
     for (const n of incomers) expect(n.params).toMatchObject({ tip: 'ACB', nominalAkim: 5000, montaj: 'alt' })
+    // jeneratör girişi normalde açık, trafo kaybında otomatik kapanır; trafo girişi kapalı
+    expect(incomers.find((n) => n.ad.includes('jeneratör'))!.params).toMatchObject({ durum: 'acik', otomatik: 'otomatik' })
+    expect(incomers.find((n) => n.ad.includes('trafo'))!.params).toMatchObject({ durum: 'kapali' })
   })
 
   it('kablo hatları: ad, uzunluk, kesit açıklaması ve kapasite çizelgeye uyar', () => {
@@ -154,6 +157,20 @@ describe('hat çizelgesi: C1/C2 uygulaması', () => {
       const yuk = byAd(after, `Chiller Redundant Supply (${b})`)
       expect(a.nodes[yuk.id].energized).toBe(true)
     }
+  })
+
+  it('trafo parametreleri çizelgeden (eşleşen düğümde de): 3150 kVA, uk %7, 415 V; kısa devre kesme kapasitesini aşmaz', () => {
+    const tx = byAd(after, 'TX.C1')
+    expect(tx.params).toMatchObject({ nominalKva: 3150, uk: 7, sekonderGerilim: 415, primerGerilim: 34500 })
+    const a = analyze(after)
+    expect(a.issues.filter((i) => /kesme kapasitesi/.test(i.message))).toEqual([])
+  })
+
+  it('TX.C1 arızasında jeneratör girişi otomatik kapanır ve MSB.C1 enerjili kalır', () => {
+    const tx = byAd(after, 'TX.C1')
+    const a = analyze(after, undefined, { id: 's', ad: 's', failedNodes: [tx.id], edgeStates: {}, nodeStates: {} })
+    expect(a.nodes[byAd(after, 'MSB.C1').id].energized).toBe(true)
+    expect(a.nodes[byAd(after, 'UDP.C1.2').id].energized).toBe(true)
   })
 
   it('catcher: CRP.PL1.1 ve CRP.PL2.1 her iki bloktan beslenir; şema dışı yer tutucular kalkar', () => {
