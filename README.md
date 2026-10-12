@@ -1,7 +1,7 @@
 # DCalculator
 
 Veri merkezi güç zinciri ve ısıl yük ön tasarım aracı. Tarayıcıda çalışan, sunucusuz
-bir web uygulamasıdır. Kapsam, mimari ve yol haritası için bkz. [docs/PLAN.md](docs/PLAN.md).
+bir web uygulamasıdır. Kapsam, mimari ve yol haritası için bkz. [docs/PLAN.md](docs/PLAN.md); yapılanların tam özeti için [docs/YAPILANLAR.md](docs/YAPILANLAR.md).
 
 > Sonuçlar ön tasarım tahminidir; nihai mühendislik çalışmasının yerini tutmaz.
 
