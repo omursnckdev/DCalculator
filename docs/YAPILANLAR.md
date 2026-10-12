@@ -38,6 +38,7 @@ Hesap motoru (`src/engine`) saf TypeScript'tir; React'tan bağımsız ve testlid
 | **Faz K** | Jeneratör yakıt özerkliği, yük atma, sıralı yük alma ve gerilim çökmesi |
 | **Faz M** | Ekipman kataloğu ve Excel/CSV toplu içe aktarma |
 | **Faz L** | Dokümantasyon, tarayıcı doğrulaması, push |
+| **3D-14** | Yerleşik ekipman modellerinde ayrıntı (pano hücreleri, kuru tip trafo, UPS, jeneratör, RMU, chiller...) ve model galerisi |
 | **3D-13** | Duvar saydamlığı, sürükle-bırak ve tutamaçlı oda düzenleme, özel GLB ekipman modelleri |
 | **3D-12** | C1/C2 kablo çizelgesinden hat, bara ve şalter bağlantıları (hat çizelgesi içe aktarma, catcher bağlantısı) |
 | **3D-11** | DXF planı: gerçek ekipman blokları, yeni ekipman türleri, PL1→PL2 kopyası, ön yüz yönü |

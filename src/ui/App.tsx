@@ -21,10 +21,19 @@ import { Toolbar } from './Toolbar'
 
 // 3D paketi (three.js) yalnız 3D sekmesi açılınca yüklenir.
 const View3D = lazy(() => import('../ui3d/View3D'))
+const Gallery = lazy(() => import('../ui3d/Gallery'))
 
 type View = 'diagram' | 'table' | 'summary' | 'scenario' | 'redundancy' | 'reliability' | 'electrical' | 'energy' | 'view3d' | 'sim'
 
 export function App() {
+  // Model galerisi: #galeri adresinde yalnızca ekipman modelleri gösterilir (geliştirme/inceleme).
+  if (window.location.hash.startsWith('#galeri')) {
+    return (
+      <Suspense fallback={null}>
+        <Gallery />
+      </Suspense>
+    )
+  }
   const [view, setView] = useState<View>('diagram')
   const activeScenario = useStore((s) => s.scenarios.find((x) => x.id === s.activeScenarioId))
   const setActiveScenario = useStore((s) => s.setActiveScenario)

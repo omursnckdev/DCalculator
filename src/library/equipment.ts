@@ -141,9 +141,14 @@ const defs: EquipmentDef[] = [
       yukKayip: 22,
       isiKonum: 'elektrik',
       eddyOran: 10,
+      trafoTur: 'kuru',
     },
     fields: [
       n('nominalKva', A.nominalKva, 'kVA', { min: 0, step: 50 }),
+      { kind: 'select', key: 'trafoTur', label: A.trafoTur, options: [
+        { value: 'kuru', label: A.trafoKuru },
+        { value: 'yagli', label: A.trafoYagli },
+      ] },
       n('primerGerilim', A.primerGerilim, 'V', { min: 0 }),
       n('sekonderGerilim', A.sekonderGerilim, 'V', { min: 0 }),
       n('uk', A.uk, '%', { min: 0, step: 0.1 }),

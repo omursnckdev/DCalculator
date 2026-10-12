@@ -266,6 +266,20 @@ describe('ekipman şekilleri', () => {
     // kesici varyantları farklı model
     expect(partsOf('kesici', { g: 0.4, d: 0.16, y: 0.5 }, 1, 'ACB').length).not.toBe(partsOf('kesici', { g: 0.2, d: 0.12, y: 0.26 }, 1, 'MCCB').length)
   })
+  it('trafo: kuru tip (varsayılan) ve yağlı model ayrı; kuru tipte üç reçine bobin, yağlıda radyatör', () => {
+    const dm = { g: 2.5, d: 1.8, y: 2.5 }
+    const kuru = partsOf('trafo', dm, 1, 'kuru')
+    const yagli = partsOf('trafo', dm, 1, 'yagli')
+    expect(partsOf('trafo', dm, 1, '').length).toBe(kuru.length)
+    expect(kuru.length).not.toBe(yagli.length)
+    expect(kuru.filter((p) => p.kind === 'cyl' && p.tone === 'copper' && p.size[1] > dm.y * 0.4)).toHaveLength(3)
+  })
+  it('pano hücreleri türe göre farklı: giriş hücresinde kadran, ölçü hücresinde üç ölçü; ATS/STS ilk hücre kontrol', () => {
+    const msb = partsOf('mdb', { g: 4, d: 0.8, y: 2.2 }, 1)
+    expect(msb.filter((p) => p.kind === 'cyl' && p.tone === 'glass').length).toBeGreaterThanOrEqual(4) // kadranlar (giriş + ölçü hücreleri)
+    const sts = partsOf('sts', { g: 1.6, d: 0.8, y: 2 }, 1)
+    expect(sts.some((p) => p.tone === 'red' && p.kind === 'cyl')).toBe(true)
+  })
   it('rack sırasında kabin sayısı kadar gövde', () => {
     expect(partsOf('rack', { g: 6, d: 1.2, y: 2.2 }, 10).filter((q) => q.tone === 'dark' && q.size[1] === 2.2)).toHaveLength(10)
   })

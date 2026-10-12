@@ -180,7 +180,7 @@ export function EquipmentLayer() {
             // Plandan gelen dar dikdörtgende (ör. 0,8 m) en fazla 0,5 m'lik kabin sığar
             count={Math.max(1, Math.min(rackCount(n), Math.floor(b.g / 0.5)))}
             // Kesici türü + açık konum: modelde ON/OFF göstergesi ve kol konumu değişir.
-            variant={n.type === 'kesici' ? `${String(n.params.tip ?? 'ACB')}${r?.open ? '|acik' : ''}` : ''}
+            variant={n.type === 'kesici' ? `${String(n.params.tip ?? 'ACB')}${r?.open ? '|acik' : ''}` : n.type === 'trafo' ? String(n.params.trafoTur ?? 'kuru') : ''}
             color={nodeColor(n, r, sc.colorCtx)}
             selected={sc.selected.has(n.id)}
             overlap={sc.overlaps.has(n.id)}
