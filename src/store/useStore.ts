@@ -368,7 +368,7 @@ export const useStore = create<State>((set, get) => ({
     const s = get()
     const model = { nodes: toProjectNodes(s.nodes), edges: toProjectEdges(s.edges) }
     const d = planHatCizelgesi(model, spec, newId)
-    const degisti = d.addNodes.length + d.addEdges.length + d.removeNodeIds.length + d.removeEdgeIds.length + Object.keys(d.paramPatches).length
+    const degisti = d.addNodes.length + d.addEdges.length + d.removeNodeIds.length + d.removeEdgeIds.length + Object.keys(d.paramPatches).length + Object.keys(d.edgePatches).length
     if (degisti === 0) return d.rapor
     set((st) => {
       const rn = new Set(d.removeNodeIds)
@@ -382,7 +382,11 @@ export const useStore = create<State>((set, get) => ({
           return { ...n, ...(pos ? { position: { x: pos.x, y: pos.y } } : {}), data: p ? { ...n.data, params: { ...n.data.params, ...p } } : n.data }
         })
       const nodes = [...kept, ...fromProjectNodes(d.addNodes.map((n) => ({ ...n, ...(d.posPatches[n.id] ?? {}) })))]
-      const edges = [...st.edges.filter((e) => !re.has(e.id)), ...fromProjectEdges(d.addEdges)]
+      const patched = st.edges.filter((e) => !re.has(e.id)).map((e) => {
+        const p = d.edgePatches[e.id]
+        return p ? { ...e, data: { ...(e.data ?? DEFAULT_LINE), ...p } } : e
+      })
+      const edges = [...patched, ...fromProjectEdges(d.addEdges)]
       return { nodes, edges: withLengths(nodes, edges), dirty: true }
     })
     // 3B: yeni ekipman ve şalterler yerleşsin (plan varsa plana göre, yoksa otomatik).

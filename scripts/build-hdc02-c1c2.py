@@ -276,6 +276,37 @@ hatlar.append(dict(ad='ACD.MMR1.2 yükü', tip='busbar', kaynak='ACD.MMR1.2', he
 # veya sabit ref ('ACD.MMR1.2', 'CRP.PL1.1:c1').
 # "CRP.PLx.1:cN" hedefi blok bağımlıdır: C1 → Catcher 01, C2 → Catcher 02 (yukarıda f'CRP.{plx}.1:c{N}' ile yazıldı).
 
+# ---------------------------------------------------------------------------------- PL1 / PL2: var olan hatların uzunluk ve kablo değerleri
+# Çizelge s.3-4 (PL1) ve s.5-6 (PL2). Modelde (examples/hdc02-pl1.dcalc.json ve PL2 kopyası) hatlar aynı adlarla bulunur; çizelge uzunluğu
+# şemadan tahmin edilen değerin yerine yazılır. pdfAd: çizelgedeki başvuru (modeldeki addan farklıysa).
+guncelle = []
+PLS = [('PL1', dict(kablo=3, bara=4)), ('PL2', dict(kablo=5, bara=6))]
+# (çizelge adı, model adı, paralel, damar, kesit, PE, uzunluk m)
+PL_KABLO = [
+    ('CBL/MSB.{P}/01', None, 2, 4, 95, 95, 30), ('CBL/MSB.{P}/02', None, 2, 4, 95, 95, 15), ('CBL/MSB.{P}/03', None, 2, 4, 95, 120, 65),
+    ('CBL/MSB.{P}/04', None, 2, 4, 95, 120, 65), ('CBL/MSB.{P}/05', None, 1, 5, 16, None, 65), ('CBL/MSB.{P}/06', None, 1, 5, 35, None, 35),
+    ('CBL/MSB.{P}/07', None, 2, 4, 70, 70, 35), ('CBL/MSB.{P}/08', None, 1, 5, 16, None, 65),
+    ('CBL/UPS.{P}.3/01', 'CBL/UPS.{P}.3', None, 4, None, None, 15),  # paralel/kesit PL'ye göre aşağıda
+    ('CBL/UDP.{P}.1/01', 'CBL.UDP.{P}.1/01', 2, 4, 70, 70, 45), ('CBL/UDP.{P}.2/01', 'CBL.UDP.{P}.2/01', 2, 4, 70, 70, 45),
+    ('CBL/UDP.{P}.3/01', None, 1, 4, 70, 70, 175), ('CBL/UDP.{P}.3/02', None, 1, 4, 70, 35, 15), ('CBL/UDB.{P}.2/01', None, 1, 4, 50, 25, 100),
+]
+# (ad, anma akımı A, uzunluk m)
+PL_BARA = [
+    ('BB/TX.{P}', 5000, 40), ('BB/GEN.{P}', 5000, 65), ('BB/MSB.{P}/01', 1600, 6), ('BB/MSB.{P}/02', 1600, 3), ('BB/MSB.{P}/03', 1600, 7),
+    ('BB/MSB.{P}/04', 1600, 3.5), ('BB/UPS.{P}.1', 1600, 3), ('BB/UPS.{P}.2', 1600, 3.5), ('BB/UDP.{P}.1/01', 1250, 11), ('BB/UDP.{P}.1/02', 1250, 7.2),
+    ('BB/UDP.{P}.2/01', 1250, 9.8), ('BB/UDP.{P}.2/02', 1250, 6.5),
+]
+for P_, pg in PLS:
+    for pdf_ad, model_ad, par, dam, mm2, pe, uz in PL_KABLO:
+        if pdf_ad.startswith('CBL/UPS.'):  # UPS.PL1.3 çıkışı 1x(4x70)+70, UPS.PL2.3 çıkışı 2x(4x95)+95 (çizelge s.3 / s.5)
+            par, mm2, pe = (1, 70, 70) if P_ == 'PL1' else (2, 95, 95)
+        g = dict(ad=(model_ad or pdf_ad).format(P=P_), uzunluk=uz, kablo=kablo(par, dam, mm2, pe), sayfa=str(pg['kablo']))
+        if model_ad:
+            g['pdfAd'] = pdf_ad.format(P=P_)
+        guncelle.append(g)
+    for ad, amp, uz in PL_BARA:
+        guncelle.append(dict(ad=ad.format(P=P_), akim=amp, uzunluk=uz, sayfa=str(pg['bara'])))
+
 spec = dict(
     surum=1,
     ad='HDC02 C1/C2 — LV Cable Schedule (HDC02-ARP-RP-E-DD-ZZ-ZZ-POWR-7002 R00)',
@@ -283,6 +314,7 @@ spec = dict(
     dugumler=dugumler,
     hatlar=hatlar,
     temizle=temizle,
+    guncelle=guncelle,
 )
 
 # ---------------------------------------------------------------------------------- PDF karşılaştırması
@@ -415,6 +447,32 @@ def kontrol(pdf_yolu):
                     esit(blok, ad, f'{anahtar} Icu', m.group(6), kk['icu'])
             else:
                 atla.append(f'{blok} {ad}: {anahtar} sayfa {sp} için denetim yok')
+    # --- 2b) PL1/PL2: var olan hatların uzunluk ve kablo değerleri
+    for g in guncelle:
+        pg = int(g['sayfa'])
+        metin = sayfa[pg]
+        ref = g.get('pdfAd', g['ad'])
+        ln = satir(metin, ref + ' ')
+        blok = 'PL'
+        if 'kablo' in g:
+            m = ln and re.search(r'(\d+) x 1 x (\d)c (\d+) (\d+) (?:Separate|Integral)\b.*?Touching (\d+) ', ln)
+            if not m:
+                hata.append(f'{ref}: kablo satırı bulunamadı (s.{pg})')
+                continue
+            k = g['kablo']
+            esit(blok, ref, 'paralel', m.group(1), k['paralel'])
+            esit(blok, ref, 'damar', m.group(2), k['damar'])
+            esit(blok, ref, 'kesit', m.group(3), k['kesit'])
+            esit(blok, ref, 'uzunluk', m.group(5), g['uzunluk'])
+            if k['damar'] == 4:
+                esit(blok, ref, 'PE', m.group(4), k.get('pe', 0))
+        else:
+            m = ln and re.search(r'HPB (\d) (\d+) Aluminium \S+ Horizontal ([\d,]+) ', ln)
+            if not m:
+                hata.append(f'{ref}: bara satırı bulunamadı (s.{pg})')
+                continue
+            esit(blok, ref, 'bara anma akımı', m.group(2), g['akim'])
+            esit(blok, ref, 'bara uzunluğu', num(m.group(3)), g['uzunluk'])
     # --- 3) tap-off ve tee
     for blok, P in pm.items():
         tap = sayfa[P['tap']]

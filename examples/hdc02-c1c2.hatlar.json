@@ -2938,5 +2938,571 @@
     "grup": "crp-PL2"
    }
   ]
- }
+ },
+ "guncelle": [
+  {
+   "ad": "CBL/MSB.PL1/01",
+   "uzunluk": 30,
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 95,
+    "metin": "2x(4x95)+95 mm² N2XH",
+    "pe": 95,
+    "akim": 596,
+    "r": 0.0965,
+    "x": 0.0405
+   },
+   "sayfa": "3"
+  },
+  {
+   "ad": "CBL/MSB.PL1/02",
+   "uzunluk": 15,
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 95,
+    "metin": "2x(4x95)+95 mm² N2XH",
+    "pe": 95,
+    "akim": 596,
+    "r": 0.0965,
+    "x": 0.0405
+   },
+   "sayfa": "3"
+  },
+  {
+   "ad": "CBL/MSB.PL1/03",
+   "uzunluk": 65,
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 95,
+    "metin": "2x(4x95)+120 mm² N2XH",
+    "pe": 120,
+    "akim": 596,
+    "r": 0.0965,
+    "x": 0.0405
+   },
+   "sayfa": "3"
+  },
+  {
+   "ad": "CBL/MSB.PL1/04",
+   "uzunluk": 65,
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 95,
+    "metin": "2x(4x95)+120 mm² N2XH",
+    "pe": 120,
+    "akim": 596,
+    "r": 0.0965,
+    "x": 0.0405
+   },
+   "sayfa": "3"
+  },
+  {
+   "ad": "CBL/MSB.PL1/05",
+   "uzunluk": 65,
+   "kablo": {
+    "paralel": 1,
+    "damar": 5,
+    "kesit": 16,
+    "metin": "5x16 mm² N2XH",
+    "akim": 99,
+    "r": 1.15,
+    "x": 0.09
+   },
+   "sayfa": "3"
+  },
+  {
+   "ad": "CBL/MSB.PL1/06",
+   "uzunluk": 35,
+   "kablo": {
+    "paralel": 1,
+    "damar": 5,
+    "kesit": 35,
+    "metin": "5x35 mm² N2XH",
+    "akim": 158,
+    "r": 0.524,
+    "x": 0.085
+   },
+   "sayfa": "3"
+  },
+  {
+   "ad": "CBL/MSB.PL1/07",
+   "uzunluk": 35,
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 70,
+    "metin": "2x(4x70)+70 mm² N2XH",
+    "pe": 70,
+    "akim": 492,
+    "r": 0.134,
+    "x": 0.041
+   },
+   "sayfa": "3"
+  },
+  {
+   "ad": "CBL/MSB.PL1/08",
+   "uzunluk": 65,
+   "kablo": {
+    "paralel": 1,
+    "damar": 5,
+    "kesit": 16,
+    "metin": "5x16 mm² N2XH",
+    "akim": 99,
+    "r": 1.15,
+    "x": 0.09
+   },
+   "sayfa": "3"
+  },
+  {
+   "ad": "CBL/UPS.PL1.3",
+   "uzunluk": 15,
+   "kablo": {
+    "paralel": 1,
+    "damar": 4,
+    "kesit": 70,
+    "metin": "4x70+70 mm² N2XH",
+    "pe": 70,
+    "akim": 246,
+    "r": 0.268,
+    "x": 0.082
+   },
+   "sayfa": "3",
+   "pdfAd": "CBL/UPS.PL1.3/01"
+  },
+  {
+   "ad": "CBL.UDP.PL1.1/01",
+   "uzunluk": 45,
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 70,
+    "metin": "2x(4x70)+70 mm² N2XH",
+    "pe": 70,
+    "akim": 492,
+    "r": 0.134,
+    "x": 0.041
+   },
+   "sayfa": "3",
+   "pdfAd": "CBL/UDP.PL1.1/01"
+  },
+  {
+   "ad": "CBL.UDP.PL1.2/01",
+   "uzunluk": 45,
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 70,
+    "metin": "2x(4x70)+70 mm² N2XH",
+    "pe": 70,
+    "akim": 492,
+    "r": 0.134,
+    "x": 0.041
+   },
+   "sayfa": "3",
+   "pdfAd": "CBL/UDP.PL1.2/01"
+  },
+  {
+   "ad": "CBL/UDP.PL1.3/01",
+   "uzunluk": 175,
+   "kablo": {
+    "paralel": 1,
+    "damar": 4,
+    "kesit": 70,
+    "metin": "4x70+70 mm² N2XH",
+    "pe": 70,
+    "akim": 246,
+    "r": 0.268,
+    "x": 0.082
+   },
+   "sayfa": "3"
+  },
+  {
+   "ad": "CBL/UDP.PL1.3/02",
+   "uzunluk": 15,
+   "kablo": {
+    "paralel": 1,
+    "damar": 4,
+    "kesit": 70,
+    "metin": "4x70+35 mm² N2XH",
+    "pe": 35,
+    "akim": 246,
+    "r": 0.268,
+    "x": 0.082
+   },
+   "sayfa": "3"
+  },
+  {
+   "ad": "CBL/UDB.PL1.2/01",
+   "uzunluk": 100,
+   "kablo": {
+    "paralel": 1,
+    "damar": 4,
+    "kesit": 50,
+    "metin": "4x50+25 mm² N2XH",
+    "pe": 25,
+    "akim": 192,
+    "r": 0.387,
+    "x": 0.083
+   },
+   "sayfa": "3"
+  },
+  {
+   "ad": "BB/TX.PL1",
+   "akim": 5000,
+   "uzunluk": 40,
+   "sayfa": "4"
+  },
+  {
+   "ad": "BB/GEN.PL1",
+   "akim": 5000,
+   "uzunluk": 65,
+   "sayfa": "4"
+  },
+  {
+   "ad": "BB/MSB.PL1/01",
+   "akim": 1600,
+   "uzunluk": 6,
+   "sayfa": "4"
+  },
+  {
+   "ad": "BB/MSB.PL1/02",
+   "akim": 1600,
+   "uzunluk": 3,
+   "sayfa": "4"
+  },
+  {
+   "ad": "BB/MSB.PL1/03",
+   "akim": 1600,
+   "uzunluk": 7,
+   "sayfa": "4"
+  },
+  {
+   "ad": "BB/MSB.PL1/04",
+   "akim": 1600,
+   "uzunluk": 3.5,
+   "sayfa": "4"
+  },
+  {
+   "ad": "BB/UPS.PL1.1",
+   "akim": 1600,
+   "uzunluk": 3,
+   "sayfa": "4"
+  },
+  {
+   "ad": "BB/UPS.PL1.2",
+   "akim": 1600,
+   "uzunluk": 3.5,
+   "sayfa": "4"
+  },
+  {
+   "ad": "BB/UDP.PL1.1/01",
+   "akim": 1250,
+   "uzunluk": 11,
+   "sayfa": "4"
+  },
+  {
+   "ad": "BB/UDP.PL1.1/02",
+   "akim": 1250,
+   "uzunluk": 7.2,
+   "sayfa": "4"
+  },
+  {
+   "ad": "BB/UDP.PL1.2/01",
+   "akim": 1250,
+   "uzunluk": 9.8,
+   "sayfa": "4"
+  },
+  {
+   "ad": "BB/UDP.PL1.2/02",
+   "akim": 1250,
+   "uzunluk": 6.5,
+   "sayfa": "4"
+  },
+  {
+   "ad": "CBL/MSB.PL2/01",
+   "uzunluk": 30,
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 95,
+    "metin": "2x(4x95)+95 mm² N2XH",
+    "pe": 95,
+    "akim": 596,
+    "r": 0.0965,
+    "x": 0.0405
+   },
+   "sayfa": "5"
+  },
+  {
+   "ad": "CBL/MSB.PL2/02",
+   "uzunluk": 15,
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 95,
+    "metin": "2x(4x95)+95 mm² N2XH",
+    "pe": 95,
+    "akim": 596,
+    "r": 0.0965,
+    "x": 0.0405
+   },
+   "sayfa": "5"
+  },
+  {
+   "ad": "CBL/MSB.PL2/03",
+   "uzunluk": 65,
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 95,
+    "metin": "2x(4x95)+120 mm² N2XH",
+    "pe": 120,
+    "akim": 596,
+    "r": 0.0965,
+    "x": 0.0405
+   },
+   "sayfa": "5"
+  },
+  {
+   "ad": "CBL/MSB.PL2/04",
+   "uzunluk": 65,
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 95,
+    "metin": "2x(4x95)+120 mm² N2XH",
+    "pe": 120,
+    "akim": 596,
+    "r": 0.0965,
+    "x": 0.0405
+   },
+   "sayfa": "5"
+  },
+  {
+   "ad": "CBL/MSB.PL2/05",
+   "uzunluk": 65,
+   "kablo": {
+    "paralel": 1,
+    "damar": 5,
+    "kesit": 16,
+    "metin": "5x16 mm² N2XH",
+    "akim": 99,
+    "r": 1.15,
+    "x": 0.09
+   },
+   "sayfa": "5"
+  },
+  {
+   "ad": "CBL/MSB.PL2/06",
+   "uzunluk": 35,
+   "kablo": {
+    "paralel": 1,
+    "damar": 5,
+    "kesit": 35,
+    "metin": "5x35 mm² N2XH",
+    "akim": 158,
+    "r": 0.524,
+    "x": 0.085
+   },
+   "sayfa": "5"
+  },
+  {
+   "ad": "CBL/MSB.PL2/07",
+   "uzunluk": 35,
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 70,
+    "metin": "2x(4x70)+70 mm² N2XH",
+    "pe": 70,
+    "akim": 492,
+    "r": 0.134,
+    "x": 0.041
+   },
+   "sayfa": "5"
+  },
+  {
+   "ad": "CBL/MSB.PL2/08",
+   "uzunluk": 65,
+   "kablo": {
+    "paralel": 1,
+    "damar": 5,
+    "kesit": 16,
+    "metin": "5x16 mm² N2XH",
+    "akim": 99,
+    "r": 1.15,
+    "x": 0.09
+   },
+   "sayfa": "5"
+  },
+  {
+   "ad": "CBL/UPS.PL2.3",
+   "uzunluk": 15,
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 95,
+    "metin": "2x(4x95)+95 mm² N2XH",
+    "pe": 95,
+    "akim": 596,
+    "r": 0.0965,
+    "x": 0.0405
+   },
+   "sayfa": "5",
+   "pdfAd": "CBL/UPS.PL2.3/01"
+  },
+  {
+   "ad": "CBL.UDP.PL2.1/01",
+   "uzunluk": 45,
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 70,
+    "metin": "2x(4x70)+70 mm² N2XH",
+    "pe": 70,
+    "akim": 492,
+    "r": 0.134,
+    "x": 0.041
+   },
+   "sayfa": "5",
+   "pdfAd": "CBL/UDP.PL2.1/01"
+  },
+  {
+   "ad": "CBL.UDP.PL2.2/01",
+   "uzunluk": 45,
+   "kablo": {
+    "paralel": 2,
+    "damar": 4,
+    "kesit": 70,
+    "metin": "2x(4x70)+70 mm² N2XH",
+    "pe": 70,
+    "akim": 492,
+    "r": 0.134,
+    "x": 0.041
+   },
+   "sayfa": "5",
+   "pdfAd": "CBL/UDP.PL2.2/01"
+  },
+  {
+   "ad": "CBL/UDP.PL2.3/01",
+   "uzunluk": 175,
+   "kablo": {
+    "paralel": 1,
+    "damar": 4,
+    "kesit": 70,
+    "metin": "4x70+70 mm² N2XH",
+    "pe": 70,
+    "akim": 246,
+    "r": 0.268,
+    "x": 0.082
+   },
+   "sayfa": "5"
+  },
+  {
+   "ad": "CBL/UDP.PL2.3/02",
+   "uzunluk": 15,
+   "kablo": {
+    "paralel": 1,
+    "damar": 4,
+    "kesit": 70,
+    "metin": "4x70+35 mm² N2XH",
+    "pe": 35,
+    "akim": 246,
+    "r": 0.268,
+    "x": 0.082
+   },
+   "sayfa": "5"
+  },
+  {
+   "ad": "CBL/UDB.PL2.2/01",
+   "uzunluk": 100,
+   "kablo": {
+    "paralel": 1,
+    "damar": 4,
+    "kesit": 50,
+    "metin": "4x50+25 mm² N2XH",
+    "pe": 25,
+    "akim": 192,
+    "r": 0.387,
+    "x": 0.083
+   },
+   "sayfa": "5"
+  },
+  {
+   "ad": "BB/TX.PL2",
+   "akim": 5000,
+   "uzunluk": 40,
+   "sayfa": "6"
+  },
+  {
+   "ad": "BB/GEN.PL2",
+   "akim": 5000,
+   "uzunluk": 65,
+   "sayfa": "6"
+  },
+  {
+   "ad": "BB/MSB.PL2/01",
+   "akim": 1600,
+   "uzunluk": 6,
+   "sayfa": "6"
+  },
+  {
+   "ad": "BB/MSB.PL2/02",
+   "akim": 1600,
+   "uzunluk": 3,
+   "sayfa": "6"
+  },
+  {
+   "ad": "BB/MSB.PL2/03",
+   "akim": 1600,
+   "uzunluk": 7,
+   "sayfa": "6"
+  },
+  {
+   "ad": "BB/MSB.PL2/04",
+   "akim": 1600,
+   "uzunluk": 3.5,
+   "sayfa": "6"
+  },
+  {
+   "ad": "BB/UPS.PL2.1",
+   "akim": 1600,
+   "uzunluk": 3,
+   "sayfa": "6"
+  },
+  {
+   "ad": "BB/UPS.PL2.2",
+   "akim": 1600,
+   "uzunluk": 3.5,
+   "sayfa": "6"
+  },
+  {
+   "ad": "BB/UDP.PL2.1/01",
+   "akim": 1250,
+   "uzunluk": 11,
+   "sayfa": "6"
+  },
+  {
+   "ad": "BB/UDP.PL2.1/02",
+   "akim": 1250,
+   "uzunluk": 7.2,
+   "sayfa": "6"
+  },
+  {
+   "ad": "BB/UDP.PL2.2/01",
+   "akim": 1250,
+   "uzunluk": 9.8,
+   "sayfa": "6"
+  },
+  {
+   "ad": "BB/UDP.PL2.2/02",
+   "akim": 1250,
+   "uzunluk": 6.5,
+   "sayfa": "6"
+  }
+ ]
 }

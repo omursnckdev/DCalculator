@@ -69,6 +69,19 @@ export interface HatSpec {
   pay?: number
 }
 
+/** Var olan hatta (adıyla) çizelge değerini uygular; hat yoksa atlanır (oluşturmaz). */
+export interface GuncelleSpec {
+  /** Modeldeki hat adı. */
+  ad: string
+  /** Çizelgedeki başvuru (modeldeki addan farklıysa). */
+  pdfAd?: string
+  uzunluk?: number
+  kablo?: KabloSpec
+  /** Bara anma akımı (A): hat kapasitesi. */
+  akim?: number
+  sayfa: string
+}
+
 export interface TemizleDugum {
   adlar: string[]
   tur: EquipmentType
@@ -88,6 +101,8 @@ export interface HatCizelgesi {
   dugumler: DugumSpec[]
   hatlar: HatSpec[]
   temizle: { dugumler: TemizleDugum[]; hatlar: TemizleHat[] }
+  /** Var olan hatların uzunluk/kablo değerleri (ör. PL1/PL2 sayfaları). */
+  guncelle: GuncelleSpec[]
 }
 
 export interface HatRapor {
@@ -98,6 +113,8 @@ export interface HatRapor {
   hatSayisi: number
   silinenDugum: string[]
   silinenHat: number
+  /** Uzunluk/kablo değeri çizelgeye göre güncellenen mevcut hat sayısı. */
+  guncellenenHat: number
   /** Atlanan hatlar ve nedenleri (zaten var, uç yok). */
   atlanan: { ad: string; neden: string }[]
   uyarilar: string[]
@@ -109,6 +126,8 @@ export interface HatDelta {
   removeNodeIds: string[]
   removeEdgeIds: string[]
   paramPatches: Record<string, Params>
+  /** Mevcut hatlara uygulanacak alan yamaları (uzunluk, kablo açıklaması, kapasite, R/X). */
+  edgePatches: Record<string, Partial<ProjectEdge>>
   posPatches: Record<string, { x: number; y: number }>
   rapor: HatRapor
 }
@@ -217,8 +236,21 @@ export function parseHatCizelgesi(raw: unknown): HatCizelgesi | undefined {
       temizle.hatlar.push({ kaynak: str(h.kaynak), hedef: str(h.hedef), ...(str(h.grup) ? { grup: str(h.grup) } : {}) })
     }
   }
-  if (dugumler.length === 0 || hatlar.length === 0) return undefined
-  return { surum: 1, ad: str(raw.ad) || 'Hat çizelgesi', kaynak: str(raw.kaynak), dugumler, hatlar, temizle }
+  const guncelle: GuncelleSpec[] = []
+  for (const g of Array.isArray(raw.guncelle) ? raw.guncelle : []) {
+    if (!isObj(g) || !str(g.ad)) continue
+    const uz = numv(g.uzunluk, -1)
+    guncelle.push({
+      ad: str(g.ad),
+      ...(str(g.pdfAd) ? { pdfAd: str(g.pdfAd) } : {}),
+      ...(uz >= 0 ? { uzunluk: uz } : {}),
+      ...(parseKablo(g.kablo) ? { kablo: parseKablo(g.kablo) } : {}),
+      ...(numv(g.akim, 0) > 0 ? { akim: numv(g.akim) } : {}),
+      sayfa: str(g.sayfa),
+    })
+  }
+  if ((dugumler.length === 0 || hatlar.length === 0) && guncelle.length === 0) return undefined
+  return { surum: 1, ad: str(raw.ad) || 'Hat çizelgesi', kaynak: str(raw.kaynak), dugumler, hatlar, temizle, guncelle }
 }
 
 // --- eşleştirme ---------------------------------------------------------------------------------------------------
@@ -348,7 +380,7 @@ export function planHatCizelgesi(
   spec: HatCizelgesi,
   newId: (prefix: string) => string = defaultNewId,
 ): HatDelta {
-  const rapor: HatRapor = { eslesen: [], olusturulan: [], kesiciSayisi: 0, hatSayisi: 0, silinenDugum: [], silinenHat: 0, atlanan: [], uyarilar: [] }
+  const rapor: HatRapor = { eslesen: [], olusturulan: [], kesiciSayisi: 0, hatSayisi: 0, silinenDugum: [], silinenHat: 0, guncellenenHat: 0, atlanan: [], uyarilar: [] }
   const defs = new Map(spec.dugumler.map((d) => [d.ref, d]))
   const claimed = new Set<string>()
   const found = new Map<string, ProjectNode>()
@@ -541,12 +573,36 @@ export function planHatCizelgesi(
     }
   }
 
+  // 5) Var olan hatların uzunluk/kablo değerleri (adıyla eşleşir; yeni eklenen hatlara dokunulmaz).
+  const edgePatches: Record<string, Partial<ProjectEdge>> = {}
+  const byName = new Map<string, ProjectEdge[]>()
+  for (const e of model.edges) if (e.ad && !c.removedEdges.has(e.id)) byName.set(e.ad, [...(byName.get(e.ad) ?? []), e])
+  for (const g of spec.guncelle) {
+    for (const e of byName.get(g.ad) ?? []) {
+      const patch: Partial<ProjectEdge> = {}
+      if (g.uzunluk !== undefined && Math.abs(e.uzunluk - g.uzunluk) > 1e-9) patch.uzunluk = g.uzunluk
+      if (g.kablo && e.aciklama.split(' — ')[0] !== g.kablo.metin) {
+        patch.aciklama = g.kablo.metin
+        patch.akimKapasitesi = g.kablo.akim
+        patch.r = g.kablo.r
+        patch.x = g.kablo.x
+      }
+      if (g.akim !== undefined && e.akimKapasitesi !== g.akim && !g.kablo) patch.akimKapasitesi = g.akim
+      if (Object.keys(patch).length) {
+        patch.uzunlukKaynak = 'elle'
+        edgePatches[e.id] = { ...edgePatches[e.id], ...patch }
+        rapor.guncellenenHat++
+      }
+    }
+  }
+
   const delta: HatDelta = {
     addNodes: c.newNodes,
     addEdges: c.addEdges,
     removeNodeIds: [...c.removedNodes],
     removeEdgeIds: [...c.removedEdges],
     paramPatches: c.patches,
+    edgePatches,
     posPatches: {},
     rapor,
   }
@@ -564,7 +620,7 @@ export function applyHatDelta(model: { nodes: ProjectNode[]; edges: ProjectEdge[
     if (!p && !pos) return n
     return { ...n, ...(pos ?? {}), params: p ? { ...n.params, ...p } : n.params }
   })
-  const edges = [...model.edges.filter((e) => !re.has(e.id)), ...d.addEdges]
+  const edges = [...model.edges.filter((e) => !re.has(e.id)).map((e) => (d.edgePatches[e.id] ? { ...e, ...d.edgePatches[e.id] } : e)), ...d.addEdges]
   return { nodes, edges }
 }
 

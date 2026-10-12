@@ -267,3 +267,59 @@ describe('hat çizelgesi: yanlış girdi', () => {
     expect(d.rapor.atlanan.some((a) => a.ad === 'X' && a.neden.includes('bilinmeyen'))).toBe(true)
   })
 })
+
+describe('hat çizelgesi: PL1/PL2 uzunluk ve kablo güncellemesi', () => {
+  const gSayisi = spec.guncelle?.length ?? 0
+
+  it('güncelleme satırları okunur (PL1 + PL2, kablo ve bara)', () => {
+    expect(gSayisi).toBeGreaterThan(40)
+    expect(spec.guncelle!.some((g) => g.ad === 'BB/TX.PL1' && g.uzunluk === 40)).toBe(true)
+  })
+
+  it('bara ve kablo uzunlukları çizelgeden uygulanır, model yalnız eşleşen hatlarda değişir', () => {
+    expect(delta.rapor.guncellenenHat).toBeGreaterThan(20)
+    for (const g of spec.guncelle!) {
+      const e = after.edges.find((x) => x.ad === g.ad)
+      if (!e) continue
+      if (g.uzunluk !== undefined) expect(e.uzunluk).toBe(g.uzunluk)
+      if (g.akim !== undefined) expect(e.akimKapasitesi).toBe(g.akim)
+    }
+  })
+
+  it('UPS.x.3 kablosu PL1\'de 1x(4x70), PL2\'de 2x(4x95) olur', () => {
+    const k1 = after.edges.find((e) => e.ad === 'CBL/UPS.PL1.3')
+    const k2 = after.edges.find((e) => e.ad === 'CBL/UPS.PL2.3')
+    if (k1) {
+      expect(k1.aciklama).toMatch(/^4x70\+70/)
+      expect(k1.akimKapasitesi).toBe(246)
+      expect(k1.uzunluk).toBe(15)
+    }
+    if (k2) {
+      expect(k2.aciklama).toMatch(/^2x\(4x95\)\+95/)
+      expect(k2.akimKapasitesi).toBe(596)
+    }
+    expect(k1 && k2).toBeTruthy()
+  })
+
+  it('örnek değerler: önceki ve sonraki uzunluk', () => {
+    const e = (m: M, ad: string) => m.edges.find((x) => x.ad === ad)!
+    for (const [ad, yeni] of [['BB/TX.PL1', 40], ['BB/MSB.PL1/01', 6], ['CBL/MSB.PL1/01', 30], ['CBL.UDP.PL1.1/01', 45]] as const) {
+      expect(e(after, ad), ad).toBeTruthy()
+      expect(e(after, ad).uzunluk, ad).toBe(yeni)
+    }
+    const degisen = Object.keys(delta.edgePatches).length
+    expect(spec.guncelle!.filter((g) => !base.edges.some((x) => x.ad === g.ad))).toEqual([])
+    expect(degisen).toBe(delta.rapor.guncellenenHat)
+    expect(degisen).toBeGreaterThan(10)
+  })
+
+  it('ikinci uygulamada güncelleme yok', () => {
+    const d2 = planHatCizelgesi(after, spec, newId)
+    expect(d2.rapor.guncellenenHat).toBe(0)
+    expect(Object.keys(d2.edgePatches)).toEqual([])
+  })
+
+  it('analiz hâlâ beklenmeyen hata üretmez', () => {
+    expect(beklenmeyen(analyze(after))).toEqual([])
+  })
+})

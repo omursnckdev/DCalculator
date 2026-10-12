@@ -49,7 +49,7 @@ export function PlanPanel() {
     }
     if (!confirm(H.confirm(h.ad))) return
     const r = applyHat(h)
-    setMsg(r.hatSayisi === 0 && r.olusturulan.length === 0 ? H.nochange : H.done(r))
+    setMsg(r.hatSayisi === 0 && r.olusturulan.length === 0 && r.guncellenenHat === 0 ? H.nochange : H.done(r))
     use3dStore.getState().requestView('fit')
   }
   const loadHat = async () => {

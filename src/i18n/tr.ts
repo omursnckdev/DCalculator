@@ -163,13 +163,13 @@ export const tr = {
     },
     hat: {
       title: 'Hat çizelgesi (kablo · bara · şalter)',
-      hint: 'LV Cable Schedule\'dan üretilen hat dosyası (scripts/build-hdc02-c1c2.py): C1/C2 ekipmanını çizelgedeki kablo ve baralarla bağlar, koruma şalterlerini (ACB/MCCB, anma akımı, kesme kapasitesi) hat başlarına ekler. Eşleşmeyen ekipman oluşturulur; tekrar uygulamak çoğaltmaz.',
+      hint: 'LV Cable Schedule\'dan üretilen hat dosyası (scripts/build-hdc02-c1c2.py): C1/C2 ekipmanını çizelgedeki kablo ve baralarla bağlar, PL1/PL2 bara ve kablo uzunluklarını (ve UPS.x.3 kablo kesitini) mevcut hatlara uygular, koruma şalterlerini (ACB/MCCB, anma akımı, kesme kapasitesi) hat başlarına ekler. Eşleşmeyen ekipman oluşturulur; tekrar uygulamak çoğaltmaz.',
       example: 'HDC02 C1/C2 hat çizelgesini uygula',
       open: 'Hat çizelgesi aç…',
       confirm: (ad: string) => `"${ad}" uygulanacak: C1/C2 ekipmanı kablo ve baralarla bağlanacak, şalterler eklenecek; CRP.PL1.1/CRP.PL2.1 şema dışı yer tutucuları catcher bağlantısıyla değişecek. Geri alınabilir (Ctrl+Z). Devam edilsin mi?`,
-      done: (r: { hatSayisi: number; kesiciSayisi: number; olusturulan: string[]; eslesen: unknown[]; silinenDugum: string[]; atlanan: unknown[] }) =>
-        `${r.hatSayisi} hat ve ${r.kesiciSayisi} şalter eklendi; ${r.eslesen.length} mevcut ekipman eşleşti, ${r.olusturulan.length} yeni ekipman oluşturuldu${r.silinenDugum.length ? `, ${r.silinenDugum.length} şema dışı yer tutucu kaldırıldı` : ''}${r.atlanan.length ? `; ${r.atlanan.length} hat atlandı` : ''}.`,
-      nochange: 'Hat çizelgesi zaten uygulanmış (yeni hat yok).',
+      done: (r: { hatSayisi: number; kesiciSayisi: number; olusturulan: string[]; eslesen: unknown[]; silinenDugum: string[]; atlanan: unknown[]; guncellenenHat: number }) =>
+        `${r.hatSayisi} hat ve ${r.kesiciSayisi} şalter eklendi${r.guncellenenHat ? `, ${r.guncellenenHat} mevcut hattın (PL1/PL2 bara ve kablo) uzunluk/kesit bilgisi çizelgeden güncellendi` : ''}; ${r.eslesen.length} mevcut ekipman eşleşti, ${r.olusturulan.length} yeni ekipman oluşturuldu${r.silinenDugum.length ? `, ${r.silinenDugum.length} şema dışı yer tutucu kaldırıldı` : ''}${r.atlanan.length ? `; ${r.atlanan.length} hat atlandı` : ''}.`,
+      nochange: 'Hat çizelgesi zaten uygulanmış (yeni hat veya güncelleme yok).',
       invalid: 'Hat çizelgesi okunamadı (geçerli hat JSON değil).',
     },
     roomElev: 'Oda kotu (m): 0 = zemin kat, 4,5 = 1. kat',
