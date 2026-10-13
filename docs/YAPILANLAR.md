@@ -40,6 +40,7 @@ Hesap motoru (`src/engine`) saf TypeScript'tir; React'tan bağımsız ve testlid
 | **Faz L** | Dokümantasyon, tarayıcı doğrulaması, push |
 | **3D-15** | Busbar planı (DXF): bara parçaları plana eklendi ve 3D'de gösterilir; ekipman yerleşimi karşılaştırıldı |
 | **3D-16** | Kablo çizelgesi PL1/PL2 sayfalarındaki bara ve kablo uzunlukları (ve UPS.x.3 kablo kesiti) mevcut hatlara uygulanır (`guncelle`) |
+| **EXE** | Electron ile Windows masaüstü paketi (NSIS kurulum + portable), GitHub Actions ile üretim |
 | **3D-14** | Yerleşik ekipman modellerinde ayrıntı (pano hücreleri, kuru tip trafo, UPS, jeneratör, RMU, chiller...) ve model galerisi |
 | **3D-13** | Duvar saydamlığı, sürükle-bırak ve tutamaçlı oda düzenleme, özel GLB ekipman modelleri |
 | **3D-12** | C1/C2 kablo çizelgesinden hat, bara ve şalter bağlantıları (hat çizelgesi içe aktarma, catcher bağlantısı) |

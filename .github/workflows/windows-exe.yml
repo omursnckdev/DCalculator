@@ -1,0 +1,33 @@
+name: Windows exe
+
+on:
+  push:
+    branches: [claude/new-session-734v27]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run dist:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AOS-DCalculator-windows
+          path: |
+            release/*.exe
+          if-no-files-found: error
+      - name: Sürüm dosyaları (etiket gönderildiyse)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.exe

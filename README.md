@@ -182,3 +182,12 @@ yanında CRAH ve chiller. Beklenen sonuç: toplam 874,5 kW, PUE ≈ 1,749, salon
 senaryo. **Arıza** sekmesini açın: Trafo B arızasında IT yükü korunur, tekil chiller kaybedilir; kuplaj
 kapatılırsa hiçbir yük kaybedilmez. Trafo A arızasında jeneratör A tarafını taşır (~%26); B→A kuplajı
 kapatılırsa jeneratör yükte değildir.
+
+## Masaüstü uygulaması (Windows .exe)
+
+Uygulama Electron ile tek kurulum dosyasına paketlenir (`electron/main.cjs`, ayarlar `package.json` → `build`). İnternet ve Node.js gerekmez; proje verisi bilgisayarda (IndexedDB) saklanır, **JSON indir/yükle** ile yedeklenir.
+
+- **Kurulum dosyasını üretme (Windows'ta):** `npm install` → `npm run dist:win`. Çıktı `release/` klasöründe: `AOS-DCalculator-<sürüm>-nsis.exe` (kurulum sihirbazı) ve `AOS-DCalculator-<sürüm>-portable.exe` (kurulumsuz).
+- **GitHub Actions:** `.github/workflows/windows-exe.yml` her push'ta Windows'ta testleri çalıştırıp .exe dosyalarını "Artifacts" altına koyar; `v0.1.0` gibi bir etiket gönderilirse Releases sayfasına da ekler.
+- **Denemek için (kurmadan):** `npm run desktop` uygulamayı Electron penceresinde açar.
+- **İmza:** exe kod imzalı değildir; Windows SmartScreen ilk açılışta "Bilinmeyen yayıncı" uyarısı verebilir ("Yine de çalıştır"). Uyarıyı kaldırmak için kod imzalama sertifikası gerekir (`CSC_LINK`/`CSC_KEY_PASSWORD`).
