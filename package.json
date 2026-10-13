@@ -10,7 +10,7 @@
     "test": "vitest run",
     "typecheck": "tsc",
     "desktop": "npm run build && electron .",
-    "dist:win": "npm run build && electron-builder --win nsis portable --x64"
+    "dist:win": "npm run build && electron-builder --win nsis portable --x64 --publish never"
   },
   "devDependencies": {
     "@react-three/drei": "10.7.9",
@@ -56,15 +56,15 @@
       "target": [
         "nsis",
         "portable"
-      ],
-      "artifactName": "AOS-DCalculator-${version}-${target}.${ext}"
+      ]
     },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "language": "1055",
-      "createDesktopShortcut": true
+      "createDesktopShortcut": true,
+      "artifactName": "AOS-DCalculator-Kurulum-${version}.${ext}"
     },
     "linux": {
       "target": [
@@ -72,6 +72,9 @@
       ],
       "category": "Utility",
       "icon": "build/icon.png"
+    },
+    "portable": {
+      "artifactName": "AOS-DCalculator-Tasinabilir-${version}.${ext}"
     }
   }
 }
