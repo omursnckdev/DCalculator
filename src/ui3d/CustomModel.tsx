@@ -3,6 +3,7 @@ import { Component, Suspense, useMemo } from 'react'
 import type { ReactNode } from 'react'
 import * as THREE from 'three'
 import { fitScale } from '../layout3d/customModel'
+import { prepareModel } from './modelPrep'
 import type { ModelSpec } from '../layout3d/customModel'
 
 const rad = (d: number) => (d * Math.PI) / 180
@@ -18,6 +19,7 @@ function Loaded({ url, g, d, h, fit, rot }: BoxProps & { url: string; fit: Model
   const gltf = useGLTF(url)
   const m = useMemo(() => {
     const root = gltf.scene.clone(true)
+    prepareModel(root)
     root.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) o.raycast = () => undefined
     })
