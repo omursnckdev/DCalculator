@@ -20,3 +20,20 @@ export const PRESET_MODELS: PresetModel[] = [
 ]
 
 export const presetsFor = (kind: string): PresetModel[] => PRESET_MODELS.filter((p) => p.kinds.includes(kind))
+
+/** Hazır modelin model kimliği: kütüphaneye (IndexedDB) kaydı gerekmez, paketteki GLB doğrudan kullanılır; başka bilgisayarda da çalışır. */
+export const presetId = (key: string): string => `preset:${key}`
+export const presetOfId = (id: unknown): PresetModel | undefined => (typeof id === 'string' ? PRESET_MODELS.find((p) => presetId(p.key) === id) : undefined)
+
+const normAd = (s: string): string => s.toUpperCase().replace(/[\s_]+/g, '.')
+
+/**
+ * Veri salonunu besleyen "IT UPS" mu? Şemada "(IT UPS)" notlu veya .1/.2 numaralı UPS'ler (UPS.PL1.1, UPS C2.2); .3 numaralı UPS
+ * mekanik/yardımcı ("Essential") yükü besler ve dışarıda kalır.
+ */
+export function isItUps(n: { type: string; ad: string; etiket?: string }): boolean {
+  if (n.type !== 'ups') return false
+  const names = [n.ad, n.etiket ?? ''].filter(Boolean)
+  if (names.some((a) => /\bIT\s*UPS\b/i.test(a))) return true
+  return names.some((a) => /^UPS\.[A-Z0-9]+\.[12](?![0-9])/.test(normAd(a)))
+}

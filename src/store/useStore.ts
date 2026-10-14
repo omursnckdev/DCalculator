@@ -40,6 +40,8 @@ import type { ProjectSettings } from '../model/settings'
 import { simulateAdditionalFault, simulateFailure, simulateRecovery } from '../engine'
 import type { SimStep } from '../engine'
 import { autoLayout, mountPatches } from '../layout3d/autoLayout'
+import { MODEL_KEYS } from '../layout3d/customModel'
+import { PRESET_MODELS, presetId } from '../layout3d/presetModels'
 import { isMinor } from '../layout3d/dims'
 import { lengthPatches } from '../layout3d/lengths'
 import { autoPipes, dnFor, flowLps } from '../layout3d/pipes'
@@ -162,6 +164,8 @@ interface State {
   autoPipes3d: () => number
   /** Ekipmanların 3D yerleşimini günceller (yerleşimi olmayan düğüm için x,z gerekir). */
   setLayout3d: (patches: Record<string, Partial<Yerlesim3D>>) => void
+  /** Düğümlere paketteki hazır 3D modeli atar (kutu modelin ölçüsüne ayarlanır); atanan sayısı. */
+  applyPresetModel: (ids: string[], key: string) => number
   /** Yerleşimi olmayan ekipmanı yerleştirir; hiçbiri yerleşik değilse tümünü diziler ve odaları üretir. */
   ensureLayout3d: () => void
   /** Tüm küçük elemanları (kesici, ölçü) ana ekipmanlarının ön yüzüne oturtur. */
@@ -460,6 +464,30 @@ export const useStore = create<State>((set, get) => ({
     const made = autoPipes(toProjectNodes(s.nodes), () => `${newId('boru')}${k++}`)
     set((st) => ({ borular3d: [...st.borular3d.filter((b) => !b.otomatik), ...made], dirty: true }))
     return made.length
+  },
+  applyPresetModel: (ids, key) => {
+    const pre = PRESET_MODELS.find((p) => p.key === key)
+    if (!pre || ids.length === 0) return 0
+    get().ensureLayout3d()
+    const want = new Set(ids)
+    let n = 0
+    set((s) => {
+      const nodes = s.nodes.map((nd) => {
+        if (!want.has(nd.id)) return nd
+        n++
+        const cur = nd.data.yerlesim3d
+        return {
+          ...nd,
+          data: {
+            ...nd.data,
+            params: { ...nd.data.params, [MODEL_KEYS.id]: presetId(pre.key), [MODEL_KEYS.fit]: 'gerdir', [MODEL_KEYS.rot]: 0 },
+            ...(cur ? { yerlesim3d: { ...cur, g: pre.g, d: pre.d, y: pre.y } } : {}),
+          },
+        }
+      })
+      return { nodes, edges: withLengths(nodes, s.edges), dirty: true }
+    })
+    return n
   },
   setLayout3d: (patches) =>
     set((s) => {

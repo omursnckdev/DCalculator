@@ -2,8 +2,10 @@ import type { Model } from '../engine/types'
 import { EQUIPMENT } from '../library/equipment'
 import type { EquipmentType, Oda3D, Params, Plan3D, PlanEkipman, ProjectNode, Yerlesim3D } from '../model/types'
 import { levels, mountPatches, packZone } from './autoLayout'
+import { MODEL_KEYS } from './customModel'
 import { isMinor } from './dims'
 import { roomAt } from './geometry'
+import { presetOfId } from './presetModels'
 
 /** Plan dışı ekipman için avlu ile bina arası boşluk (m). */
 const YARD_GAP = 14
@@ -148,6 +150,9 @@ export function applyPlan(model: Model, plan: Plan3D, opts: ApplyOptions = {}): 
     matched++
     claimed.add(primary.n.id)
     const base = baseLayout(e, walls, primary.n.type)
+    // Hazır modelli ekipman (ör. IT UPS → Socomec Delphys XM) modelin ölçüsünü korur; plan yalnız merkez ve yönü verir.
+    const pre = presetOfId(primary.n.params[MODEL_KEYS.id])
+    if (pre) Object.assign(base, { g: pre.g, d: pre.d, y: pre.y })
     placements[primary.n.id] = base
     // Aynı dolabın içindeki baralar: aynı ayak izi, üst üste kotlarda (0,5 m aralık)
     let k = 1

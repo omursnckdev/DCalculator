@@ -173,6 +173,14 @@ export const tr = {
       done: (r: { hatSayisi: number; kesiciSayisi: number; olusturulan: string[]; eslesen: unknown[]; silinenDugum: string[]; atlanan: unknown[]; guncellenenHat: number }) =>
         `${r.hatSayisi} hat ve ${r.kesiciSayisi} şalter eklendi${r.guncellenenHat ? `, ${r.guncellenenHat} mevcut hattın (PL1/PL2 bara ve kablo) uzunluk/kesit bilgisi çizelgeden güncellendi` : ''}; ${r.eslesen.length} mevcut ekipman eşleşti, ${r.olusturulan.length} yeni ekipman oluşturuldu${r.silinenDugum.length ? `, ${r.silinenDugum.length} şema dışı yer tutucu kaldırıldı` : ''}${r.atlanan.length ? `; ${r.atlanan.length} hat atlandı` : ''}.`,
       nochange: 'Hat çizelgesi zaten uygulanmış (yeni hat veya güncelleme yok).',
+      itUps: {
+        title: 'IT UPS modeli',
+        hint: 'Veri salonunu besleyen IT UPS\'lerin (UPS.x.1 / UPS.x.2; "(IT UPS)" notlular) 3D modelini Socomec Delphys XM ile değiştirir; Essential UPS (.3) değişmez. Kutu modelin ölçüsü olur (0,8 × 1,0 × 2,0 m), konum ve yön planda kalır; plan yeniden uygulansa da korunur.',
+        apply: 'IT UPS\'leri Delphys XM yap',
+        confirm: (n: number) => `${n} IT UPS'in 3D modeli Socomec Delphys XM olacak; ekipman kutusu 0,8 × 1,0 × 2,0 m yapılacak (plandaki ayak izi küçülür). Devam edilsin mi?`,
+        done: (n: number) => `${n} IT UPS Socomec Delphys XM modeline çevrildi.`,
+        none: 'Şemada IT UPS bulunamadı.',
+      },
       invalid: 'Hat çizelgesi okunamadı (geçerli hat JSON değil).',
     },
     roomElev: 'Oda kotu (m): 0 = zemin kat, 4,5 = 1. kat',

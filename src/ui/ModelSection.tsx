@@ -1,15 +1,12 @@
 import { useRef, useState } from 'react'
-import xmUrl from '../assets/models/socomec-delphys-xm.glb?url'
-import xmCabUrl from '../assets/models/socomec-delphys-xm-yan-kabin.glb?url'
 import { MODEL_KEYS, modelSearchUrl, modelSpecOf, nativeBox } from '../layout3d/customModel'
-import { presetsFor } from '../layout3d/presetModels'
+import { presetId, presetOfId, presetsFor } from '../layout3d/presetModels'
 import type { PresetModel } from '../layout3d/presetModels'
 import { tr } from '../i18n/tr'
 import { deleteModel, saveModel, updateModelMeta, useModelList } from '../store/modelStore'
 import { useStore } from '../store/useStore'
 import type { EquipmentNode } from '../model/types'
 
-const PRESET_URL: Record<string, string> = { 'socomec-delphys-xm': xmUrl, 'socomec-delphys-xm-yan-kabin': xmCabUrl }
 const sel = 'w-full rounded border border-slate-300 px-1.5 py-1 text-xs'
 const btn = 'rounded border border-slate-300 bg-white px-2 py-0.5 text-xs hover:bg-slate-50'
 
@@ -24,25 +21,18 @@ export function ModelSection({ node }: { node: EquipmentNode }) {
   const [msg, setMsg] = useState('')
   const spec = modelSpecOf(node.data.params)
   const current = models.find((m) => m.id === spec?.id)
+  const presetCur = presetOfId(spec?.id)
 
   const assign = (ids: string[], key: keyof typeof MODEL_KEYS, value: string | number) => {
     for (const id of ids) setParam(id, MODEL_KEYS[key], value)
   }
   const presets = presetsFor(node.data.kind)
-  const usePreset = async (p: PresetModel) => {
-    setMsg(M.measuring)
-    try {
-      const blob = await (await fetch(PRESET_URL[p.key])).blob()
-      const m = await saveModel(new File([blob], `${p.ad}.glb`, { type: 'model/gltf-binary' }))
-      await updateModelMeta(m.id, { lisans: p.lisans })
-      assign([node.id], 'id', m.id)
-      assign([node.id], 'fit', 'gerdir')
-      assign([node.id], 'rot', 0)
-      setLayout({ [node.id]: { g: p.g, d: p.d, y: p.y } })
-      setMsg(M.presetDone(p.ad, p.g, p.d, p.y))
-    } catch (e) {
-      setMsg(e instanceof Error ? e.message : M.failed)
-    }
+  const usePreset = (p: PresetModel) => {
+    assign([node.id], 'id', presetId(p.key))
+    assign([node.id], 'fit', 'gerdir')
+    assign([node.id], 'rot', 0)
+    setLayout({ [node.id]: { g: p.g, d: p.d, y: p.y } })
+    setMsg(M.presetDone(p.ad, p.g, p.d, p.y))
   }
   const onFile = async (f: File | undefined) => {
     if (!f) return
@@ -88,6 +78,11 @@ export function ModelSection({ node }: { node: EquipmentNode }) {
         {M.pick}
         <select className={sel} value={spec?.id ?? ''} onChange={(e) => assign([node.id], 'id', e.target.value)}>
           <option value="">{M.builtin}</option>
+          {presets.map((p) => (
+            <option key={p.key} value={presetId(p.key)}>
+              {p.ad}
+            </option>
+          ))}
           {models.map((m) => (
             <option key={m.id} value={m.id}>
               {m.ad} ({(m.boyut / 1024 / 1024).toFixed(1)} MB)
@@ -98,7 +93,7 @@ export function ModelSection({ node }: { node: EquipmentNode }) {
       {presets.length > 0 && (
         <label className="mt-2 block text-xs text-slate-500">
           {M.preset}
-          <select className={sel} value="" onChange={(e) => { const p = presets.find((x) => x.key === e.target.value); if (p) void usePreset(p) }}>
+          <select className={sel} value="" onChange={(e) => { const p = presets.find((x) => x.key === e.target.value); if (p) usePreset(p) }}>
             <option value="">{M.presetPick}</option>
             {presets.map((p) => (
               <option key={p.key} value={p.key}>
@@ -151,7 +146,7 @@ export function ModelSection({ node }: { node: EquipmentNode }) {
           </div>
         </>
       )}
-      {current && (
+      {current && !presetCur && (
         <div className="mt-2 border-t border-slate-100 pt-1">
           <label className="block text-xs text-slate-500">
             {M.license}

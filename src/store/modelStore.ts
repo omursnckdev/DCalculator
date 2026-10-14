@@ -1,6 +1,8 @@
 import { openDB } from 'idb'
 import type { IDBPDatabase } from 'idb'
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import { presetOfId } from '../layout3d/presetModels'
+import { PRESET_URL } from '../layout3d/presetUrls'
 
 /**
  * Özel 3D model kütüphanesi (GLB): tarayıcının IndexedDB'sinde saklanır (projeye gömülmez; proje dosyası yalnız model kimliğini taşır).
@@ -75,6 +77,8 @@ export async function listModels(): Promise<ModelMeta[]> {
 }
 
 export async function getModelBuffer(id: string): Promise<ArrayBuffer | undefined> {
+  const pre = presetOfId(id)
+  if (pre) return (await fetch(PRESET_URL[pre.key])).arrayBuffer()
   return ((await (await db()).get(STORE, id)) as ModelRec | undefined)?.buf
 }
 
@@ -100,6 +104,8 @@ const pending = new Map<string, Promise<string | null>>()
 
 /** Modelin blob adresi (önbellekli). Kayıt yoksa null. */
 export function modelUrl(id: string): Promise<string | null> {
+  const pre = presetOfId(id)
+  if (pre) return Promise.resolve(PRESET_URL[pre.key] ?? null)
   const hit = urlCache.get(id)
   if (hit) return Promise.resolve(hit)
   let p = pending.get(id)

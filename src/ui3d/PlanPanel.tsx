@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { tr } from '../i18n/tr'
+import { isItUps } from '../layout3d/presetModels'
 import { canClonePl1 } from '../model/clonePlan'
 import { parseHatCizelgesi } from '../model/hatCizelgesi'
 import type { HatCizelgesi } from '../model/hatCizelgesi'
@@ -30,6 +31,8 @@ export function PlanPanel() {
   const fileRef = useRef<HTMLInputElement>(null)
   const A = tr.v3d.plan
   const H = tr.v3d.hat
+  const U = tr.v3d.hat.itUps
+  const applyPreset = useStore((st) => st.applyPresetModel)
 
   const apply = (p: Plan3D | undefined) => {
     if (!p) {
@@ -51,6 +54,12 @@ export function PlanPanel() {
     const r = applyHat(h)
     setMsg(r.hatSayisi === 0 && r.olusturulan.length === 0 && r.guncellenenHat === 0 ? H.nochange : H.done(r))
     use3dStore.getState().requestView('fit')
+  }
+  const itUps = () => {
+    const ids = toProjectNodes(nodes).filter(isItUps).map((n) => n.id)
+    if (ids.length === 0) return setMsg(U.none)
+    if (!confirm(U.confirm(ids.length))) return
+    setMsg(U.done(applyPreset(ids, 'socomec-delphys-xm')))
   }
   const loadHat = async () => {
     try {
@@ -133,6 +142,15 @@ export function PlanPanel() {
                 {H.open}
               </button>
               <input ref={hatRef} type="file" accept=".json,application/json" className="hidden" onChange={(e) => void onHatFile(e.target.files?.[0])} />
+            </div>
+          </div>
+          <div className="border-t border-slate-200 pt-1">
+            <p className="font-semibold">{U.title}</p>
+            <p className="text-slate-500">{U.hint}</p>
+            <div className="pt-1">
+              <button type="button" className={btn} onClick={itUps}>
+                {U.apply}
+              </button>
             </div>
           </div>
           {msg && <p className="font-medium text-emerald-700">{msg}</p>}
